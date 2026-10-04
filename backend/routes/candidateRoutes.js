@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   listCandidates,
+  listPipeline,
   getCandidateById,
   createCandidateWithApplication,
   updateApplicationStatus,
@@ -9,6 +10,7 @@ const {
 } = require('../controllers/candidateController');
 
 router.get('/', listCandidates);
+router.get('/pipeline', listPipeline);
 router.get('/:id', getCandidateById);
 router.post('/apply', createCandidateWithApplication);
 router.patch('/applications/:applicationId/status', updateApplicationStatus);

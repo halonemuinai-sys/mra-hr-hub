@@ -354,6 +354,62 @@ async function updateApplicationStatus(req, res) {
 }
 
 /**
+ * Pipeline board: flat list of job applications with candidate + job summary
+ */
+async function listPipeline(req, res) {
+  try {
+    const { jobId, search } = req.query;
+
+    const where = {};
+    if (jobId) where.jobId = jobId;
+    if (search) {
+      where.candidate = {
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { headline: { contains: search, mode: 'insensitive' } }
+        ]
+      };
+    }
+
+    const applications = await prisma.jobApplication.findMany({
+      where,
+      orderBy: [{ atsScore: 'desc' }, { appliedAt: 'desc' }],
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            headline: true,
+            location: true,
+            totalExperienceYrs: true,
+            availability: true,
+            jobFamily: true,
+            seniorityLevel: true
+          }
+        },
+        job: { select: { id: true, title: true, department: true, division: true } }
+      }
+    });
+
+    const counts = applications.reduce((acc, a) => {
+      acc[a.status] = (acc[a.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    return res.json({
+      success: true,
+      data: applications,
+      summary: { total: applications.length, counts }
+    });
+  } catch (error) {
+    console.error('Error listing pipeline:', error);
+    return res.status(500).json({ success: false, message: 'Gagal mengambil data pipeline: ' + error.message });
+  }
+}
+
+/**
  * Delete candidate
  */
 async function deleteCandidate(req, res) {
@@ -369,6 +425,7 @@ async function deleteCandidate(req, res) {
 
 module.exports = {
   listCandidates,
+  listPipeline,
   getCandidateById,
   createCandidateWithApplication,
   updateApplicationStatus,

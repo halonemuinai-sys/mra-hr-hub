@@ -60,6 +60,10 @@ export const api = {
     return fetchApi(`/candidates${q ? `?${q}` : ''}`);
   },
   getCandidateById: (id: string) => fetchApi(`/candidates/${id}`),
+  getPipeline: (params: Record<string, any> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return fetchApi(`/candidates/pipeline${q ? `?${q}` : ''}`);
+  },
   applyCandidate: (data: any) => fetchApi('/candidates/apply', {
     method: 'POST',
     body: JSON.stringify(data)

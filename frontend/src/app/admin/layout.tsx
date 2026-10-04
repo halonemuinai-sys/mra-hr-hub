@@ -16,7 +16,8 @@ import {
   X,
   LogOut,
   User as UserIcon,
-  RefreshCw
+  RefreshCw,
+  KanbanSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
@@ -108,6 +109,7 @@ export default function DashboardLayout({
 
   const navigation = [
     { name: 'Dashboard Eksekutif', href: '/admin', icon: LayoutDashboard },
+    { name: 'Pipeline Pelamar', href: '/admin/pipeline', icon: KanbanSquare },
     { name: 'Database & Profiling', href: '/admin/candidates', icon: Users },
     { name: 'Template & Bulk Ingest', href: '/admin/templates', icon: FileSpreadsheet },
     { name: 'Kelola Lowongan ATS', href: '/admin/jobs', icon: Briefcase }
@@ -126,7 +128,7 @@ export default function DashboardLayout({
         {/* Logo */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-800 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
