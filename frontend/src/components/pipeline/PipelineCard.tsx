@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Briefcase, MapPin, Star, Clock, Loader2, ChevronsRight, Check, AlertTriangle } from 'lucide-react';
+import { Briefcase, MapPin, Star, Clock, Loader2, ChevronsRight, Check, AlertTriangle, Lock, Hand, UserRound } from 'lucide-react';
 import { getScoreBadge } from '@/lib/utils';
 import {
   ALL_STAGES,
@@ -9,8 +9,10 @@ import {
   getInitials,
   nextStage,
   isStale,
+  stageSince,
   STALE_CRITICAL_DAYS
 } from './stages';
+import { shortName } from './ownership';
 
 interface Props {
   app: any;
@@ -18,6 +20,12 @@ interface Props {
   selectionMode: boolean;
   dragging: boolean;
   busy: boolean;
+  /** Current user may change this card's stage */
+  movable: boolean;
+  /** Current user may claim this (unassigned) card */
+  claimable: boolean;
+  currentUserId?: string;
+  onClaim: () => void;
   onToggleSelect: (shiftKey: boolean) => void;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -31,6 +39,10 @@ export default function PipelineCard({
   selectionMode,
   dragging,
   busy,
+  movable,
+  claimable,
+  currentUserId,
+  onClaim,
   onToggleSelect,
   onDragStart,
   onDragEnd,
@@ -39,15 +51,17 @@ export default function PipelineCard({
 }: Props) {
   const score = Math.round(app.atsScore || 0);
   const badge = getScoreBadge(score);
-  const days = daysSince(app.updatedAt || app.appliedAt);
+  const days = daysSince(stageSince(app));
   const stale = isStale(app);
   const critical = stale && days >= STALE_CRITICAL_DAYS;
   const next = nextStage(app.status);
   const c = app.candidate || {};
+  const owner = app.assignedRecruiter;
+  const mine = !!owner && owner.id === currentUserId;
 
   return (
     <div
-      draggable={!busy}
+      draggable={!busy && movable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={(e) => (selectionMode ? onToggleSelect(e.shiftKey) : onOpen())}
@@ -138,31 +152,63 @@ export default function PipelineCard({
         </div>
       </div>
 
-      {/* Actions: quick advance + move select (keyboard / touch fallback) */}
-      <div className="mt-2.5 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-        <select
-          value={app.status}
-          onChange={(e) => onMove(e.target.value)}
-          aria-label="Pindahkan tahapan"
-          className="min-w-0 flex-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-        >
-          {ALL_STAGES.map((s) => (
-            <option key={s.key} value={s.key}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        {next && (
+      {/* PIC (Talent Acquisition owner) */}
+      <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[10px]">
+        {owner ? (
+          <span
+            className={`inline-flex items-center gap-1 min-w-0 px-1.5 py-0.5 rounded-md font-bold ${
+              mine ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+            }`}
+            title={`PIC: ${owner.name}`}
+          >
+            {movable ? <UserRound className="w-3 h-3 shrink-0" /> : <Lock className="w-3 h-3 shrink-0" />}
+            <span className="truncate">{mine ? 'PIC: Saya' : shortName(owner.name)}</span>
+          </span>
+        ) : (
+          <span className="text-slate-400 font-semibold">Belum ada PIC</span>
+        )}
+        {claimable && (
           <button
             type="button"
-            onClick={() => onMove(next.key)}
-            title={`Lanjut ke ${next.label}`}
-            className="shrink-0 px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 text-[11px] font-bold flex items-center gap-0.5 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClaim();
+            }}
+            className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 font-bold flex items-center gap-1 transition-colors"
           >
-            <ChevronsRight className="w-3.5 h-3.5" />
+            <Hand className="w-3 h-3" />
+            Ambil
           </button>
         )}
       </div>
+
+      {/* Actions: quick advance + move select (keyboard / touch fallback) */}
+      {movable && (
+        <div className="mt-2 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <select
+            value={app.status}
+            onChange={(e) => onMove(e.target.value)}
+            aria-label="Pindahkan tahapan"
+            className="min-w-0 flex-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          >
+            {ALL_STAGES.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          {next && (
+            <button
+              type="button"
+              onClick={() => onMove(next.key)}
+              title={`Lanjut ke ${next.label}`}
+              className="shrink-0 px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 text-[11px] font-bold flex items-center gap-0.5 transition-colors"
+            >
+              <ChevronsRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

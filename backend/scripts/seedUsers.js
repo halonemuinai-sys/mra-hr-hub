@@ -22,6 +22,18 @@ async function seedUsers() {
       role: 'RECRUITER'
     },
     {
+      email: 'ta.dewi@mragroup.co.id',
+      name: 'Dewi Lestari (Talent Acquisition)',
+      password: passwordHash,
+      role: 'RECRUITER'
+    },
+    {
+      email: 'ta.rizky@mragroup.co.id',
+      name: 'Rizky Pratama (Talent Acquisition)',
+      password: passwordHash,
+      role: 'RECRUITER'
+    },
+    {
       email: 'hiring.manager@mragroup.co.id',
       name: 'Hendrawan (Retail Division Manager)',
       password: passwordHash,

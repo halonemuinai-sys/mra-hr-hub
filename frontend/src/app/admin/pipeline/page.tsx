@@ -8,6 +8,7 @@ import CandidateDetailDrawer from '@/components/candidates/CandidateDetailDrawer
 import PipelineCard from '@/components/pipeline/PipelineCard';
 import PipelineColumn from '@/components/pipeline/PipelineColumn';
 import PipelineToolbar, { PipelineFilters, EMPTY_FILTERS } from '@/components/pipeline/PipelineToolbar';
+import OwnerScopeBar from '@/components/pipeline/OwnerScopeBar';
 import BulkActionBar from '@/components/pipeline/BulkActionBar';
 import RejectReasonModal from '@/components/pipeline/RejectReasonModal';
 import PipelineToast, { ToastState } from '@/components/pipeline/PipelineToast';
@@ -20,10 +21,19 @@ import {
   sortApplications,
   stageLabel
 } from '@/components/pipeline/stages';
+import {
+  OwnerScope,
+  isLead,
+  canMove,
+  canClaim,
+  canRelease,
+  defaultScope
+} from '@/components/pipeline/ownership';
+import { can, useCurrentUser } from '@/lib/permissions';
 
 const PREFS_KEY = 'hr_hub_pipeline_prefs';
 
-function readPrefs(): { sort?: SortKey; showClosed?: boolean } {
+function readPrefs(): { sort?: SortKey; showClosed?: boolean; scope?: OwnerScope } {
   try {
     return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
   } catch {
@@ -32,13 +42,18 @@ function readPrefs(): { sort?: SortKey; showClosed?: boolean } {
 }
 
 export default function PipelinePage() {
+  const user = useCurrentUser();
   const [applications, setApplications] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
+  const [recruiters, setRecruiters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<PipelineFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<SortKey>('score');
   const [showClosed, setShowClosed] = useState(false);
+  const [scope, setScope] = useState<OwnerScope>('all');
+  const [focusRecruiterId, setFocusRecruiterId] = useState('');
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const lastClicked = useRef<string | null>(null);
@@ -50,20 +65,34 @@ export default function PipelinePage() {
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
 
+  const lead = isLead(user);
+  const notify = (tone: ToastState['tone'], message: string, onUndo?: () => void) =>
+    setToast({ id: Date.now(), tone, message, onUndo });
+
   // ---- Preferences (per viewer) ----
   useEffect(() => {
     const p = readPrefs();
+    const mayOwn = can(user, 'pipeline.claim');
+    setScope(p.scope && (p.scope !== 'me' || mayOwn) ? p.scope : defaultScope(user));
     if (p.sort) setSort(p.sort);
     if (p.showClosed) setShowClosed(true);
-  }, []);
+    setPrefsLoaded(true);
+  }, [user]);
 
   useEffect(() => {
+    if (!prefsLoaded) return;
     try {
-      localStorage.setItem(PREFS_KEY, JSON.stringify({ sort, showClosed }));
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ sort, showClosed, scope }));
     } catch {}
-  }, [sort, showClosed]);
+  }, [sort, showClosed, scope, prefsLoaded]);
 
   // ---- Data ----
+  const loadRecruiters = useCallback(() => {
+    api.getRecruiters()
+      .then((res: any) => res.success && setRecruiters(res.data || []))
+      .catch(() => {});
+  }, []);
+
   const loadPipeline = useCallback(async () => {
     setLoading(true);
     try {
@@ -75,7 +104,7 @@ export default function PipelinePage() {
       const res = await api.getPipeline(params);
       if (res.success) setApplications(res.data || []);
     } catch (err: any) {
-      setToast({ id: Date.now(), tone: 'error', message: 'Gagal memuat pipeline: ' + err.message });
+      notify('error', 'Gagal memuat pipeline: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -85,21 +114,13 @@ export default function PipelinePage() {
     api.getJobs({ activeOnly: false })
       .then((res: any) => res.success && setJobs(res.data || []))
       .catch(() => {});
-  }, []);
+    loadRecruiters();
+  }, [loadRecruiters]);
 
   useEffect(() => {
     const t = setTimeout(loadPipeline, 300);
     return () => clearTimeout(t);
   }, [loadPipeline]);
-
-  // Drop selections that are no longer on the board
-  useEffect(() => {
-    setSelected((prev) => {
-      const ids = new Set(applications.map((a) => a.id));
-      const next = new Set([...prev].filter((id) => ids.has(id)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [applications]);
 
   // Esc clears selection
   useEffect(() => {
@@ -111,10 +132,32 @@ export default function PipelinePage() {
   }, [pendingReject, selectedCandidate]);
 
   // ---- Derived ----
-  const visibleApps = useMemo(
-    () => (filters.staleOnly ? applications.filter(isStale) : applications),
-    [applications, filters.staleOnly]
+  const ownerCounts = useMemo(
+    () => ({
+      me: applications.filter((a) => user && a.assignedRecruiterId === user.id).length,
+      unassigned: applications.filter((a) => !a.assignedRecruiterId).length,
+      all: applications.length
+    }),
+    [applications, user]
   );
+
+  const visibleApps = useMemo(() => {
+    let list = applications;
+    if (scope === 'me') list = list.filter((a) => user && a.assignedRecruiterId === user.id);
+    else if (scope === 'unassigned') list = list.filter((a) => !a.assignedRecruiterId);
+    else if (focusRecruiterId) list = list.filter((a) => a.assignedRecruiterId === focusRecruiterId);
+    if (filters.staleOnly) list = list.filter(isStale);
+    return list;
+  }, [applications, scope, focusRecruiterId, filters.staleOnly, user]);
+
+  // Drop selections that are no longer visible
+  useEffect(() => {
+    setSelected((prev) => {
+      const ids = new Set(visibleApps.map((a) => a.id));
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [visibleApps]);
 
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -127,54 +170,83 @@ export default function PipelinePage() {
   const countIn = (stages: typeof ALL_STAGES) => stages.reduce((n, s) => n + grouped[s.key].length, 0);
   const activeCount = countIn(ACTIVE_STAGES);
   const closedCount = countIn(CLOSED_STAGES);
-  const staleCount = applications.filter(isStale).length;
-  const hiredCount = grouped.HIRED.length;
-  const offerCount = grouped.OFFERING.length;
+  const staleCount = visibleApps.filter(isStale).length;
+
+  const selectedApps = applications.filter((a) => selected.has(a.id));
+  const claimableSelected = selectedApps.filter((a) => canClaim(user, a));
+  const releasableSelected = selectedApps.filter((a) => canRelease(user, a));
+  const movableSelected = selectedApps.filter((a) => canMove(user, a));
 
   // ---- Moving ----
   const applyMove = useCallback(
     async (ids: string[], status: string, note?: string, isUndo = false) => {
       const prevStatus = new Map<string, string>();
       applications.forEach((a) => {
-        if (ids.includes(a.id) && a.status !== status) prevStatus.set(a.id, a.status);
+        if (ids.includes(a.id) && a.status !== status && canMove(user, a)) prevStatus.set(a.id, a.status);
       });
       const movedIds = [...prevStatus.keys()];
       if (movedIds.length === 0) return;
 
       const snapshot = applications;
       const now = new Date().toISOString();
-      setApplications((list) => list.map((a) => (prevStatus.has(a.id) ? { ...a, status, updatedAt: now } : a)));
+      const me = user ? { id: user.id, name: user.name } : null;
+      setApplications((list) =>
+        list.map((a) => {
+          if (!prevStatus.has(a.id)) return a;
+          // Recruiters auto-claim unassigned cards they move (mirrors backend)
+          const claim = !a.assignedRecruiterId && !can(user, 'pipeline.move.any') && me
+            ? { assignedRecruiterId: me.id, assignedRecruiter: me }
+            : {};
+          return { ...a, ...claim, status, stageChangedAt: now };
+        })
+      );
       setBusyIds(new Set(movedIds));
 
       try {
-        await api.bulkUpdateApplicationStatus({ applicationIds: movedIds, status, note });
+        const res = await api.bulkUpdateApplicationStatus({ applicationIds: movedIds, status, note });
+        const denied: string[] = res.data?.deniedIds || [];
+        if (denied.length) {
+          // Someone else owns these now — put them back and refresh ownership
+          setApplications((list) =>
+            list.map((a) => (denied.includes(a.id) ? snapshot.find((s) => s.id === a.id) || a : a))
+          );
+          loadPipeline();
+        }
         setSelected(new Set());
         if (isUndo) {
-          setToast({ id: Date.now(), tone: 'success', message: 'Perpindahan dibatalkan.' });
+          notify('success', 'Perpindahan dibatalkan.');
           return;
         }
-        const who = movedIds.length === 1
-          ? applications.find((a) => a.id === movedIds[0])?.candidate?.fullName || '1 kandidat'
-          : `${movedIds.length} kandidat`;
-        setToast({
-          id: Date.now(),
-          tone: 'success',
-          message: `${who} → ${stageLabel(status)}`,
-          onUndo: () => {
+        const okIds = movedIds.filter((id) => !denied.includes(id));
+        if (!okIds.length) {
+          notify('error', res.message);
+          return;
+        }
+        const who = okIds.length === 1
+          ? applications.find((a) => a.id === okIds[0])?.candidate?.fullName || '1 kandidat'
+          : `${okIds.length} kandidat`;
+        notify(
+          denied.length ? 'error' : 'success',
+          denied.length ? res.message : `${who} → ${stageLabel(status)}`,
+          () => {
             // Revert each group back to its original stage
             const byStatus = new Map<string, string[]>();
-            prevStatus.forEach((st, id) => byStatus.set(st, [...(byStatus.get(st) || []), id]));
+            okIds.forEach((id) => {
+              const st = prevStatus.get(id)!;
+              byStatus.set(st, [...(byStatus.get(st) || []), id]);
+            });
             byStatus.forEach((groupIds, st) => applyMoveRef.current(groupIds, st, undefined, true));
           }
-        });
+        );
       } catch (err: any) {
         setApplications(snapshot);
-        setToast({ id: Date.now(), tone: 'error', message: 'Gagal memindahkan: ' + err.message });
+        notify('error', 'Gagal memindahkan: ' + err.message);
       } finally {
         setBusyIds(new Set());
       }
     },
-    [applications]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [applications, user, loadPipeline]
   );
 
   // Undo callbacks outlive the render they were created in
@@ -182,10 +254,38 @@ export default function PipelinePage() {
   applyMoveRef.current = applyMove;
 
   const requestMove = (ids: string[], status: string) => {
-    if (ids.length === 0) return;
-    if (status === 'REJECTED') setPendingReject(ids);
-    else applyMove(ids, status);
+    const allowed = ids.filter((id) => {
+      const a = applications.find((x) => x.id === id);
+      return a && canMove(user, a);
+    });
+    if (allowed.length === 0) {
+      notify('error', 'Kandidat ini dipegang recruiter lain. Minta TA Lead untuk menugaskan ulang.');
+      return;
+    }
+    if (status === 'REJECTED') setPendingReject(allowed);
+    else applyMove(allowed, status);
   };
+
+  // ---- Ownership actions ----
+  const runOwnership = async (ids: string[], action: () => Promise<any>) => {
+    setBusyIds(new Set(ids));
+    try {
+      const res = await action();
+      notify(res.data?.conflicts?.length ? 'error' : 'success', res.message);
+      setSelected(new Set());
+      await loadPipeline();
+      if (lead) loadRecruiters();
+    } catch (err: any) {
+      notify('error', err.message);
+    } finally {
+      setBusyIds(new Set());
+    }
+  };
+
+  const claim = (ids: string[]) => runOwnership(ids, () => api.claimApplications(ids));
+  const release = (ids: string[]) => runOwnership(ids, () => api.releaseApplications(ids));
+  const assign = (ids: string[], recruiterId: string) =>
+    runOwnership(ids, () => api.assignApplications(ids, recruiterId));
 
   // ---- Selection ----
   const toggleSelect = (app: any, shiftKey: boolean) => {
@@ -229,7 +329,7 @@ export default function PipelinePage() {
         setSelectedCandidate({ ...res.data, latestApplication: fullApp, atsScore: fullApp.atsScore });
       }
     } catch (err: any) {
-      setToast({ id: Date.now(), tone: 'error', message: 'Gagal membuka profil: ' + err.message });
+      notify('error', 'Gagal membuka profil: ' + err.message);
     } finally {
       setBusyIds(new Set());
     }
@@ -237,10 +337,11 @@ export default function PipelinePage() {
 
   const visibleStages = showClosed ? ALL_STAGES : ACTIVE_STAGES;
   const selectionMode = selected.size > 0;
+  const emptyMine = !loading && scope === 'me' && ownerCounts.me === 0;
 
   return (
     <div className="space-y-4 max-w-full">
-      {/* Header + funnel summary */}
+      {/* Header + summary */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -248,15 +349,15 @@ export default function PipelinePage() {
             Pipeline Pelamar
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Seret kartu untuk pindah tahap • klik avatar untuk memilih banyak (Shift untuk rentang) • klik kartu untuk profil lengkap
+            Ambil kandidat dari antrean, lalu seret kartu untuk pindah tahap • klik avatar untuk memilih banyak (Shift untuk rentang)
           </p>
         </div>
         <div className="grid grid-cols-4 gap-2 text-center">
           {[
             { label: 'Aktif', value: activeCount, cls: 'text-slate-900' },
             { label: 'Tertahan', value: staleCount, cls: 'text-amber-600' },
-            { label: 'Offering', value: offerCount, cls: 'text-emerald-600' },
-            { label: 'Diterima', value: hiredCount, cls: 'text-emerald-700' }
+            { label: 'Offering', value: grouped.OFFERING.length, cls: 'text-emerald-600' },
+            { label: 'Diterima', value: grouped.HIRED.length, cls: 'text-emerald-700' }
           ].map((s) => (
             <div key={s.label} className="bg-white border border-slate-200/80 rounded-xl px-4 py-2 shadow-xs">
               <p className={`text-lg font-black tabular-nums ${s.cls}`}>{loading && !applications.length ? '…' : s.value}</p>
@@ -265,6 +366,19 @@ export default function PipelinePage() {
           ))}
         </div>
       </div>
+
+      <OwnerScopeBar
+        scope={scope}
+        onScopeChange={(s) => {
+          setScope(s);
+          setFocusRecruiterId('');
+        }}
+        ownerCounts={ownerCounts}
+        showMine={can(user, 'pipeline.claim')}
+        recruiters={lead ? recruiters : null}
+        focusRecruiterId={focusRecruiterId}
+        onFocusRecruiter={setFocusRecruiterId}
+      />
 
       <PipelineToolbar
         filters={filters}
@@ -277,8 +391,28 @@ export default function PipelinePage() {
         closedCount={closedCount}
         staleCount={staleCount}
         loading={loading}
-        onRefresh={loadPipeline}
+        onRefresh={() => {
+          loadPipeline();
+          loadRecruiters();
+        }}
       />
+
+      {emptyMine && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-blue-900">
+            Anda belum memegang kandidat. Ada <b>{ownerCounts.unassigned}</b> kandidat menunggu di antrean.
+          </span>
+          {ownerCounts.unassigned > 0 && (
+            <button
+              type="button"
+              onClick={() => setScope('unassigned')}
+              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold"
+            >
+              Lihat antrean
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Funnel distribution strip */}
       <div className="flex h-2 rounded-full overflow-hidden bg-slate-200/70">
@@ -318,10 +452,14 @@ export default function PipelinePage() {
                   selectionMode={selectionMode}
                   dragging={draggingIds.includes(app.id)}
                   busy={busyIds.has(app.id)}
+                  movable={canMove(user, app)}
+                  claimable={canClaim(user, app)}
+                  currentUserId={user?.id}
+                  onClaim={() => claim([app.id])}
                   onToggleSelect={(shift) => toggleSelect(app, shift)}
                   onDragStart={(e) => {
-                    // Dragging a selected card carries the whole selection
-                    const ids = selected.has(app.id) ? [...selected] : [app.id];
+                    // Dragging a selected card carries the whole (movable) selection
+                    const ids = selected.has(app.id) ? movableSelected.map((a) => a.id) : [app.id];
                     e.dataTransfer.setData('application/x-hrhub-ids', JSON.stringify(ids));
                     e.dataTransfer.effectAllowed = 'move';
                     setDraggingIds(ids);
@@ -340,7 +478,14 @@ export default function PipelinePage() {
         {selectionMode && (
           <BulkActionBar
             count={selected.size}
-            onMove={(status) => requestMove([...selected], status)}
+            claimableCount={claimableSelected.length}
+            releasableCount={releasableSelected.length}
+            canMove={movableSelected.length > 0}
+            recruiters={lead ? recruiters : null}
+            onMove={(status) => requestMove(movableSelected.map((a) => a.id), status)}
+            onClaim={() => claim(claimableSelected.map((a) => a.id))}
+            onRelease={() => release(releasableSelected.map((a) => a.id))}
+            onAssign={(rid) => assign([...selected], rid)}
             onClear={() => setSelected(new Set())}
           />
         )}

@@ -1,5 +1,7 @@
 const prisma = require('../api/db');
 const { calculateAtsMatchScore, classifyCandidateProfiling } = require('../services/profilingService');
+const { resolveMovePermission, logActivities } = require('./assignmentController');
+const { hasPermission } = require('../config/permissions');
 
 /**
  * List candidates with standard contract { success, data, meta, summary }
@@ -320,16 +322,52 @@ async function createCandidateWithApplication(req, res) {
   }
 }
 
+const VALID_STATUSES = [
+  'APPLIED', 'ATS_SCREENED', 'SHORTLISTED', 'INTERVIEW_HR', 'INTERVIEW_USER',
+  'OFFERING', 'HIRED', 'REJECTED', 'TALENT_POOL'
+];
+
+function deniedMessage(count) {
+  return `${count} kandidat dipegang recruiter lain — hanya PIC atau TA Lead yang dapat memindahkan tahapnya.`;
+}
+
 /**
  * Update candidate application status & scorecard (Recruiter Action)
+ * Stage changes follow strict ownership; notes & rating need candidate.evaluate.
  */
 async function updateApplicationStatus(req, res) {
   try {
     const { applicationId } = req.params;
     const { status, recruiterNotes, scorecardRating } = req.body;
 
+    const current = await prisma.jobApplication.findUnique({
+      where: { id: applicationId },
+      select: { id: true, status: true }
+    });
+    if (!current) {
+      return res.status(404).json({ success: false, message: 'Lamaran tidak ditemukan.' });
+    }
+
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Status tahapan tidak valid.' });
+    }
+    const statusChanged = Boolean(status) && status !== current.status;
+    const evaluates = recruiterNotes !== undefined || scorecardRating !== undefined;
+    if (evaluates && !hasPermission(req.user, 'candidate.evaluate')) {
+      return res.status(403).json({ success: false, message: 'Role Anda tidak memiliki izin memberi evaluasi.' });
+    }
+    if (statusChanged) {
+      const { deniedIds } = await resolveMovePermission(req.user, [applicationId]);
+      if (deniedIds.length) {
+        return res.status(403).json({ success: false, message: deniedMessage(1) });
+      }
+    }
+
     const dataToUpdate = {};
-    if (status) dataToUpdate.status = status;
+    if (statusChanged) {
+      dataToUpdate.status = status;
+      dataToUpdate.stageChangedAt = new Date();
+    }
     if (recruiterNotes !== undefined) dataToUpdate.recruiterNotes = recruiterNotes;
     if (scorecardRating !== undefined) dataToUpdate.scorecardRating = parseInt(scorecardRating, 10);
 
@@ -341,6 +379,16 @@ async function updateApplicationStatus(req, res) {
         job: true
       }
     });
+
+    if (statusChanged) {
+      await logActivities([{
+        applicationId,
+        actorId: req.user.id,
+        action: 'STAGE_CHANGE',
+        fromStatus: current.status,
+        toStatus: status
+      }]);
+    }
 
     return res.json({
       success: true,
@@ -354,11 +402,12 @@ async function updateApplicationStatus(req, res) {
 }
 
 /**
- * Pipeline board: flat list of job applications with candidate + job summary
+ * Pipeline board: flat list of job applications with candidate + job + PIC summary
+ * ?owner=me|unassigned|all (default all)
  */
 async function listPipeline(req, res) {
   try {
-    const { jobId, search, minScore, jobFamily, minRating } = req.query;
+    const { jobId, search, minScore, jobFamily, minRating, owner } = req.query;
 
     const where = {};
     if (jobId) where.jobId = jobId;
@@ -376,7 +425,7 @@ async function listPipeline(req, res) {
     }
     if (Object.keys(candidateWhere).length) where.candidate = candidateWhere;
 
-    const applications = await prisma.jobApplication.findMany({
+    const all = await prisma.jobApplication.findMany({
       where,
       orderBy: [{ atsScore: 'desc' }, { appliedAt: 'desc' }],
       include: {
@@ -393,9 +442,21 @@ async function listPipeline(req, res) {
             seniorityLevel: true
           }
         },
-        job: { select: { id: true, title: true, department: true, division: true } }
+        job: { select: { id: true, title: true, department: true, division: true } },
+        assignedRecruiter: { select: { id: true, name: true } }
       }
     });
+
+    const me = req.user.id;
+    const ownerCounts = {
+      me: all.filter(a => a.assignedRecruiterId === me).length,
+      unassigned: all.filter(a => !a.assignedRecruiterId).length,
+      all: all.length
+    };
+
+    let applications = all;
+    if (owner === 'me') applications = all.filter(a => a.assignedRecruiterId === me);
+    else if (owner === 'unassigned') applications = all.filter(a => !a.assignedRecruiterId);
 
     const counts = applications.reduce((acc, a) => {
       acc[a.status] = (acc[a.status] || 0) + 1;
@@ -405,7 +466,7 @@ async function listPipeline(req, res) {
     return res.json({
       success: true,
       data: applications,
-      summary: { total: applications.length, counts }
+      summary: { total: applications.length, counts, ownerCounts }
     });
   } catch (error) {
     console.error('Error listing pipeline:', error);
@@ -413,14 +474,10 @@ async function listPipeline(req, res) {
   }
 }
 
-const VALID_STATUSES = [
-  'APPLIED', 'ATS_SCREENED', 'SHORTLISTED', 'INTERVIEW_HR', 'INTERVIEW_USER',
-  'OFFERING', 'HIRED', 'REJECTED', 'TALENT_POOL'
-];
-
 /**
  * Bulk move applications to a stage. Optional `note` is appended
  * (timestamped) to each application's recruiterNotes.
+ * Applications owned by another recruiter are skipped and reported.
  */
 async function bulkUpdateApplicationStatus(req, res) {
   try {
@@ -433,47 +490,98 @@ async function bulkUpdateApplicationStatus(req, res) {
       return res.status(400).json({ success: false, message: 'Status tahapan tidak valid.' });
     }
 
-    const trimmedNote = typeof note === 'string' ? note.trim() : '';
-
-    if (!trimmedNote) {
-      const result = await prisma.jobApplication.updateMany({
-        where: { id: { in: applicationIds } },
-        data: { status }
-      });
-      return res.json({
-        success: true,
-        message: `${result.count} kandidat dipindahkan.`,
-        data: { count: result.count }
-      });
+    const { allowedIds, deniedIds } = await resolveMovePermission(req.user, [...new Set(applicationIds)]);
+    if (allowedIds.length === 0) {
+      return res.status(403).json({ success: false, message: deniedMessage(deniedIds.length) });
     }
 
     const existing = await prisma.jobApplication.findMany({
-      where: { id: { in: applicationIds } },
-      select: { id: true, recruiterNotes: true }
+      where: { id: { in: allowedIds } },
+      select: { id: true, status: true, recruiterNotes: true }
     });
+    const toMove = existing.filter(a => a.status !== status);
+
+    const trimmedNote = typeof note === 'string' ? note.trim() : '';
     const stamp = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
     const entry = `[${stamp} • ${status}] ${trimmedNote}`;
+    const now = new Date();
 
-    await prisma.$transaction(
-      existing.map(a =>
+    await prisma.$transaction([
+      ...toMove.map(a =>
         prisma.jobApplication.update({
           where: { id: a.id },
           data: {
             status,
-            recruiterNotes: a.recruiterNotes ? `${a.recruiterNotes.trim()}
-${entry}` : entry
+            stageChangedAt: now,
+            ...(trimmedNote
+              ? { recruiterNotes: a.recruiterNotes ? `${a.recruiterNotes.trim()}\n${entry}` : entry }
+              : {})
           }
         })
-      )
-    );
+      ),
+      prisma.applicationActivity.createMany({
+        data: toMove.map(a => ({
+          applicationId: a.id,
+          actorId: req.user.id,
+          action: 'STAGE_CHANGE',
+          fromStatus: a.status,
+          toStatus: status,
+          note: trimmedNote || null
+        }))
+      })
+    ]);
 
+    const movedIds = toMove.map(a => a.id);
     return res.json({
       success: true,
-      message: `${existing.length} kandidat dipindahkan.`,
-      data: { count: existing.length }
+      message: deniedIds.length
+        ? `${movedIds.length} kandidat dipindahkan. ${deniedMessage(deniedIds.length)}`
+        : `${movedIds.length} kandidat dipindahkan.`,
+      data: { count: movedIds.length, movedIds, deniedIds }
     });
   } catch (error) {
     console.error('Error bulk updating application status:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/**
+ * Public self-service status lookup (exact email match, minimal fields only)
+ */
+async function getPublicApplicationStatus(req, res) {
+  try {
+    const email = String(req.query.email || '').trim();
+    if (!email) return res.status(400).json({ success: false, message: 'Email wajib diisi.' });
+
+    const c = await prisma.candidate.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      select: {
+        fullName: true,
+        email: true,
+        headline: true,
+        createdAt: true,
+        applications: {
+          orderBy: { appliedAt: 'desc' },
+          take: 1,
+          select: { status: true, atsScore: true, job: { select: { title: true } } }
+        }
+      }
+    });
+    if (!c) return res.json({ success: true, data: null });
+
+    const app = c.applications[0] || null;
+    const { applications, ...profile } = c;
+    return res.json({
+      success: true,
+      data: {
+        ...profile,
+        status: app ? app.status : 'TALENT_POOL',
+        atsScore: app ? app.atsScore : null,
+        latestApplication: app
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching public status:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 }
@@ -499,5 +607,6 @@ module.exports = {
   createCandidateWithApplication,
   updateApplicationStatus,
   bulkUpdateApplicationStatus,
+  getPublicApplicationStatus,
   deleteCandidate
 };

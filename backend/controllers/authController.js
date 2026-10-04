@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../api/db');
+const { permissionsFor } = require('../config/permissions');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hr_hub_secure_jwt_secret_token_2026_mra_automation';
 const JWT_EXPIRES_IN = '7d';
@@ -43,6 +44,13 @@ async function login(req, res) {
       });
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Akun Anda dinonaktifkan. Hubungi Super Admin MRA HR HUB.'
+      });
+    }
+
     // Generate JWT Token
     const tokenPayload = {
       id: user.id,
@@ -63,7 +71,8 @@ async function login(req, res) {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        permissions: permissionsFor(user.role)
       }
     });
   } catch (error) {
@@ -95,21 +104,22 @@ async function getMe(req, res) {
         email: true,
         name: true,
         role: true,
+        isActive: true,
         createdAt: true,
         updatedAt: true
       }
     });
 
-    if (!user) {
-      return res.status(404).json({
+    if (!user || !user.isActive) {
+      return res.status(401).json({
         success: false,
-        message: 'User tidak ditemukan.'
+        message: 'Akun tidak ditemukan atau dinonaktifkan.'
       });
     }
 
     return res.json({
       success: true,
-      user
+      user: { ...user, permissions: permissionsFor(user.role) }
     });
   } catch (error) {
     console.error('Error saat mengambil profil user:', error);

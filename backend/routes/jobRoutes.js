@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { requireAuth, requirePermission } = require('../middlewares/authMiddleware');
 const {
   listJobs,
   getJobById,
@@ -10,8 +11,10 @@ const {
 
 router.get('/', listJobs);
 router.get('/:id', getJobById);
-router.post('/', createJob);
-router.put('/:id', updateJob);
-router.delete('/:id', deleteJob);
+// Writes are CMS-only; listing stays public for the career portal
+const canManage = [requireAuth, requirePermission('jobs.manage')];
+router.post('/', ...canManage, createJob);
+router.put('/:id', ...canManage, updateJob);
+router.delete('/:id', ...canManage, deleteJob);
 
 module.exports = router;

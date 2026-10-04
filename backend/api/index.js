@@ -5,6 +5,7 @@ const cors = require('cors');
 const atsRoutes = require('../routes/atsRoutes');
 const templateRoutes = require('../routes/templateRoutes');
 const candidateRoutes = require('../routes/candidateRoutes');
+const userRoutes = require('../routes/userRoutes');
 const jobRoutes = require('../routes/jobRoutes');
 const statsRoutes = require('../routes/statsRoutes');
 const authRoutes = require('../routes/authRoutes');
@@ -39,9 +40,13 @@ app.use('/api/templates', templateRoutes);
 app.use('/api/candidates', candidateRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/users', userRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ success: false, message: 'Format data JSON tidak valid.' });
+  }
   console.error('Unhandled Server Error:', err);
   res.status(err.status || 500).json({
     success: false,

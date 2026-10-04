@@ -26,6 +26,8 @@ import {
 import { formatRupiah, formatDate, getScoreBadge, getStatusBadge } from '@/lib/utils';
 import CandidateRadarChart from './CandidateRadarChart';
 import { api } from '@/lib/api';
+import { useCurrentUser } from '@/lib/permissions';
+import { canMove } from '@/components/pipeline/ownership';
 
 interface Props {
   candidate: any | null;
@@ -36,7 +38,9 @@ interface Props {
 export default function CandidateDetailDrawer({ candidate, onClose, onUpdated }: Props) {
   if (!candidate) return null;
 
+  const currentUser = useCurrentUser();
   const app = candidate.latestApplication || (candidate.applications && candidate.applications[0]);
+  const stageLocked = !!app && !canMove(currentUser, app);
   const [status, setStatus] = useState<string>(app?.status || 'APPLIED');
   const [rating, setRating] = useState<number>(app?.scorecardRating || 0);
   const [notes, setNotes] = useState<string>(app?.recruiterNotes || '');
@@ -490,10 +494,16 @@ export default function CandidateDetailDrawer({ candidate, onClose, onUpdated }:
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Ubah Tahapan Seleksi Kandidat:
                 </label>
+                {stageLocked && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-1.5">
+                    Tahapan hanya dapat diubah oleh PIC kandidat atau TA Lead. Rating & catatan tetap bisa diisi.
+                  </p>
+                )}
                 <select
                   value={status}
+                  disabled={stageLocked}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full text-xs font-semibold bg-white border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
+                  className="disabled:bg-slate-50 disabled:text-slate-500 w-full text-xs font-semibold bg-white border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                 >
                   <option value="APPLIED">Baru Masuk (Applied)</option>
                   <option value="ATS_SCREENED">Lolos ATS Pre-screen</option>

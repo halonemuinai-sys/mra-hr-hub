@@ -17,11 +17,13 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { can, useCurrentUser } from '@/lib/permissions';
 import { formatRupiah, formatDate, getScoreBadge, getStatusBadge } from '@/lib/utils';
 import SearchingRadarAnimation from '@/components/common/SearchingRadarAnimation';
 import CandidateDetailDrawer from '@/components/candidates/CandidateDetailDrawer';
 
 export default function CandidatesManagementPage() {
+  const currentUser = useCurrentUser();
   const [candidates, setCandidates] = useState<any[]>([]);
   const [meta, setMeta] = useState<any>({ page: 1, limit: 15, total: 0, totalPages: 1 });
   const [summary, setSummary] = useState<any>(null);
@@ -336,14 +338,16 @@ export default function CandidatesManagementPage() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(cand.id, cand.fullName)}
-                            className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Hapus Data"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {can(currentUser, 'candidate.delete') && (
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(cand.id, cand.fullName)}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Hapus Data"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

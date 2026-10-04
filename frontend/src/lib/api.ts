@@ -53,6 +53,30 @@ export const api = {
     return fetchApi(`/jobs${q ? `?${q}` : ''}`);
   },
   getJobById: (id: string) => fetchApi(`/jobs/${id}`),
+  createJob: (data: any) => fetchApi('/jobs', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  updateJob: (id: string, data: any) => fetchApi(`/jobs/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  deleteJob: (id: string) => fetchApi(`/jobs/${id}`, {
+    method: 'DELETE'
+  }),
+
+  // Users & access control (Super Admin)
+  getAccessMatrix: () => fetchApi('/users/access-matrix'),
+  getUsers: () => fetchApi('/users'),
+  createUser: (data: { name: string; email: string; role: string; password: string }) => fetchApi('/users', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  updateUser: (id: string, data: { name?: string; role?: string; isActive?: boolean; password?: string }) =>
+    fetchApi(`/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    }),
 
   // Candidates
   getCandidates: (params: Record<string, any> = {}) => {
@@ -77,6 +101,22 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload)
     }),
+  // TA ownership (PIC)
+  getRecruiters: () => fetchApi('/candidates/recruiters'),
+  claimApplications: (applicationIds: string[]) => fetchApi('/candidates/applications/claim', {
+    method: 'POST',
+    body: JSON.stringify({ applicationIds })
+  }),
+  releaseApplications: (applicationIds: string[]) => fetchApi('/candidates/applications/release', {
+    method: 'POST',
+    body: JSON.stringify({ applicationIds })
+  }),
+  assignApplications: (applicationIds: string[], recruiterId: string) => fetchApi('/candidates/applications/assign', {
+    method: 'POST',
+    body: JSON.stringify({ applicationIds, recruiterId })
+  }),
+  getApplicationActivity: (applicationId: string) => fetchApi(`/candidates/applications/${applicationId}/activity`),
+  getPublicStatus: (email: string) => fetchApi(`/candidates/status?email=${encodeURIComponent(email)}`),
   deleteCandidate: (id: string) => fetchApi(`/candidates/${id}`, {
     method: 'DELETE'
   }),

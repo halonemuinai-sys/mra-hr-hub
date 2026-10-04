@@ -18,9 +18,9 @@ export default function ApplicationStatusPage() {
     setLoading(true);
     setSearched(true);
     try {
-      const res = await api.getCandidates({ search: emailInput.trim(), limit: 1 });
-      if (res.success && res.data && res.data.length > 0) {
-        setCandidate(res.data[0]);
+      const res = await api.getPublicStatus(emailInput.trim());
+      if (res.success && res.data) {
+        setCandidate(res.data);
       } else {
         setCandidate(null);
       }

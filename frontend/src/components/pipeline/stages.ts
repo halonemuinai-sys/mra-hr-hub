@@ -40,9 +40,12 @@ export function daysSince(dateStr?: string) {
   return Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000));
 }
 
+/** When the application entered its current stage */
+export const stageSince = (app: any) => app.stageChangedAt || app.updatedAt || app.appliedAt;
+
 export function isStale(app: any) {
   const closed = app.status === 'HIRED' || CLOSED_STAGES.some((s) => s.key === app.status);
-  return !closed && daysSince(app.updatedAt || app.appliedAt) >= STALE_WARN_DAYS;
+  return !closed && daysSince(stageSince(app)) >= STALE_WARN_DAYS;
 }
 
 export function getInitials(name?: string) {
@@ -68,7 +71,7 @@ export function sortApplications(list: any[], sort: SortKey) {
     case 'rating':
       return sorted.sort((a, b) => (b.scorecardRating || 0) - (a.scorecardRating || 0) || b.atsScore - a.atsScore);
     case 'stale':
-      return sorted.sort((a, b) => time(a.updatedAt) - time(b.updatedAt));
+      return sorted.sort((a, b) => time(stageSince(a)) - time(stageSince(b)));
     case 'newest':
       return sorted.sort((a, b) => time(b.appliedAt) - time(a.appliedAt));
     default:

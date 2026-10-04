@@ -17,10 +17,13 @@ import {
   LogOut,
   User as UserIcon,
   RefreshCw,
-  KanbanSquare
+  KanbanSquare,
+  UserCog,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
+import { can, CurrentUserProvider, Permission, ROLE_LABELS } from '@/lib/permissions';
 
 export default function DashboardLayout({
   children,
@@ -107,13 +110,21 @@ export default function DashboardLayout({
     );
   }
 
-  const navigation = [
-    { name: 'Dashboard Eksekutif', href: '/admin', icon: LayoutDashboard },
-    { name: 'Pipeline Pelamar', href: '/admin/pipeline', icon: KanbanSquare },
-    { name: 'Database & Profiling', href: '/admin/candidates', icon: Users },
-    { name: 'Template & Bulk Ingest', href: '/admin/templates', icon: FileSpreadsheet },
-    { name: 'Kelola Lowongan ATS', href: '/admin/jobs', icon: Briefcase }
+  const allNavigation: { name: string; href: string; icon: React.ElementType; permission: Permission }[] = [
+    { name: 'Dashboard Eksekutif', href: '/admin', icon: LayoutDashboard, permission: 'dashboard.view' },
+    { name: 'Pipeline Pelamar', href: '/admin/pipeline', icon: KanbanSquare, permission: 'pipeline.view' },
+    { name: 'Database & Profiling', href: '/admin/candidates', icon: Users, permission: 'candidate.view' },
+    { name: 'Template & Bulk Ingest', href: '/admin/templates', icon: FileSpreadsheet, permission: 'candidate.import' },
+    { name: 'Kelola Lowongan ATS', href: '/admin/jobs', icon: Briefcase, permission: 'jobs.manage' },
+    { name: 'User & Hak Akses', href: '/admin/users', icon: UserCog, permission: 'users.manage' }
   ];
+  const navigation = allNavigation.filter((item) => can(currentUser, item.permission));
+
+  // Route guard: the most specific nav entry matching the current path decides access
+  const routeItem = [...allNavigation]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((item) => pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/')));
+  const accessDenied = !!routeItem && !can(currentUser, routeItem.permission);
 
   const getInitials = (name?: string) => {
     if (!name) return 'HR';
@@ -197,7 +208,7 @@ export default function DashboardLayout({
                 {currentUser?.name || 'HR Administrator'}
               </p>
               <p className="text-[10px] text-blue-400 font-semibold truncate">
-                {currentUser?.role || 'SUPERADMIN'}
+                {ROLE_LABELS[currentUser?.role] || currentUser?.role}
               </p>
             </div>
           </div>
@@ -297,7 +308,30 @@ export default function DashboardLayout({
 
         {/* Scrollable Work Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
-          {children}
+          <CurrentUserProvider user={currentUser}>
+            {accessDenied ? (
+              <div className="max-w-md mx-auto mt-16 bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h2 className="text-base font-bold text-slate-900 mt-4">Akses Dibatasi</h2>
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Role <b>{ROLE_LABELS[currentUser?.role] || currentUser?.role}</b> tidak memiliki izin untuk membuka{' '}
+                  <b>{routeItem?.name}</b>. Hubungi Super Admin bila Anda memerlukan akses.
+                </p>
+                {navigation[0] && (
+                  <Link
+                    href={navigation[0].href}
+                    className="inline-flex mt-5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                  >
+                    Kembali ke {navigation[0].name}
+                  </Link>
+                )}
+              </div>
+            ) : (
+              children
+            )}
+          </CurrentUserProvider>
         </main>
       </div>
     </div>

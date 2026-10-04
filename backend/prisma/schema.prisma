@@ -44,8 +44,12 @@ model User {
   password  String
   name      String
   role      Role     @default(RECRUITER)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  assignedApplications JobApplication[]      @relation("ApplicationRecruiter")
+  activities           ApplicationActivity[]
 }
 
 model JobPosting {
@@ -148,8 +152,35 @@ model JobApplication {
   appliedAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  job             JobPosting        @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  candidate       Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  // Talent Acquisition ownership (PIC)
+  assignedRecruiterId String?
+  assignedAt          DateTime?
+  stageChangedAt      DateTime          @default(now())
+
+  job               JobPosting            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate         Candidate             @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  assignedRecruiter User?                 @relation("ApplicationRecruiter", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
+  activities        ApplicationActivity[]
+
+  @@index([assignedRecruiterId])
+}
+
+// Audit trail: claim / release / assign / stage moves
+model ApplicationActivity {
+  id            String         @id @default(uuid())
+  applicationId String
+  actorId       String?
+  action        String         // CLAIM, RELEASE, ASSIGN, STAGE_CHANGE
+  fromStatus    String?
+  toStatus      String?
+  toRecruiterId String?
+  note          String?        @db.Text
+  createdAt     DateTime       @default(now())
+
+  application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  actor         User?          @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, createdAt])
 }
 
 model TemplateUploadLog {
