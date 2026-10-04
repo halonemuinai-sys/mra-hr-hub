@@ -10,6 +10,7 @@ export const isLead = (u: CmsUser | null) => can(u, 'pipeline.assign');
 
 /** Strict ownership: move.any moves anything; move.own moves own or unassigned (auto-claim) */
 export function canMove(user: CmsUser | null, app: any) {
+  if (app.pendingRequest) return false; // locked while a stage move awaits approval
   if (can(user, 'pipeline.move.any')) return true;
   if (!can(user, 'pipeline.move.own')) return false;
   if (!app.assignedRecruiterId) return can(user, 'pipeline.claim');

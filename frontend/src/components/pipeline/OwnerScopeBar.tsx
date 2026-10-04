@@ -9,7 +9,7 @@ interface Props {
   scope: OwnerScope;
   onScopeChange: (s: OwnerScope) => void;
   ownerCounts: { me: number; unassigned: number; all: number };
-  /** Hide "Milik Saya" for roles that can't hold candidates (e.g. Hiring Manager) */
+  /** Hide "My Candidates" for roles that can't hold candidates (e.g. Hiring Manager) */
   showMine: boolean;
   /** TA Lead only: team workload; clicking a member filters the board to their PIC */
   recruiters: any[] | null;
@@ -18,9 +18,9 @@ interface Props {
 }
 
 const TABS: { key: OwnerScope; label: string; icon: React.ElementType }[] = [
-  { key: 'me', label: 'Milik Saya', icon: UserRound },
-  { key: 'unassigned', label: 'Belum Diambil', icon: Inbox },
-  { key: 'all', label: 'Semua Tim', icon: Users }
+  { key: 'me', label: 'My Candidates', icon: UserRound },
+  { key: 'unassigned', label: 'Unassigned', icon: Inbox },
+  { key: 'all', label: 'Whole Team', icon: Users }
 ];
 
 export default function OwnerScopeBar({
@@ -67,7 +67,7 @@ export default function OwnerScopeBar({
 
       {recruiters && scope === 'all' && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Beban tim</span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Team workload</span>
           {recruiters.map((r) => {
             const active = focusRecruiterId === r.id;
             return (
@@ -75,7 +75,7 @@ export default function OwnerScopeBar({
                 key={r.id}
                 type="button"
                 onClick={() => onFocusRecruiter(active ? '' : r.id)}
-                title={`${r.name}: ${r.activeCount} aktif, ${r.staleCount} tertahan`}
+                title={`${r.name}: ${r.activeCount} active, ${r.staleCount} stalled`}
                 className={`shrink-0 flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl border text-[11px] transition-colors ${
                   active
                     ? 'bg-blue-600 border-blue-600 text-white'

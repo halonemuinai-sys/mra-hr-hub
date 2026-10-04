@@ -62,13 +62,13 @@ export default function PipelineToolbar({
           type="text"
           value={filters.search}
           onChange={(e) => set({ search: e.target.value })}
-          placeholder="Cari nama / email / headline…"
+          placeholder="Search name / email / headline…"
           className="pl-8 pr-3 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
         />
       </div>
 
       <select value={filters.jobId} onChange={(e) => set({ jobId: e.target.value })} className={`${selectCls} max-w-[200px]`}>
-        <option value="">Semua Lowongan</option>
+        <option value="">All Jobs</option>
         {jobs.map((j) => (
           <option key={j.id} value={j.id}>
             {j.title}
@@ -77,7 +77,7 @@ export default function PipelineToolbar({
       </select>
 
       <select value={filters.jobFamily} onChange={(e) => set({ jobFamily: e.target.value })} className={selectCls}>
-        <option value="">Semua Bidang</option>
+        <option value="">All Job Families</option>
         {JOB_FAMILY_OPTIONS.map((f) => (
           <option key={f.key} value={f.key}>
             {f.label}
@@ -86,7 +86,7 @@ export default function PipelineToolbar({
       </select>
 
       <select value={filters.minScore} onChange={(e) => set({ minScore: e.target.value })} className={selectCls}>
-        <option value="">Semua Skor ATS</option>
+        <option value="">All ATS Scores</option>
         <option value="85">Top Match (≥85%)</option>
         <option value="70">Qualified (≥70%)</option>
       </select>
@@ -97,7 +97,7 @@ export default function PipelineToolbar({
           value={sort}
           onChange={(e) => onSortChange(e.target.value as SortKey)}
           className={`${selectCls} pl-8`}
-          aria-label="Urutkan kartu"
+          aria-label="Sort cards"
         >
           {SORT_OPTIONS.map((o) => (
             <option key={o.key} value={o.key}>
@@ -115,10 +115,10 @@ export default function PipelineToolbar({
             ? 'bg-amber-500 text-white border-amber-500'
             : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50'
         }`}
-        title="Tampilkan hanya kandidat yang tidak bergerak ≥7 hari"
+        title="Show only candidates with no movement for ≥7 days"
       >
         <AlertTriangle className="w-3.5 h-3.5" />
-        Tertahan ({staleCount})
+        Stalled ({staleCount})
       </button>
 
       <button
@@ -129,7 +129,7 @@ export default function PipelineToolbar({
         }`}
       >
         <Archive className="w-3.5 h-3.5" />
-        Arsip ({closedCount})
+        Archive ({closedCount})
       </button>
 
       {hasFilters && (
@@ -147,7 +147,7 @@ export default function PipelineToolbar({
         type="button"
         onClick={onRefresh}
         className="ml-auto p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors"
-        title="Muat ulang"
+        title="Refresh"
       >
         <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
       </button>

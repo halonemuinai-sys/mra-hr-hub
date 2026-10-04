@@ -66,10 +66,10 @@ async function listRecruiters(req, res) {
 async function claimApplications(req, res) {
   try {
     if (!hasPermission(req.user, 'pipeline.claim')) {
-      return res.status(403).json({ success: false, message: 'Role Anda tidak memiliki izin mengambil kandidat.' });
+      return res.status(403).json({ success: false, message: 'Your role is not allowed to claim candidates.' });
     }
     const ids = parseIds(req.body);
-    if (!ids.length) return res.status(400).json({ success: false, message: 'Pilih minimal satu lamaran.' });
+    if (!ids.length) return res.status(400).json({ success: false, message: 'Select at least one application.' });
 
     const now = new Date();
     // Find claimable first so we know exactly which rows this request won
@@ -101,10 +101,10 @@ async function claimApplications(req, res) {
 
     const takenBy = conflicts.filter((c) => c.assignedRecruiter && c.assignedRecruiter.id !== req.user.id);
     const message = takenBy.length
-      ? `${claimedIds.length} kandidat diambil. ${takenBy.length} sudah diambil oleh ${[
+      ? `${claimedIds.length} candidate(s) claimed. ${takenBy.length} already claimed by ${[
           ...new Set(takenBy.map((c) => c.assignedRecruiter.name))
         ].join(', ')}.`
-      : `${claimedIds.length} kandidat berhasil diambil.`;
+      : `${claimedIds.length} candidate(s) claimed.`;
 
     return res.json({
       success: true,
@@ -124,11 +124,11 @@ async function claimApplications(req, res) {
 async function releaseApplications(req, res) {
   try {
     const ids = parseIds(req.body);
-    if (!ids.length) return res.status(400).json({ success: false, message: 'Pilih minimal satu lamaran.' });
+    if (!ids.length) return res.status(400).json({ success: false, message: 'Select at least one application.' });
 
     const canReleaseAny = hasPermission(req.user, 'pipeline.assign');
     if (!canReleaseAny && !hasPermission(req.user, 'pipeline.claim')) {
-      return res.status(403).json({ success: false, message: 'Role Anda tidak memiliki izin melepas kandidat.' });
+      return res.status(403).json({ success: false, message: 'Your role is not allowed to release candidates.' });
     }
     const where = { id: { in: ids }, assignedRecruiterId: canReleaseAny ? { not: null } : req.user.id };
     const owned = await prisma.jobApplication.findMany({ where, select: { id: true } });
@@ -144,7 +144,7 @@ async function releaseApplications(req, res) {
 
     return res.json({
       success: true,
-      message: `${releasedIds.length} kandidat dilepas ke antrean.`,
+      message: `${releasedIds.length} candidate(s) returned to the queue.`,
       data: { releasedIds }
     });
   } catch (error) {
@@ -159,12 +159,12 @@ async function releaseApplications(req, res) {
 async function assignApplications(req, res) {
   try {
     if (!hasPermission(req.user, 'pipeline.assign')) {
-      return res.status(403).json({ success: false, message: 'Hanya TA Lead yang dapat menugaskan kandidat.' });
+      return res.status(403).json({ success: false, message: 'Only a TA Lead can assign candidates.' });
     }
     const ids = parseIds(req.body);
     const { recruiterId } = req.body;
     if (!ids.length || !recruiterId) {
-      return res.status(400).json({ success: false, message: 'Lamaran dan recruiter tujuan wajib dipilih.' });
+      return res.status(400).json({ success: false, message: 'Select the applications and a target recruiter.' });
     }
 
     const recruiter = await prisma.user.findUnique({
@@ -172,7 +172,7 @@ async function assignApplications(req, res) {
       select: { id: true, name: true, role: true, isActive: true }
     });
     if (!recruiter || !recruiter.isActive || !PIC_ROLES.includes(recruiter.role)) {
-      return res.status(400).json({ success: false, message: 'Recruiter tujuan tidak valid.' });
+      return res.status(400).json({ success: false, message: 'Invalid target recruiter.' });
     }
 
     const result = await prisma.jobApplication.updateMany({
@@ -185,7 +185,7 @@ async function assignApplications(req, res) {
 
     return res.json({
       success: true,
-      message: `${result.count} kandidat ditugaskan ke ${recruiter.name}.`,
+      message: `${result.count} candidate(s) assigned to ${recruiter.name}.`,
       data: { count: result.count }
     });
   } catch (error) {
@@ -210,6 +210,17 @@ async function listApplicationActivity(req, res) {
     console.error('Error listing activity:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
+}
+
+/**
+ * Read-only ownership check (no auto-claim) — for previews.
+ */
+function canMoveApplication(user, app) {
+  if (hasPermission(user, 'pipeline.move.any')) return { allowed: true, needsClaim: false };
+  if (!hasPermission(user, 'pipeline.move.own')) return { allowed: false, needsClaim: false };
+  if (app.assignedRecruiterId === user.id) return { allowed: true, needsClaim: false };
+  if (!app.assignedRecruiterId && hasPermission(user, 'pipeline.claim')) return { allowed: true, needsClaim: true };
+  return { allowed: false, needsClaim: false };
 }
 
 /**
@@ -255,6 +266,7 @@ async function resolveMovePermission(user, ids) {
 }
 
 module.exports = {
+  canMoveApplication,
   logActivities,
   resolveMovePermission,
   listRecruiters,

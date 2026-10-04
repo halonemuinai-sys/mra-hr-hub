@@ -25,6 +25,8 @@ npm run dev
 ```powershell
 cd "d:\MRA Project\HR HUB\backend"
 node scripts/seedUsers.js
+node scripts/seedPipelineSamples.js          # 50 demo candidates across the pipeline (@sample.hrhub.test)
+node scripts/seedPipelineSamples.js --clean  # remove only the demo candidates
 ```
 
 ### Database Schema Changes (⚠️ never `prisma db push`)
@@ -38,6 +40,7 @@ npx prisma generate
 SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - `2026-10-04_ta_ownership.sql` — `JobApplication.assignedRecruiterId/assignedAt/stageChangedAt` + `ApplicationActivity`
 - `2026-10-04_user_active.sql` — `User.isActive`
+- `2026-10-04_stage_gate.sql` — `ApplicationActivity.stageData` + `StageRequest` (approvals)
 
 ### Health Check Endpoints
 - **Backend Health**: `curl http://localhost:5006/api/health`
@@ -45,6 +48,7 @@ SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - **CMS Login**: `http://localhost:3006/admin/login`
 - **Recruiter Cockpit**: `http://localhost:3006/admin/candidates`
 - **Pipeline Pelamar**: `http://localhost:3006/admin/pipeline`
+- **Kinerja Tim TA**: `http://localhost:3006/admin/team`
 - **User & Hak Akses**: `http://localhost:3006/admin/users`
 
 ---
@@ -72,6 +76,8 @@ Fixed roles (Prisma enum `Role`); permissions are defined in **one file**: `back
 | `dashboard.view`, `pipeline.view`, `candidate.view`, `candidate.evaluate` | ✓ | ✓ | ✓ | ✓ |
 | `pipeline.claim`, `pipeline.move.own`, `candidate.import` | ✓ | ✓ | ✓ | – |
 | `pipeline.move.any`, `pipeline.assign`, `candidate.delete`, `jobs.manage` | ✓ | ✓ | – | – |
+| `team.monitor`, `approval.offer` | ✓ | ✓ | – | – |
+| `approval.hire` | ✓ | – | – | ✓ |
 | `users.manage` | ✓ | – | – | – |
 
 - Backend guard: `requirePermission('perm')` (`middlewares/authMiddleware.js`). Sidebar items and the admin route guard in `admin/layout.tsx` are keyed by permission.
@@ -119,11 +125,25 @@ The user requires **strict color consistency (4–5 colors maximum)** across all
 - Every claim/release/assign/stage change is logged to `ApplicationActivity` (`GET /api/candidates/applications/:id/activity`).
 - Ownership rules: `backend/controllers/assignmentController.js` (`resolveMovePermission`) ↔ `frontend/src/components/pipeline/ownership.ts`.
 
+### D2. Stage Gate & Approvals (Pipeline)
+Every stage change goes through the gate: rules in `backend/config/stageRules.js`, evaluation in `services/stageGateService.js` (pure), execution in `services/stageMoveService.js` (`applyStageChange` — the only place that changes `JobApplication.status`).
+- **Direct** moves (no input needed) apply immediately with undo. **Validated** moves open `TransitionModal` with server-defined fields; values are stored in `ApplicationActivity.stageData`.
+- Rules: low ATS (<60) needs justification · Shortlisted needs a rating · Interview HR needs schedule/interviewer/mode · Interview User needs HR rating ≥3 + "Proceed" + schedule · Offering needs HM feedback, salary, start date — **salary above `JobPosting.salaryMax` → TA Lead approval** (`approval.offer`) · Hired needs signed offer + join date → **Hiring Manager confirmation** (`approval.hire`) · Rejected/moving back/re-opening need a reason · skipping stages is TA Lead only (with reason). A requester who holds the approval permission is applied directly.
+- Approvals create a `StageRequest` (PENDING); the card shows "Awaiting approval" and is locked. Decide/withdraw in the Pipeline **Approvals** drawer (`GET /api/candidates/approvals`, `POST /approvals/:id/decide|cancel`). Rejecting a request requires a note.
+- Bulk moves only apply direct moves; gated ones are returned as `needsReview`. The candidate drawer status change only accepts direct moves.
+- Endpoints: `GET|POST /api/candidates/applications/:id/transition` (`controllers/transitionController.js`), board/bulk in `controllers/pipelineController.js`, approvals in `controllers/approvalController.js`. UI: `components/pipeline/transition/*`, `components/pipeline/approvals/*`.
+
 ### E. User & Hak Akses (`/admin/users`, `users.manage`)
 - Create users, change role, activate/deactivate (deactivation returns their active candidates to the queue), reset password, read-only access matrix tab.
 - Safeguards: no self-deactivation / self role change; at least one active SUPERADMIN must remain. Users are never deleted.
 
-### F. Dual-Intake ATS & Template Ingestion
+### F. Kinerja Tim TA (`/admin/team`, `team.monitor`)
+- Monitoring for Super Admin / TA Lead: `GET /api/team/performance?days=7|30|90` and `GET /api/team/activity?recruiterId=` (`backend/controllers/teamController.js`).
+- Per recruiter: candidates held now + stage mix, stale (≥7d), avg days in stage, and for the period: claims, stage moves, forward moves, offerings, hired/rejected, hire rate, claim speed (applied → claimed), last activity. Row click opens a detail drawer with the recruiter's activity timeline.
+- Period metrics come from `ApplicationActivity`, so history starts when the ownership migration was applied.
+- UI: `frontend/src/app/admin/team/page.tsx` + `frontend/src/components/team/*`.
+
+### G. Dual-Intake ATS & Template Ingestion
 - `backend/services/atsParserService.js`: Multi-format PDF/DOCX/TXT resume heuristic parsing engine (`POST /api/ats/parse-cv`).
 - `backend/services/excelTemplateService.js`: Single-sheet standardized Excel template (*Data Pelamar*) with bulk ingestion and preview mode.
 
@@ -138,11 +158,16 @@ d:\MRA Project\HR HUB
 │   │   ├── index.js          # Express server entry point (port 5006)
 │   │   └── db.js             # PrismaPg connection pooler client (hr_hub schema)
 │   ├── config/
-│   │   └── permissions.js    # RBAC: roles, permission catalog, role → permissions
+│   │   ├── permissions.js    # RBAC: roles, permission catalog, role → permissions
+│   │   └── stageRules.js     # Stage gate: fields, checks, approvals per stage
 │   ├── controllers/
 │   │   ├── authController.js # Login, getMe, logout (returns permissions)
 │   │   ├── assignmentController.js # Claim / release / assign, activity log, move guard
 │   │   ├── userController.js # User management (users.manage)
+│   │   ├── teamController.js # TA performance & activity feed (team.monitor)
+│   │   ├── pipelineController.js   # Board listing + bulk moves (gate-aware)
+│   │   ├── transitionController.js # Single move: preview / execute / request approval
+│   │   ├── approvalController.js   # List / decide / withdraw stage approvals
 │   │   ├── atsController.js
 │   │   ├── candidateController.js
 │   │   ├── jobController.js
@@ -155,9 +180,14 @@ d:\MRA Project\HR HUB
 │   ├── routes/
 │   │   ├── authRoutes.js     # /api/auth endpoints
 │   │   ├── candidateRoutes.js # /api/candidates (+ pipeline, claim/assign, public status)
+│   │   ├── teamRoutes.js     # /api/team (performance, activity)
 │   │   └── userRoutes.js     # /api/users (+ access-matrix)
+│   ├── services/
+│   │   ├── stageGateService.js # Evaluate a stage move (pure)
+│   │   └── stageMoveService.js # applyStageChange — the single write path for stage changes
 │   └── scripts/
-│       └── seedUsers.js      # Seed admin & recruiter credentials
+│       ├── seedUsers.js      # Seed admin & recruiter credentials
+│       └── seedPipelineSamples.js # 50 demo candidates + 2 pending approvals
 ├── frontend/
 │   ├── public/
 │   │   ├── mra_logo.png      # Official authentic MRA Group logo
@@ -170,6 +200,7 @@ d:\MRA Project\HR HUB
 │       │   └── admin/        # CMS dashboard (layout.tsx with Auth Guard)
 │       │       ├── login/    # GLC-style split-screen login page
 │       │       ├── pipeline/ # Kanban pipeline with TA ownership
+│       │       ├── team/     # Kinerja Tim TA (Super Admin / TA Lead)
 │       │       ├── users/    # User & Hak Akses (Super Admin)
 │       │       ├── candidates/ # Candidate profiling cockpit
 │       │       ├── jobs/     # Job management
@@ -177,6 +208,9 @@ d:\MRA Project\HR HUB
 │       ├── components/
 │       │   ├── candidates/   # CandidateDetailDrawer & CandidateRadarChart
 │       │   ├── pipeline/     # Board, column, card, toolbar, bulk bar, ownership rules
+│       │   │   ├── transition/ # TransitionModal + StageField (gate form)
+│       │   │   └── approvals/  # ApprovalsDrawer + useApprovals hook
+│       │   ├── team/         # StageMixBar, ActivityFeed, MemberDetailDrawer
 │       │   ├── users/        # AccessMatrix, UserFormModal
 │       │   └── public/       # HeroSearchBar & JobDetailModal
 │       └── lib/

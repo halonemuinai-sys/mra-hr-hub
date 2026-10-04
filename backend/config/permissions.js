@@ -27,6 +27,10 @@ const PERMISSIONS = [
 
   { key: 'jobs.manage', group: 'Lowongan', label: 'Tambah / ubah / hapus lowongan' },
 
+  { key: 'approval.offer', group: 'Approval', label: 'Setujui offering di atas budget lowongan' },
+  { key: 'approval.hire', group: 'Approval', label: 'Konfirmasi kandidat diterima (Hired)' },
+
+  { key: 'team.monitor', group: 'Administrasi', label: 'Pantau kinerja tim Talent Acquisition' },
   { key: 'users.manage', group: 'Administrasi', label: 'Kelola user & role' }
 ];
 
@@ -34,7 +38,8 @@ const ALL = PERMISSIONS.map((p) => p.key);
 
 const ROLE_PERMISSIONS = {
   SUPERADMIN: ALL,
-  HR_ADMIN: ALL.filter((p) => p !== 'users.manage'),
+  // TA Lead: everything except user admin and hire confirmation (that belongs to the Hiring Manager)
+  HR_ADMIN: ALL.filter((p) => !['users.manage', 'approval.hire'].includes(p)),
   RECRUITER: [
     'dashboard.view',
     'pipeline.view',
@@ -44,7 +49,7 @@ const ROLE_PERMISSIONS = {
     'candidate.evaluate',
     'candidate.import'
   ],
-  HIRING_MANAGER: ['dashboard.view', 'pipeline.view', 'candidate.view', 'candidate.evaluate']
+  HIRING_MANAGER: ['dashboard.view', 'pipeline.view', 'candidate.view', 'candidate.evaluate', 'approval.hire']
 };
 
 function permissionsFor(role) {

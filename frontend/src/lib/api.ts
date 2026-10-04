@@ -65,6 +65,13 @@ export const api = {
     method: 'DELETE'
   }),
 
+  // Team monitoring (Super Admin / TA Lead)
+  getTeamPerformance: (days = 30) => fetchApi(`/team/performance?days=${days}`),
+  getTeamActivity: (params: Record<string, any> = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return fetchApi(`/team/activity${q ? `?${q}` : ''}`);
+  },
+
   // Users & access control (Super Admin)
   getAccessMatrix: () => fetchApi('/users/access-matrix'),
   getUsers: () => fetchApi('/users'),
@@ -101,6 +108,22 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload)
     }),
+  // Stage gate & approvals
+  previewTransition: (applicationId: string, toStatus: string) =>
+    fetchApi(`/candidates/applications/${applicationId}/transition?to=${encodeURIComponent(toStatus)}`),
+  executeTransition: (applicationId: string, payload: { toStatus: string; data: Record<string, any> }) =>
+    fetchApi(`/candidates/applications/${applicationId}/transition`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+  getApprovals: () => fetchApi('/candidates/approvals'),
+  decideApproval: (requestId: string, decision: 'APPROVE' | 'REJECT', note?: string) =>
+    fetchApi(`/candidates/approvals/${requestId}/decide`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, note })
+    }),
+  cancelApproval: (requestId: string) => fetchApi(`/candidates/approvals/${requestId}/cancel`, { method: 'POST' }),
+
   // TA ownership (PIC)
   getRecruiters: () => fetchApi('/candidates/recruiters'),
   claimApplications: (applicationIds: string[]) => fetchApi('/candidates/applications/claim', {

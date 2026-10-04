@@ -18,6 +18,9 @@ export type Permission =
   | 'candidate.import'
   | 'candidate.delete'
   | 'jobs.manage'
+  | 'approval.offer'
+  | 'approval.hire'
+  | 'team.monitor'
   | 'users.manage';
 
 export type CmsUser = {

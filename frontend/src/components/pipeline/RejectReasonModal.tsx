@@ -42,10 +42,10 @@ export default function RejectReasonModal({ count, onCancel, onConfirm }: Props)
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900">
-              Tandai {count > 1 ? `${count} kandidat` : 'kandidat'} tidak lolos
+              Mark {count > 1 ? `${count} candidates` : 'candidate'} as rejected
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Alasan akan dicatat di catatan recruiter untuk audit dan pelaporan.
+              The reason is saved to the recruiter notes for audit and reporting.
             </p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function RejectReasonModal({ count, onCancel, onConfirm }: Props)
           onChange={(e) => setDetail(e.target.value)}
           rows={3}
           autoFocus
-          placeholder="Catatan tambahan (opsional)…"
+          placeholder="Additional notes (optional)…"
           className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none"
         />
 
@@ -85,14 +85,14 @@ export default function RejectReasonModal({ count, onCancel, onConfirm }: Props)
             onClick={onCancel}
             className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
-            Batal
+            Cancel
           </button>
           <button
             type="button"
             onClick={() => onConfirm(note)}
             className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold"
           >
-            Konfirmasi Tidak Lolos
+            Confirm Rejection
           </button>
         </div>
       </motion.div>

@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Briefcase, MapPin, Star, Clock, Loader2, ChevronsRight, Check, AlertTriangle, Lock, Hand, UserRound } from 'lucide-react';
+import { Briefcase, MapPin, Star, Clock, Loader2, ChevronsRight, Check, AlertTriangle, Lock, Hand, UserRound, ShieldCheck } from 'lucide-react';
 import { getScoreBadge } from '@/lib/utils';
 import {
   ALL_STAGES,
+  stageLabel,
   daysSince,
   getInitials,
   nextStage,
@@ -87,7 +88,7 @@ export default function PipelineCard({
             e.stopPropagation();
             onToggleSelect(e.shiftKey);
           }}
-          aria-label={selected ? 'Batalkan pilihan' : 'Pilih kandidat'}
+          aria-label={selected ? 'Deselect' : 'Select candidate'}
           className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 transition-colors ${
             selected
               ? 'bg-blue-600 text-white'
@@ -144,13 +145,23 @@ export default function PipelineCard({
                 ? 'bg-amber-50 text-amber-700'
                 : 'text-slate-500'
             }`}
-            title={stale ? `Tidak bergerak ${days} hari — perlu ditindaklanjuti` : 'Hari di tahap ini'}
+            title={stale ? `No movement for ${days} days — needs follow-up` : 'Days in this stage'}
           >
             {stale ? <AlertTriangle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-            {days}h
+            {days}d
           </span>
         </div>
       </div>
+
+      {app.pendingRequest && (
+        <div
+          className="mt-2.5 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-[10px] font-bold text-blue-700"
+          title={`Requested by ${app.pendingRequest.requestedBy?.name || '—'}`}
+        >
+          <ShieldCheck className="w-3 h-3 shrink-0" />
+          <span className="truncate">Awaiting approval → {stageLabel(app.pendingRequest.toStatus)}</span>
+        </div>
+      )}
 
       {/* PIC (Talent Acquisition owner) */}
       <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 text-[10px]">
@@ -159,13 +170,13 @@ export default function PipelineCard({
             className={`inline-flex items-center gap-1 min-w-0 px-1.5 py-0.5 rounded-md font-bold ${
               mine ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
             }`}
-            title={`PIC: ${owner.name}`}
+            title={`Owner: ${owner.name}`}
           >
             {movable ? <UserRound className="w-3 h-3 shrink-0" /> : <Lock className="w-3 h-3 shrink-0" />}
-            <span className="truncate">{mine ? 'PIC: Saya' : shortName(owner.name)}</span>
+            <span className="truncate">{mine ? 'Owner: Me' : shortName(owner.name)}</span>
           </span>
         ) : (
-          <span className="text-slate-400 font-semibold">Belum ada PIC</span>
+          <span className="text-slate-400 font-semibold">Unassigned</span>
         )}
         {claimable && (
           <button
@@ -177,7 +188,7 @@ export default function PipelineCard({
             className="shrink-0 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 font-bold flex items-center gap-1 transition-colors"
           >
             <Hand className="w-3 h-3" />
-            Ambil
+            Claim
           </button>
         )}
       </div>
@@ -188,7 +199,7 @@ export default function PipelineCard({
           <select
             value={app.status}
             onChange={(e) => onMove(e.target.value)}
-            aria-label="Pindahkan tahapan"
+            aria-label="Move stage"
             className="min-w-0 flex-1 px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
             {ALL_STAGES.map((s) => (
@@ -201,7 +212,7 @@ export default function PipelineCard({
             <button
               type="button"
               onClick={() => onMove(next.key)}
-              title={`Lanjut ke ${next.label}`}
+              title={`Advance to ${next.label}`}
               className="shrink-0 px-2 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-600 hover:text-white hover:border-blue-600 text-[11px] font-bold flex items-center gap-0.5 transition-colors"
             >
               <ChevronsRight className="w-3.5 h-3.5" />

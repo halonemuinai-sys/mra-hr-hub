@@ -7,18 +7,18 @@ export type Stage = {
 
 // Active hiring funnel (Zero Purple: amber → blue → emerald)
 export const ACTIVE_STAGES: Stage[] = [
-  { key: 'APPLIED', label: 'Baru Masuk', accent: 'border-t-amber-500', dot: 'bg-amber-500' },
-  { key: 'ATS_SCREENED', label: 'Lolos ATS', accent: 'border-t-blue-400', dot: 'bg-blue-400' },
-  { key: 'SHORTLISTED', label: 'Shortlisted HR', accent: 'border-t-blue-500', dot: 'bg-blue-500' },
+  { key: 'APPLIED', label: 'New', accent: 'border-t-amber-500', dot: 'bg-amber-500' },
+  { key: 'ATS_SCREENED', label: 'ATS Screened', accent: 'border-t-blue-400', dot: 'bg-blue-400' },
+  { key: 'SHORTLISTED', label: 'Shortlisted', accent: 'border-t-blue-500', dot: 'bg-blue-500' },
   { key: 'INTERVIEW_HR', label: 'Interview HR', accent: 'border-t-blue-600', dot: 'bg-blue-600' },
   { key: 'INTERVIEW_USER', label: 'Interview User', accent: 'border-t-blue-700', dot: 'bg-blue-700' },
   { key: 'OFFERING', label: 'Offering', accent: 'border-t-emerald-500', dot: 'bg-emerald-500' },
-  { key: 'HIRED', label: 'Diterima', accent: 'border-t-emerald-600', dot: 'bg-emerald-600' }
+  { key: 'HIRED', label: 'Hired', accent: 'border-t-emerald-600', dot: 'bg-emerald-600' }
 ];
 
 export const CLOSED_STAGES: Stage[] = [
   { key: 'TALENT_POOL', label: 'Talent Pool', accent: 'border-t-slate-400', dot: 'bg-slate-400' },
-  { key: 'REJECTED', label: 'Tidak Lolos', accent: 'border-t-slate-600', dot: 'bg-slate-600' }
+  { key: 'REJECTED', label: 'Rejected', accent: 'border-t-slate-600', dot: 'bg-slate-600' }
 ];
 
 export const ALL_STAGES = [...ACTIVE_STAGES, ...CLOSED_STAGES];
@@ -58,10 +58,10 @@ export function getInitials(name?: string) {
 export type SortKey = 'score' | 'newest' | 'stale' | 'rating';
 
 export const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'score', label: 'Skor ATS tertinggi' },
-  { key: 'rating', label: 'Rating tertinggi' },
-  { key: 'stale', label: 'Paling lama di tahap' },
-  { key: 'newest', label: 'Lamaran terbaru' }
+  { key: 'score', label: 'Highest ATS score' },
+  { key: 'rating', label: 'Highest rating' },
+  { key: 'stale', label: 'Longest in stage' },
+  { key: 'newest', label: 'Newest applications' }
 ];
 
 export function sortApplications(list: any[], sort: SortKey) {
@@ -87,10 +87,10 @@ export const JOB_FAMILY_OPTIONS = [
 ];
 
 export const REJECT_REASONS = [
-  'Skill teknis belum sesuai',
-  'Pengalaman kurang relevan',
-  'Ekspektasi gaji di atas budget',
-  'Tidak hadir interview',
-  'Kandidat mengundurkan diri',
-  'Posisi sudah terisi'
+  'Technical skills not a fit',
+  'Experience not relevant enough',
+  'Salary expectation above budget',
+  'No-show at interview',
+  'Candidate withdrew',
+  'Position already filled'
 ];

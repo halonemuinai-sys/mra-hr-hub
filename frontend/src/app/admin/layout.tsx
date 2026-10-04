@@ -19,7 +19,8 @@ import {
   RefreshCw,
   KanbanSquare,
   UserCog,
-  Lock
+  Lock,
+  Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
@@ -112,10 +113,11 @@ export default function DashboardLayout({
 
   const allNavigation: { name: string; href: string; icon: React.ElementType; permission: Permission }[] = [
     { name: 'Dashboard Eksekutif', href: '/admin', icon: LayoutDashboard, permission: 'dashboard.view' },
-    { name: 'Pipeline Pelamar', href: '/admin/pipeline', icon: KanbanSquare, permission: 'pipeline.view' },
+    { name: 'Applicant Pipeline', href: '/admin/pipeline', icon: KanbanSquare, permission: 'pipeline.view' },
     { name: 'Database & Profiling', href: '/admin/candidates', icon: Users, permission: 'candidate.view' },
     { name: 'Template & Bulk Ingest', href: '/admin/templates', icon: FileSpreadsheet, permission: 'candidate.import' },
     { name: 'Kelola Lowongan ATS', href: '/admin/jobs', icon: Briefcase, permission: 'jobs.manage' },
+    { name: 'Kinerja Tim TA', href: '/admin/team', icon: Activity, permission: 'team.monitor' },
     { name: 'User & Hak Akses', href: '/admin/users', icon: UserCog, permission: 'users.manage' }
   ];
   const navigation = allNavigation.filter((item) => can(currentUser, item.permission));
@@ -124,7 +126,10 @@ export default function DashboardLayout({
   const routeItem = [...allNavigation]
     .sort((a, b) => b.href.length - a.href.length)
     .find((item) => pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href + '/')));
-  const accessDenied = !!routeItem && !can(currentUser, routeItem.permission);
+  // A user object without a permissions list comes from an outdated backend or a stale session —
+  // don't present that as "no access"
+  const permissionsMissing = !!currentUser && !Array.isArray(currentUser.permissions);
+  const accessDenied = !permissionsMissing && !!routeItem && !can(currentUser, routeItem.permission);
 
   const getInitials = (name?: string) => {
     if (!name) return 'HR';
@@ -309,7 +314,28 @@ export default function DashboardLayout({
         {/* Scrollable Work Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-50">
           <CurrentUserProvider user={currentUser}>
-            {accessDenied ? (
+            {permissionsMissing ? (
+              <div className="max-w-md mx-auto mt-16 bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center mx-auto">
+                  <RefreshCw className="w-6 h-6" />
+                </div>
+                <h2 className="text-base font-bold text-slate-900 mt-4">Sesi Perlu Diperbarui</h2>
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Data hak akses akun Anda belum termuat. Pastikan server backend sudah versi terbaru, lalu login ulang.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem('hr_hub_token');
+                    localStorage.removeItem('hr_hub_user');
+                    router.replace('/admin/login');
+                  }}
+                  className="inline-flex mt-5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
+                >
+                  Login Ulang
+                </button>
+              </div>
+            ) : accessDenied ? (
               <div className="max-w-md mx-auto mt-16 bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-xs">
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
                   <Lock className="w-6 h-6" />

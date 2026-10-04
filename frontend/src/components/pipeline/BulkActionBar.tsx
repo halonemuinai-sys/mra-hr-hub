@@ -48,13 +48,13 @@ export default function BulkActionBar({
           <span className="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-lg bg-blue-600 mr-2 tabular-nums">
             {count}
           </span>
-          dipilih
+          selected
         </span>
 
         {claimableCount > 0 && (
           <button type="button" onClick={onClaim} className={`${btn} !bg-emerald-600 hover:!bg-emerald-700`}>
             <Hand className="w-3.5 h-3.5" />
-            Ambil ({claimableCount})
+            Claim ({claimableCount})
           </button>
         )}
 
@@ -65,12 +65,12 @@ export default function BulkActionBar({
               value=""
               onChange={(e) => e.target.value && onAssign(e.target.value)}
               className="bg-transparent text-xs font-semibold py-1.5 pr-2 focus:outline-none cursor-pointer max-w-[160px]"
-              aria-label="Tugaskan ke recruiter"
+              aria-label="Assign to recruiter"
             >
-              <option value="" className="text-slate-900">Tugaskan ke…</option>
+              <option value="" className="text-slate-900">Assign to…</option>
               {recruiters.map((r) => (
                 <option key={r.id} value={r.id} className="text-slate-900">
-                  {shortName(r.name)} ({r.activeCount} aktif)
+                  {shortName(r.name)} ({r.activeCount} active)
                 </option>
               ))}
             </select>
@@ -85,9 +85,9 @@ export default function BulkActionBar({
                 value=""
                 onChange={(e) => e.target.value && onMove(e.target.value)}
                 className="bg-transparent text-xs font-semibold py-1.5 pr-2 focus:outline-none cursor-pointer"
-                aria-label="Pindahkan kandidat terpilih"
+                aria-label="Move selected candidates"
               >
-                <option value="" className="text-slate-900">Pindah ke…</option>
+                <option value="" className="text-slate-900">Move to…</option>
                 {ALL_STAGES.map((s) => (
                   <option key={s.key} value={s.key} className="text-slate-900">
                     {s.label}
@@ -101,15 +101,15 @@ export default function BulkActionBar({
             </button>
             <button type="button" onClick={() => onMove('REJECTED')} className={btn}>
               <XCircle className="w-3.5 h-3.5 text-amber-400" />
-              Tolak
+              Reject
             </button>
           </>
         )}
 
         {releasableCount > 0 && (
-          <button type="button" onClick={onRelease} className={btn} title="Kembalikan ke antrean Belum Diambil">
+          <button type="button" onClick={onRelease} className={btn} title="Return to the Unassigned queue">
             <LogOut className="w-3.5 h-3.5 text-slate-400" />
-            Lepas ({releasableCount})
+            Release ({releasableCount})
           </button>
         )}
 
@@ -117,7 +117,7 @@ export default function BulkActionBar({
           type="button"
           onClick={onClear}
           className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-          title="Batalkan pilihan (Esc)"
+          title="Clear selection (Esc)"
         >
           <X className="w-4 h-4" />
         </button>

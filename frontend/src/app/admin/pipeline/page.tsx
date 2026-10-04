@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { KanbanSquare } from 'lucide-react';
+import { KanbanSquare, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import CandidateDetailDrawer from '@/components/candidates/CandidateDetailDrawer';
 import PipelineCard from '@/components/pipeline/PipelineCard';
@@ -12,6 +12,9 @@ import OwnerScopeBar from '@/components/pipeline/OwnerScopeBar';
 import BulkActionBar from '@/components/pipeline/BulkActionBar';
 import RejectReasonModal from '@/components/pipeline/RejectReasonModal';
 import PipelineToast, { ToastState } from '@/components/pipeline/PipelineToast';
+import TransitionModal, { TransitionPreview } from '@/components/pipeline/transition/TransitionModal';
+import ApprovalsDrawer from '@/components/pipeline/approvals/ApprovalsDrawer';
+import { useApprovals } from '@/components/pipeline/approvals/useApprovals';
 import {
   ACTIVE_STAGES,
   CLOSED_STAGES,
@@ -64,6 +67,8 @@ export default function PipelinePage() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const dismissToast = useCallback(() => setToast(null), []);
+  const [transition, setTransition] = useState<{ appId: string; preview: TransitionPreview } | null>(null);
+  const [showApprovals, setShowApprovals] = useState(false);
 
   const lead = isLead(user);
   const notify = (tone: ToastState['tone'], message: string, onUndo?: () => void) =>
@@ -104,7 +109,7 @@ export default function PipelinePage() {
       const res = await api.getPipeline(params);
       if (res.success) setApplications(res.data || []);
     } catch (err: any) {
-      notify('error', 'Gagal memuat pipeline: ' + err.message);
+      notify('error', 'Failed to load pipeline: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -116,6 +121,8 @@ export default function PipelinePage() {
       .catch(() => {});
     loadRecruiters();
   }, [loadRecruiters]);
+
+  const approvals = useApprovals((tone, message) => notify(tone, message), () => loadPipeline());
 
   useEffect(() => {
     const t = setTimeout(loadPipeline, 300);
@@ -204,7 +211,8 @@ export default function PipelinePage() {
 
       try {
         const res = await api.bulkUpdateApplicationStatus({ applicationIds: movedIds, status, note });
-        const denied: string[] = res.data?.deniedIds || [];
+        // Not moved: owned by someone else, or the move needs the validation form / approval
+        const denied: string[] = [...(res.data?.deniedIds || []), ...(res.data?.needsReview || [])];
         if (denied.length) {
           // Someone else owns these now — put them back and refresh ownership
           setApplications((list) =>
@@ -214,7 +222,7 @@ export default function PipelinePage() {
         }
         setSelected(new Set());
         if (isUndo) {
-          notify('success', 'Perpindahan dibatalkan.');
+          notify('success', 'Move undone.');
           return;
         }
         const okIds = movedIds.filter((id) => !denied.includes(id));
@@ -223,8 +231,8 @@ export default function PipelinePage() {
           return;
         }
         const who = okIds.length === 1
-          ? applications.find((a) => a.id === okIds[0])?.candidate?.fullName || '1 kandidat'
-          : `${okIds.length} kandidat`;
+          ? applications.find((a) => a.id === okIds[0])?.candidate?.fullName || '1 candidate'
+          : `${okIds.length} candidates`;
         notify(
           denied.length ? 'error' : 'success',
           denied.length ? res.message : `${who} → ${stageLabel(status)}`,
@@ -235,12 +243,13 @@ export default function PipelinePage() {
               const st = prevStatus.get(id)!;
               byStatus.set(st, [...(byStatus.get(st) || []), id]);
             });
-            byStatus.forEach((groupIds, st) => applyMoveRef.current(groupIds, st, undefined, true));
+            // Moving back needs a reason at the stage gate
+            byStatus.forEach((groupIds, st) => applyMoveRef.current(groupIds, st, 'Undo', true));
           }
         );
       } catch (err: any) {
         setApplications(snapshot);
-        notify('error', 'Gagal memindahkan: ' + err.message);
+        notify('error', 'Failed to move: ' + err.message);
       } finally {
         setBusyIds(new Set());
       }
@@ -253,17 +262,37 @@ export default function PipelinePage() {
   const applyMoveRef = useRef(applyMove);
   applyMoveRef.current = applyMove;
 
+  // Single card: ask the stage gate what the move needs (direct → move, otherwise open the form)
+  const startTransition = async (app: any, status: string) => {
+    setBusyIds(new Set([app.id]));
+    try {
+      const res = await api.previewTransition(app.id, status);
+      const preview: TransitionPreview = res.data;
+      if (preview.direct && !preview.blocks.length) applyMove([app.id], status);
+      else setTransition({ appId: app.id, preview });
+    } catch (err: any) {
+      notify('error', err.message);
+    } finally {
+      setBusyIds(new Set());
+    }
+  };
+
   const requestMove = (ids: string[], status: string) => {
-    const allowed = ids.filter((id) => {
-      const a = applications.find((x) => x.id === id);
-      return a && canMove(user, a);
-    });
+    const targets = ids.map((id) => applications.find((x) => x.id === id)).filter(Boolean) as any[];
+    const allowed = targets.filter((a) => a.status !== status && canMove(user, a));
     if (allowed.length === 0) {
-      notify('error', 'Kandidat ini dipegang recruiter lain. Minta TA Lead untuk menugaskan ulang.');
+      const pending = targets.some((a) => a.pendingRequest);
+      notify(
+        'error',
+        pending
+          ? 'This candidate has a stage move awaiting approval.'
+          : 'This candidate is owned by another recruiter. Ask a TA Lead to reassign it.'
+      );
       return;
     }
-    if (status === 'REJECTED') setPendingReject(allowed);
-    else applyMove(allowed, status);
+    if (allowed.length === 1) startTransition(allowed[0], status);
+    else if (status === 'REJECTED') setPendingReject(allowed.map((a) => a.id));
+    else applyMove(allowed.map((a) => a.id), status);
   };
 
   // ---- Ownership actions ----
@@ -329,7 +358,7 @@ export default function PipelinePage() {
         setSelectedCandidate({ ...res.data, latestApplication: fullApp, atsScore: fullApp.atsScore });
       }
     } catch (err: any) {
-      notify('error', 'Gagal membuka profil: ' + err.message);
+      notify('error', 'Failed to open profile: ' + err.message);
     } finally {
       setBusyIds(new Set());
     }
@@ -346,24 +375,46 @@ export default function PipelinePage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <KanbanSquare className="w-6 h-6 text-blue-600" />
-            Pipeline Pelamar
+            Applicant Pipeline
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Ambil kandidat dari antrean, lalu seret kartu untuk pindah tahap • klik avatar untuk memilih banyak (Shift untuk rentang)
+            Claim candidates from the queue, then drag cards to change stage • click an avatar to multi-select (Shift for a range)
           </p>
         </div>
+        <div className="flex items-stretch gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setShowApprovals(true);
+            approvals.load();
+          }}
+          className={`relative px-4 rounded-xl border shadow-xs text-xs font-bold flex items-center gap-2 transition-colors ${
+            approvals.toDecideCount
+              ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+              : 'bg-white border-slate-200/80 text-slate-700 hover:bg-slate-50'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4" />
+          Approvals
+          {approvals.toDecideCount > 0 && (
+            <span className="min-w-5 h-5 px-1 rounded-md bg-white text-blue-700 text-[11px] flex items-center justify-center tabular-nums">
+              {approvals.toDecideCount}
+            </span>
+          )}
+        </button>
         <div className="grid grid-cols-4 gap-2 text-center">
           {[
-            { label: 'Aktif', value: activeCount, cls: 'text-slate-900' },
-            { label: 'Tertahan', value: staleCount, cls: 'text-amber-600' },
+            { label: 'Active', value: activeCount, cls: 'text-slate-900' },
+            { label: 'Stalled', value: staleCount, cls: 'text-amber-600' },
             { label: 'Offering', value: grouped.OFFERING.length, cls: 'text-emerald-600' },
-            { label: 'Diterima', value: grouped.HIRED.length, cls: 'text-emerald-700' }
+            { label: 'Hired', value: grouped.HIRED.length, cls: 'text-emerald-700' }
           ].map((s) => (
             <div key={s.label} className="bg-white border border-slate-200/80 rounded-xl px-4 py-2 shadow-xs">
               <p className={`text-lg font-black tabular-nums ${s.cls}`}>{loading && !applications.length ? '…' : s.value}</p>
               <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
             </div>
           ))}
+        </div>
         </div>
       </div>
 
@@ -400,7 +451,7 @@ export default function PipelinePage() {
       {emptyMine && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="text-blue-900">
-            Anda belum memegang kandidat. Ada <b>{ownerCounts.unassigned}</b> kandidat menunggu di antrean.
+            You don't own any candidates yet. <b>{ownerCounts.unassigned}</b> candidates are waiting in the queue.
           </span>
           {ownerCounts.unassigned > 0 && (
             <button
@@ -408,7 +459,7 @@ export default function PipelinePage() {
               onClick={() => setScope('unassigned')}
               className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold"
             >
-              Lihat antrean
+              View queue
             </button>
           )}
         </div>
@@ -501,6 +552,34 @@ export default function PipelinePage() {
               setPendingReject(null);
               applyMove(ids, 'REJECTED', note);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {transition && (
+          <TransitionModal
+            applicationId={transition.appId}
+            preview={transition.preview}
+            onClose={() => setTransition(null)}
+            onDone={({ pending, message }) => {
+              setTransition(null);
+              notify('success', message);
+              loadPipeline();
+              if (pending) approvals.load();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showApprovals && (
+          <ApprovalsDrawer
+            data={approvals.data}
+            loading={approvals.loading}
+            onClose={() => setShowApprovals(false)}
+            onDecide={approvals.decide}
+            onCancel={approvals.cancel}
           />
         )}
       </AnimatePresence>

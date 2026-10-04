@@ -50,6 +50,8 @@ model User {
 
   assignedApplications JobApplication[]      @relation("ApplicationRecruiter")
   activities           ApplicationActivity[]
+  stageRequests        StageRequest[]        @relation("StageRequestRequester")
+  stageDecisions       StageRequest[]        @relation("StageRequestDecider")
 }
 
 model JobPosting {
@@ -161,6 +163,7 @@ model JobApplication {
   candidate         Candidate             @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   assignedRecruiter User?                 @relation("ApplicationRecruiter", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
   activities        ApplicationActivity[]
+  stageRequests     StageRequest[]
 
   @@index([assignedRecruiterId])
 }
@@ -170,11 +173,12 @@ model ApplicationActivity {
   id            String         @id @default(uuid())
   applicationId String
   actorId       String?
-  action        String         // CLAIM, RELEASE, ASSIGN, STAGE_CHANGE
+  action        String         // CLAIM, RELEASE, ASSIGN, STAGE_CHANGE, APPROVAL_REQUESTED, APPROVAL_APPROVED, APPROVAL_REJECTED, APPROVAL_CANCELLED
   fromStatus    String?
   toStatus      String?
   toRecruiterId String?
   note          String?        @db.Text
+  stageData     Json?          // form data captured by the stage gate (interview schedule, offer, ...)
   createdAt     DateTime       @default(now())
 
   application   JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
@@ -192,4 +196,29 @@ model TemplateUploadLog {
   errorLog    String?  @db.Text
   uploadedBy  String?
   createdAt   DateTime @default(now())
+}
+
+// Stage moves that need approval (offer above budget, hire confirmation)
+model StageRequest {
+  id                 String         @id @default(uuid())
+  applicationId      String
+  requestedById      String?
+  fromStatus         String
+  toStatus           String
+  stageData          Json?
+  reason             String?        @db.Text
+  approvalPermission String         // permission key the approver must hold
+  approvalReason     String         // why approval is needed (shown to approver)
+  status             String         @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  decidedById        String?
+  decidedAt          DateTime?
+  decisionNote       String?        @db.Text
+  createdAt          DateTime       @default(now())
+
+  application        JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  requestedBy        User?          @relation("StageRequestRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  decidedBy          User?          @relation("StageRequestDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([applicationId, status])
 }

@@ -62,7 +62,7 @@ export default function PipelineColumn({
               disabled={items.length === 0}
               onChange={onToggleSelectAll}
               className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30"
-              aria-label={`Pilih semua di ${stage.label}`}
+              aria-label={`Select all in ${stage.label}`}
             />
             <span className={`w-2 h-2 rounded-full ${stage.dot}`} />
             {stage.label}
@@ -72,11 +72,11 @@ export default function PipelineColumn({
           </span>
         </div>
         <div className="flex items-center gap-2 text-[10px] text-slate-500 h-4">
-          {items.length > 0 && <span>Rata-rata ATS <b className="text-slate-700">{avgScore}%</b></span>}
+          {items.length > 0 && <span>Avg ATS <b className="text-slate-700">{avgScore}%</b></span>}
           {staleCount > 0 && (
             <span className="flex items-center gap-0.5 font-semibold text-amber-700">
               <AlertTriangle className="w-3 h-3" />
-              {staleCount} tertahan
+              {staleCount} stalled
             </span>
           )}
         </div>
@@ -87,7 +87,7 @@ export default function PipelineColumn({
           <div className="h-24 rounded-xl bg-white/60 animate-pulse" />
         ) : items.length === 0 ? (
           <div className="h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-[11px] text-slate-400">
-            Seret kandidat ke sini
+            Drop candidates here
           </div>
         ) : (
           children
