@@ -1,0 +1,6 @@
+﻿Budi Pratama
+budi.pratama@mra.co.id
++6281234567890
+Senior Frontend Developer with 5 years of experience in React, Next.js, TypeScript, Tailwind CSS, Node.js, and PostgreSQL.
+Experienced in building scalable web apps and state management.
+Bachelor of Computer Science, Universitas Indonesia.

@@ -1,0 +1,31 @@
+Budi Pratama, S.Kom.
+Senior Frontend Developer
+budi.pratama@mra.co.id | +6281234567890 | Jakarta Selatan, Indonesia | linkedin.com/in/budipratama-dev
+
+PROFESSIONAL SUMMARY
+--------------------
+Senior Frontend Developer dengan 5+ tahun pengalaman merancang dan mengoptimalkan arsitektur web berskala besar menggunakan React, Next.js, TypeScript, dan Tailwind CSS. Berpengalaman memimpin tim engineering, mengintegrasikan REST API & microservices, serta meningkatkan performa aplikasi (Core Web Vitals) hingga 45%. Terbiasa bekerja dengan metodologi Agile CI/CD dan containerization Docker.
+
+CORE COMPETENCIES & SKILLS
+--------------------------
+React, Next.js, TypeScript, Tailwind CSS, REST API, JavaScript, Node.js, PostgreSQL, Docker, Git, CI/CD, GraphQL, State Management, HTML, CSS
+
+WORK EXPERIENCE
+---------------
+Senior Frontend Developer
+PT Digital Solusi Nusantara — Jakarta | 2022 - Sekarang (2 Tahun)
+- Memimpin pengembangan web portal enterprise berbasis Next.js 14, TypeScript, dan Tailwind CSS dengan 200k+ MAU.
+- Mengimplementasikan arsitektur modular komponen UI dan REST API integration yang menurunkan response time sebesar 35%.
+- Menerapkan automated testing dan CI/CD pipeline menggunakan Git & Docker untuk mempercepat deployment cycle.
+
+Frontend Web Developer
+PT Kreasi Inovasi Media — Jakarta Selatan | 2019 - 2022 (3 Tahun)
+- Membangun 15+ aplikasi web interaktif responsif menggunakan React, Redux, dan modern CSS.
+- Berkolaborasi erat dengan tim UI/UX dan backend developer untuk standardisasi design system korporat.
+- Mengoptimalkan database query PostgreSQL dan caching Redis pada server integration.
+
+EDUCATION
+---------
+Sarjana Komputer (S1) Teknik Informatika
+Universitas Indonesia (UI) — Depok (2015 - 2019 (IPK: 3.75 / 4.00))
+

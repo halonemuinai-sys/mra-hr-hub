@@ -1,0 +1,164 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPERADMIN
+  HR_ADMIN
+  RECRUITER
+  HIRING_MANAGER
+}
+
+enum IntakeSource {
+  ATS_RESUME_UPLOAD
+  EXCEL_TEMPLATE
+  MANUAL_INPUT
+}
+
+enum ApplicationStatus {
+  APPLIED
+  ATS_SCREENED
+  SHORTLISTED
+  INTERVIEW_HR
+  INTERVIEW_USER
+  OFFERING
+  HIRED
+  REJECTED
+  TALENT_POOL
+}
+
+enum AvailabilityStatus {
+  IMMEDIATE
+  ONE_MONTH_NOTICE
+  TWO_MONTH_NOTICE
+  OPEN_OFFERS
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(RECRUITER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model JobPosting {
+  id               String           @id @default(uuid())
+  title            String
+  slug             String           @unique
+  department       String
+  division         String           // MRA Corporate, Retail, Media, F&B
+  location         String
+  employmentType   String           // Full-time, Contract, Internship
+  minExperience    Int              @default(0) // years
+  minEducation     String           // SMA/SMK, Diploma, Bachelor, Master
+  salaryMin        Decimal?
+  salaryMax        Decimal?
+  description      String           @db.Text
+  requirements     String           @db.Text
+  mustHaveSkills   String[]         // Required skills keywords
+  niceToHaveSkills String[]         // Bonus skills keywords
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  applications     JobApplication[]
+}
+
+model Candidate {
+  id                 String             @id @default(uuid())
+  fullName           String
+  email              String             @unique
+  phone              String
+  location           String?
+  headline           String?
+  currentCompany     String?
+  totalExperienceYrs Float              @default(0)
+  expectedSalary     Decimal?
+  availability       AvailabilityStatus @default(IMMEDIATE)
+  intakeSource       IntakeSource       @default(ATS_RESUME_UPLOAD)
+  rawResumePath      String?
+  profileSummary     String?            @db.Text
+
+  // Dynamic Grouping Tags
+  jobFamily          String?            // IT_DIGITAL, RETAIL, CORPORATE, CREATIVE_MEDIA
+  seniorityLevel     String?            // ENTRY, MID, SENIOR, LEAD
+  tags               String[]           // ["#TopTier", "#FastTrack", "#RetailExpert"]
+
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  skills             CandidateSkill[]
+  experiences        CandidateExperience[]
+  educations         CandidateEducation[]
+  applications       JobApplication[]
+}
+
+model CandidateSkill {
+  id          String    @id @default(uuid())
+  candidateId String
+  skillName   String
+  category    String    // TECHNICAL, SOFT, TOOLS
+  proficiency String    // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model CandidateExperience {
+  id          String    @id @default(uuid())
+  candidateId String
+  companyName String
+  roleTitle   String
+  industry    String?
+  startDate   DateTime
+  endDate     DateTime?
+  isCurrent   Boolean   @default(false)
+  description String?   @db.Text
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model CandidateEducation {
+  id             String    @id @default(uuid())
+  candidateId    String
+  institution    String
+  degree         String
+  major          String
+  graduationYear Int?
+  gpa            Float?
+  candidate      Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model JobApplication {
+  id              String            @id @default(uuid())
+  jobId           String
+  candidateId     String
+  status          ApplicationStatus @default(APPLIED)
+  atsScore        Float             @default(0) // 0 - 100
+  skillsScore     Float             @default(0)
+  expScore        Float             @default(0)
+  eduScore        Float             @default(0)
+  matchedKeywords String[]
+  missingKeywords String[]
+  recruiterNotes  String?           @db.Text
+  scorecardRating Int?              // 1 to 5 stars
+  appliedAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  job             JobPosting        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidate       Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+}
+
+model TemplateUploadLog {
+  id          String   @id @default(uuid())
+  fileName    String
+  totalRows   Int
+  successRows Int
+  failedRows  Int
+  errorLog    String?  @db.Text
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
+}
