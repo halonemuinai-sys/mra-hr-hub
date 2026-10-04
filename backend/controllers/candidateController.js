@@ -358,19 +358,23 @@ async function updateApplicationStatus(req, res) {
  */
 async function listPipeline(req, res) {
   try {
-    const { jobId, search } = req.query;
+    const { jobId, search, minScore, jobFamily, minRating } = req.query;
 
     const where = {};
     if (jobId) where.jobId = jobId;
+    if (minScore) where.atsScore = { gte: parseFloat(minScore) || 0 };
+    if (minRating) where.scorecardRating = { gte: parseInt(minRating, 10) || 0 };
+
+    const candidateWhere = {};
+    if (jobFamily) candidateWhere.jobFamily = jobFamily;
     if (search) {
-      where.candidate = {
-        OR: [
-          { fullName: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { headline: { contains: search, mode: 'insensitive' } }
-        ]
-      };
+      candidateWhere.OR = [
+        { fullName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { headline: { contains: search, mode: 'insensitive' } }
+      ];
     }
+    if (Object.keys(candidateWhere).length) where.candidate = candidateWhere;
 
     const applications = await prisma.jobApplication.findMany({
       where,
@@ -409,6 +413,71 @@ async function listPipeline(req, res) {
   }
 }
 
+const VALID_STATUSES = [
+  'APPLIED', 'ATS_SCREENED', 'SHORTLISTED', 'INTERVIEW_HR', 'INTERVIEW_USER',
+  'OFFERING', 'HIRED', 'REJECTED', 'TALENT_POOL'
+];
+
+/**
+ * Bulk move applications to a stage. Optional `note` is appended
+ * (timestamped) to each application's recruiterNotes.
+ */
+async function bulkUpdateApplicationStatus(req, res) {
+  try {
+    const { applicationIds, status, note } = req.body;
+
+    if (!Array.isArray(applicationIds) || applicationIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Pilih minimal satu lamaran.' });
+    }
+    if (!VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Status tahapan tidak valid.' });
+    }
+
+    const trimmedNote = typeof note === 'string' ? note.trim() : '';
+
+    if (!trimmedNote) {
+      const result = await prisma.jobApplication.updateMany({
+        where: { id: { in: applicationIds } },
+        data: { status }
+      });
+      return res.json({
+        success: true,
+        message: `${result.count} kandidat dipindahkan.`,
+        data: { count: result.count }
+      });
+    }
+
+    const existing = await prisma.jobApplication.findMany({
+      where: { id: { in: applicationIds } },
+      select: { id: true, recruiterNotes: true }
+    });
+    const stamp = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    const entry = `[${stamp} • ${status}] ${trimmedNote}`;
+
+    await prisma.$transaction(
+      existing.map(a =>
+        prisma.jobApplication.update({
+          where: { id: a.id },
+          data: {
+            status,
+            recruiterNotes: a.recruiterNotes ? `${a.recruiterNotes.trim()}
+${entry}` : entry
+          }
+        })
+      )
+    );
+
+    return res.json({
+      success: true,
+      message: `${existing.length} kandidat dipindahkan.`,
+      data: { count: existing.length }
+    });
+  } catch (error) {
+    console.error('Error bulk updating application status:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 /**
  * Delete candidate
  */
@@ -429,5 +498,6 @@ module.exports = {
   getCandidateById,
   createCandidateWithApplication,
   updateApplicationStatus,
+  bulkUpdateApplicationStatus,
   deleteCandidate
 };

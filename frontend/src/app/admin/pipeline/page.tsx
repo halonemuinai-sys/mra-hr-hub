@@ -1,88 +1,85 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  KanbanSquare,
-  Search,
-  RefreshCw,
-  Briefcase,
-  MapPin,
-  Star,
-  Clock,
-  Archive,
-  GripVertical,
-  Loader2
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import { KanbanSquare } from 'lucide-react';
 import { api } from '@/lib/api';
-import { getScoreBadge } from '@/lib/utils';
 import CandidateDetailDrawer from '@/components/candidates/CandidateDetailDrawer';
+import PipelineCard from '@/components/pipeline/PipelineCard';
+import PipelineColumn from '@/components/pipeline/PipelineColumn';
+import PipelineToolbar, { PipelineFilters, EMPTY_FILTERS } from '@/components/pipeline/PipelineToolbar';
+import BulkActionBar from '@/components/pipeline/BulkActionBar';
+import RejectReasonModal from '@/components/pipeline/RejectReasonModal';
+import PipelineToast, { ToastState } from '@/components/pipeline/PipelineToast';
+import {
+  ACTIVE_STAGES,
+  CLOSED_STAGES,
+  ALL_STAGES,
+  SortKey,
+  isStale,
+  sortApplications,
+  stageLabel
+} from '@/components/pipeline/stages';
 
-type Stage = {
-  key: string;
-  label: string;
-  accent: string; // top border + dot color
-  dot: string;
-};
+const PREFS_KEY = 'hr_hub_pipeline_prefs';
 
-// Active hiring funnel (Zero Purple: amber → blue → emerald)
-const ACTIVE_STAGES: Stage[] = [
-  { key: 'APPLIED', label: 'Baru Masuk', accent: 'border-t-amber-500', dot: 'bg-amber-500' },
-  { key: 'ATS_SCREENED', label: 'Lolos ATS', accent: 'border-t-blue-400', dot: 'bg-blue-400' },
-  { key: 'SHORTLISTED', label: 'Shortlisted HR', accent: 'border-t-blue-500', dot: 'bg-blue-500' },
-  { key: 'INTERVIEW_HR', label: 'Interview HR', accent: 'border-t-blue-600', dot: 'bg-blue-600' },
-  { key: 'INTERVIEW_USER', label: 'Interview User', accent: 'border-t-blue-700', dot: 'bg-blue-700' },
-  { key: 'OFFERING', label: 'Offering', accent: 'border-t-emerald-500', dot: 'bg-emerald-500' },
-  { key: 'HIRED', label: 'Diterima', accent: 'border-t-emerald-600', dot: 'bg-emerald-600' }
-];
-
-const CLOSED_STAGES: Stage[] = [
-  { key: 'TALENT_POOL', label: 'Talent Pool', accent: 'border-t-slate-400', dot: 'bg-slate-400' },
-  { key: 'REJECTED', label: 'Tidak Lolos', accent: 'border-t-slate-600', dot: 'bg-slate-600' }
-];
-
-const ALL_STAGES = [...ACTIVE_STAGES, ...CLOSED_STAGES];
-
-function daysSince(dateStr?: string) {
-  if (!dateStr) return 0;
-  return Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000));
-}
-
-function getInitials(name?: string) {
-  if (!name) return 'HR';
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+function readPrefs(): { sort?: SortKey; showClosed?: boolean } {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
+  } catch {
+    return {};
+  }
 }
 
 export default function PipelinePage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [jobId, setJobId] = useState('');
-  const [search, setSearch] = useState('');
+
+  const [filters, setFilters] = useState<PipelineFilters>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<SortKey>('score');
   const [showClosed, setShowClosed] = useState(false);
 
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<string | null>(null);
-  const [movingId, setMovingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const lastClicked = useRef<string | null>(null);
+  const [draggingIds, setDraggingIds] = useState<string[]>([]);
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
+  const [pendingReject, setPendingReject] = useState<string[] | null>(null);
+  const [toast, setToast] = useState<ToastState | null>(null);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
-  const [openingId, setOpeningId] = useState<string | null>(null);
+  const dismissToast = useCallback(() => setToast(null), []);
 
-  const loadPipeline = async () => {
+  // ---- Preferences (per viewer) ----
+  useEffect(() => {
+    const p = readPrefs();
+    if (p.sort) setSort(p.sort);
+    if (p.showClosed) setShowClosed(true);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ sort, showClosed }));
+    } catch {}
+  }, [sort, showClosed]);
+
+  // ---- Data ----
+  const loadPipeline = useCallback(async () => {
     setLoading(true);
     try {
       const params: Record<string, string> = {};
-      if (jobId) params.jobId = jobId;
-      if (search.trim()) params.search = search.trim();
+      if (filters.jobId) params.jobId = filters.jobId;
+      if (filters.jobFamily) params.jobFamily = filters.jobFamily;
+      if (filters.minScore) params.minScore = filters.minScore;
+      if (filters.search.trim()) params.search = filters.search.trim();
       const res = await api.getPipeline(params);
       if (res.success) setApplications(res.data || []);
-    } catch (err) {
-      console.error('Error fetching pipeline:', err);
+    } catch (err: any) {
+      setToast({ id: Date.now(), tone: 'error', message: 'Gagal memuat pipeline: ' + err.message });
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters.jobId, filters.jobFamily, filters.minScore, filters.search]);
 
   useEffect(() => {
     api.getJobs({ activeOnly: false })
@@ -90,47 +87,140 @@ export default function PipelinePage() {
       .catch(() => {});
   }, []);
 
-  // Debounce search & job filter
   useEffect(() => {
     const t = setTimeout(loadPipeline, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId, search]);
+  }, [loadPipeline]);
+
+  // Drop selections that are no longer on the board
+  useEffect(() => {
+    setSelected((prev) => {
+      const ids = new Set(applications.map((a) => a.id));
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [applications]);
+
+  // Esc clears selection
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !pendingReject && !selectedCandidate) setSelected(new Set());
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pendingReject, selectedCandidate]);
+
+  // ---- Derived ----
+  const visibleApps = useMemo(
+    () => (filters.staleOnly ? applications.filter(isStale) : applications),
+    [applications, filters.staleOnly]
+  );
 
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = {};
     ALL_STAGES.forEach((s) => (map[s.key] = []));
-    applications.forEach((a) => {
-      (map[a.status] || (map[a.status] = [])).push(a);
-    });
+    visibleApps.forEach((a) => (map[a.status] || (map[a.status] = [])).push(a));
+    Object.keys(map).forEach((k) => (map[k] = sortApplications(map[k], sort)));
     return map;
-  }, [applications]);
+  }, [visibleApps, sort]);
 
-  const activeCount = ACTIVE_STAGES.reduce((n, s) => n + grouped[s.key].length, 0);
-  const closedCount = CLOSED_STAGES.reduce((n, s) => n + grouped[s.key].length, 0);
+  const countIn = (stages: typeof ALL_STAGES) => stages.reduce((n, s) => n + grouped[s.key].length, 0);
+  const activeCount = countIn(ACTIVE_STAGES);
+  const closedCount = countIn(CLOSED_STAGES);
+  const staleCount = applications.filter(isStale).length;
+  const hiredCount = grouped.HIRED.length;
+  const offerCount = grouped.OFFERING.length;
 
-  const moveApplication = async (appId: string, newStatus: string) => {
-    const current = applications.find((a) => a.id === appId);
-    if (!current || current.status === newStatus) return;
+  // ---- Moving ----
+  const applyMove = useCallback(
+    async (ids: string[], status: string, note?: string, isUndo = false) => {
+      const prevStatus = new Map<string, string>();
+      applications.forEach((a) => {
+        if (ids.includes(a.id) && a.status !== status) prevStatus.set(a.id, a.status);
+      });
+      const movedIds = [...prevStatus.keys()];
+      if (movedIds.length === 0) return;
 
-    const previous = applications;
-    // Optimistic update, rollback on failure
-    setApplications((list) =>
-      list.map((a) => (a.id === appId ? { ...a, status: newStatus, updatedAt: new Date().toISOString() } : a))
-    );
-    setMovingId(appId);
-    try {
-      await api.updateApplicationStatus(appId, { status: newStatus });
-    } catch (err: any) {
-      setApplications(previous);
-      alert('Gagal memindahkan kandidat: ' + err.message);
-    } finally {
-      setMovingId(null);
-    }
+      const snapshot = applications;
+      const now = new Date().toISOString();
+      setApplications((list) => list.map((a) => (prevStatus.has(a.id) ? { ...a, status, updatedAt: now } : a)));
+      setBusyIds(new Set(movedIds));
+
+      try {
+        await api.bulkUpdateApplicationStatus({ applicationIds: movedIds, status, note });
+        setSelected(new Set());
+        if (isUndo) {
+          setToast({ id: Date.now(), tone: 'success', message: 'Perpindahan dibatalkan.' });
+          return;
+        }
+        const who = movedIds.length === 1
+          ? applications.find((a) => a.id === movedIds[0])?.candidate?.fullName || '1 kandidat'
+          : `${movedIds.length} kandidat`;
+        setToast({
+          id: Date.now(),
+          tone: 'success',
+          message: `${who} → ${stageLabel(status)}`,
+          onUndo: () => {
+            // Revert each group back to its original stage
+            const byStatus = new Map<string, string[]>();
+            prevStatus.forEach((st, id) => byStatus.set(st, [...(byStatus.get(st) || []), id]));
+            byStatus.forEach((groupIds, st) => applyMoveRef.current(groupIds, st, undefined, true));
+          }
+        });
+      } catch (err: any) {
+        setApplications(snapshot);
+        setToast({ id: Date.now(), tone: 'error', message: 'Gagal memindahkan: ' + err.message });
+      } finally {
+        setBusyIds(new Set());
+      }
+    },
+    [applications]
+  );
+
+  // Undo callbacks outlive the render they were created in
+  const applyMoveRef = useRef(applyMove);
+  applyMoveRef.current = applyMove;
+
+  const requestMove = (ids: string[], status: string) => {
+    if (ids.length === 0) return;
+    if (status === 'REJECTED') setPendingReject(ids);
+    else applyMove(ids, status);
   };
 
+  // ---- Selection ----
+  const toggleSelect = (app: any, shiftKey: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const anchor = lastClicked.current;
+      const column = grouped[app.status] || [];
+      const anchorIdx = anchor ? column.findIndex((a) => a.id === anchor) : -1;
+      if (shiftKey && anchorIdx >= 0) {
+        const idx = column.findIndex((a) => a.id === app.id);
+        const [from, to] = anchorIdx < idx ? [anchorIdx, idx] : [idx, anchorIdx];
+        column.slice(from, to + 1).forEach((a) => next.add(a.id));
+      } else if (next.has(app.id)) {
+        next.delete(app.id);
+      } else {
+        next.add(app.id);
+      }
+      return next;
+    });
+    lastClicked.current = app.id;
+  };
+
+  const toggleSelectColumn = (stageKey: string) => {
+    const ids = grouped[stageKey].map((a) => a.id);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const all = ids.every((id) => next.has(id));
+      ids.forEach((id) => (all ? next.delete(id) : next.add(id)));
+      return next;
+    });
+  };
+
+  // ---- Detail drawer ----
   const openDetail = async (app: any) => {
-    setOpeningId(app.id);
+    setBusyIds(new Set([app.id]));
     try {
       const res = await api.getCandidateById(app.candidate.id);
       if (res.success && res.data) {
@@ -139,165 +229,140 @@ export default function PipelinePage() {
         setSelectedCandidate({ ...res.data, latestApplication: fullApp, atsScore: fullApp.atsScore });
       }
     } catch (err: any) {
-      alert('Gagal membuka profil kandidat: ' + err.message);
+      setToast({ id: Date.now(), tone: 'error', message: 'Gagal membuka profil: ' + err.message });
     } finally {
-      setOpeningId(null);
+      setBusyIds(new Set());
     }
   };
 
   const visibleStages = showClosed ? ALL_STAGES : ACTIVE_STAGES;
+  const selectionMode = selected.size > 0;
 
   return (
-    <div className="space-y-5 max-w-full">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+    <div className="space-y-4 max-w-full">
+      {/* Header + funnel summary */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <KanbanSquare className="w-6 h-6 text-blue-600" />
             Pipeline Pelamar
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Seret kartu kandidat antar kolom untuk memindahkan tahapan seleksi. Klik kartu untuk membuka profil lengkap.
+            Seret kartu untuk pindah tahap • klik avatar untuk memilih banyak (Shift untuk rentang) • klik kartu untuk profil lengkap
           </p>
         </div>
-
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama / email / headline..."
-              className="pl-8 pr-3 py-2 w-full sm:w-60 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
-            />
-          </div>
-          <select
-            value={jobId}
-            onChange={(e) => setJobId(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 sm:w-56"
-          >
-            <option value="">Semua Lowongan</option>
-            {jobs.map((j) => (
-              <option key={j.id} value={j.id}>
-                {j.title}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setShowClosed((v) => !v)}
-            className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-colors ${
-              showClosed
-                ? 'bg-slate-900 text-white border-slate-900'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-            }`}
-          >
-            <Archive className="w-3.5 h-3.5" />
-            Arsip ({closedCount})
-          </button>
-          <button
-            type="button"
-            onClick={loadPipeline}
-            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Muat Ulang
-          </button>
+        <div className="grid grid-cols-4 gap-2 text-center">
+          {[
+            { label: 'Aktif', value: activeCount, cls: 'text-slate-900' },
+            { label: 'Tertahan', value: staleCount, cls: 'text-amber-600' },
+            { label: 'Offering', value: offerCount, cls: 'text-emerald-600' },
+            { label: 'Diterima', value: hiredCount, cls: 'text-emerald-700' }
+          ].map((s) => (
+            <div key={s.label} className="bg-white border border-slate-200/80 rounded-xl px-4 py-2 shadow-xs">
+              <p className={`text-lg font-black tabular-nums ${s.cls}`}>{loading && !applications.length ? '…' : s.value}</p>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Funnel summary strip */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4">
-        <div className="flex items-center justify-between text-xs mb-2">
-          <span className="font-bold text-slate-900">{activeCount} kandidat dalam proses aktif</span>
-          <span className="text-slate-500">{closedCount} di arsip (talent pool / tidak lolos)</span>
-        </div>
-        <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100">
-          {ACTIVE_STAGES.map((s) => {
-            const n = grouped[s.key].length;
-            if (!n || !activeCount) return null;
-            return (
-              <div
-                key={s.key}
-                className={`${s.dot} h-full`}
-                style={{ width: `${(n / activeCount) * 100}%` }}
-                title={`${s.label}: ${n}`}
-              />
-            );
-          })}
-        </div>
-      </div>
+      <PipelineToolbar
+        filters={filters}
+        onFiltersChange={setFilters}
+        jobs={jobs}
+        sort={sort}
+        onSortChange={setSort}
+        showClosed={showClosed}
+        onToggleClosed={() => setShowClosed((v) => !v)}
+        closedCount={closedCount}
+        staleCount={staleCount}
+        loading={loading}
+        onRefresh={loadPipeline}
+      />
 
-      {/* Kanban board */}
-      <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
-        {visibleStages.map((stage) => {
-          const items = grouped[stage.key] || [];
-          const isTarget = dropTarget === stage.key;
+      {/* Funnel distribution strip */}
+      <div className="flex h-2 rounded-full overflow-hidden bg-slate-200/70">
+        {ACTIVE_STAGES.map((s) => {
+          const n = grouped[s.key].length;
+          if (!n || !activeCount) return null;
           return (
             <div
-              key={stage.key}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (dropTarget !== stage.key) setDropTarget(stage.key);
-              }}
-              onDragLeave={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                const id = e.dataTransfer.getData('text/plain') || dragId;
-                setDropTarget(null);
-                setDragId(null);
-                if (id) moveApplication(id, stage.key);
-              }}
-              className={`w-64 shrink-0 flex flex-col rounded-2xl border border-t-4 ${stage.accent} transition-colors ${
-                isTarget ? 'bg-blue-50 border-blue-300' : 'bg-slate-100/70 border-slate-200'
-              }`}
-            >
-              <div className="px-3 py-2.5 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${stage.dot}`} />
-                  {stage.label}
-                </span>
-                <span className="text-[11px] font-bold text-slate-600 bg-white border border-slate-200 rounded-md px-1.5 py-0.5">
-                  {items.length}
-                </span>
-              </div>
-
-              <div className="px-2 pb-2 space-y-2 min-h-[120px] max-h-[calc(100vh-330px)] overflow-y-auto">
-                {loading && applications.length === 0 ? (
-                  <div className="h-20 rounded-xl bg-white/60 animate-pulse" />
-                ) : items.length === 0 ? (
-                  <div className="h-20 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-[11px] text-slate-400">
-                    Belum ada kandidat
-                  </div>
-                ) : (
-                  items.map((app) => (
-                    <PipelineCard
-                      key={app.id}
-                      app={app}
-                      dragging={dragId === app.id}
-                      busy={movingId === app.id || openingId === app.id}
-                      onDragStart={(e) => {
-                        e.dataTransfer.setData('text/plain', app.id);
-                        e.dataTransfer.effectAllowed = 'move';
-                        setDragId(app.id);
-                      }}
-                      onDragEnd={() => {
-                        setDragId(null);
-                        setDropTarget(null);
-                      }}
-                      onOpen={() => openDetail(app)}
-                      onMove={(status) => moveApplication(app.id, status)}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
+              key={s.key}
+              className={`${s.dot} h-full`}
+              style={{ width: `${(n / activeCount) * 100}%` }}
+              title={`${s.label}: ${n}`}
+            />
           );
         })}
       </div>
+
+      {/* Kanban board */}
+      <div className={`flex gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${selectionMode ? 'pb-24' : 'pb-4'}`}>
+        {visibleStages.map((stage) => {
+          const items = grouped[stage.key] || [];
+          return (
+            <PipelineColumn
+              key={stage.key}
+              stage={stage}
+              items={items}
+              loading={loading}
+              selectedCount={items.filter((a) => selected.has(a.id)).length}
+              onToggleSelectAll={() => toggleSelectColumn(stage.key)}
+              onDropIds={(ids) => requestMove(ids, stage.key)}
+            >
+              {items.map((app) => (
+                <PipelineCard
+                  key={app.id}
+                  app={app}
+                  selected={selected.has(app.id)}
+                  selectionMode={selectionMode}
+                  dragging={draggingIds.includes(app.id)}
+                  busy={busyIds.has(app.id)}
+                  onToggleSelect={(shift) => toggleSelect(app, shift)}
+                  onDragStart={(e) => {
+                    // Dragging a selected card carries the whole selection
+                    const ids = selected.has(app.id) ? [...selected] : [app.id];
+                    e.dataTransfer.setData('application/x-hrhub-ids', JSON.stringify(ids));
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDraggingIds(ids);
+                  }}
+                  onDragEnd={() => setDraggingIds([])}
+                  onOpen={() => openDetail(app)}
+                  onMove={(status) => requestMove([app.id], status)}
+                />
+              ))}
+            </PipelineColumn>
+          );
+        })}
+      </div>
+
+      <AnimatePresence>
+        {selectionMode && (
+          <BulkActionBar
+            count={selected.size}
+            onMove={(status) => requestMove([...selected], status)}
+            onClear={() => setSelected(new Set())}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {pendingReject && (
+          <RejectReasonModal
+            count={pendingReject.length}
+            onCancel={() => setPendingReject(null)}
+            onConfirm={(note) => {
+              const ids = pendingReject;
+              setPendingReject(null);
+              applyMove(ids, 'REJECTED', note);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toast && <PipelineToast key={toast.id} toast={toast} onDismiss={dismissToast} />}
+      </AnimatePresence>
 
       {selectedCandidate && (
         <CandidateDetailDrawer
@@ -310,107 +375,6 @@ export default function PipelinePage() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function PipelineCard({
-  app,
-  dragging,
-  busy,
-  onDragStart,
-  onDragEnd,
-  onOpen,
-  onMove
-}: {
-  app: any;
-  dragging: boolean;
-  busy: boolean;
-  onDragStart: (e: React.DragEvent) => void;
-  onDragEnd: () => void;
-  onOpen: () => void;
-  onMove: (status: string) => void;
-}) {
-  const score = Math.round(app.atsScore || 0);
-  const badge = getScoreBadge(score);
-  const days = daysSince(app.updatedAt || app.appliedAt);
-  const c = app.candidate || {};
-
-  return (
-    <div
-      draggable={!busy}
-      onDragStart={onDragStart}
-      onDragEnd={onDragEnd}
-      onClick={onOpen}
-      className={`group relative bg-white rounded-xl border border-slate-200 p-3 shadow-xs cursor-pointer hover:border-blue-300 hover:shadow-sm transition-all ${
-        dragging ? 'opacity-40 rotate-1' : ''
-      }`}
-    >
-      {busy && (
-        <div className="absolute inset-0 rounded-xl bg-white/70 flex items-center justify-center z-10">
-          <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-        </div>
-      )}
-
-      <div className="flex items-start gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-[11px] font-bold shrink-0">
-          {getInitials(c.fullName)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-bold text-slate-900 truncate" title={c.fullName}>
-            {c.fullName}
-          </p>
-          <p className="text-[11px] text-slate-500 truncate" title={c.headline}>
-            {c.headline || c.email}
-          </p>
-        </div>
-        <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-slate-400 shrink-0" />
-      </div>
-
-      <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-600 truncate">
-        <Briefcase className="w-3 h-3 text-blue-600 shrink-0" />
-        <span className="truncate">{app.job?.title || '-'}</span>
-      </div>
-      {c.location && (
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 truncate">
-          <MapPin className="w-3 h-3 shrink-0" />
-          <span className="truncate">{c.location}</span>
-        </div>
-      )}
-
-      <div className="mt-2.5 flex items-center justify-between gap-2">
-        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border text-[10px] font-bold ${badge.class}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-          ATS {score}%
-        </span>
-        <div className="flex items-center gap-2 text-[10px] text-slate-500">
-          {app.scorecardRating ? (
-            <span className="flex items-center gap-0.5 font-bold text-amber-600">
-              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-              {app.scorecardRating}
-            </span>
-          ) : null}
-          <span className="flex items-center gap-0.5" title="Hari di tahap ini">
-            <Clock className="w-3 h-3" />
-            {days}h
-          </span>
-        </div>
-      </div>
-
-      {/* Keyboard / touch fallback for moving without drag */}
-      <select
-        value={app.status}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => onMove(e.target.value)}
-        aria-label="Pindahkan tahapan"
-        className="mt-2.5 w-full px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
-      >
-        {ALL_STAGES.map((s) => (
-          <option key={s.key} value={s.key}>
-            Pindah ke: {s.label}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }

@@ -72,6 +72,11 @@ export const api = {
     method: 'PATCH',
     body: JSON.stringify(statusData)
   }),
+  bulkUpdateApplicationStatus: (payload: { applicationIds: string[]; status: string; note?: string }) =>
+    fetchApi('/candidates/applications/bulk-status', {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    }),
   deleteCandidate: (id: string) => fetchApi(`/candidates/${id}`, {
     method: 'DELETE'
   }),
