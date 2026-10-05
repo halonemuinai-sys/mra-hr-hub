@@ -148,7 +148,20 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - Period metrics come from `ApplicationActivity`, so history starts when the ownership migration was applied.
 - UI: `frontend/src/app/admin/team/page.tsx` + `frontend/src/components/team/*`.
 
-### G. Dual-Intake ATS & Template Ingestion
+### G. Recruitment Dashboard (`/admin`) & Reminder Bell
+- `GET /api/stats/dashboard?weeks=8|12|26` (`controllers/dashboardController.js`): KPIs with 30-day deltas, weekly trend (applications / hired / rejected), funnel conversion based on the furthest stage each application **reached** (from the activity log), ATS score distribution, stage aging (avg days in stage vs 7-day line), top jobs, talent mix.
+- UI split into `frontend/src/components/dashboard/*` (recharts). Chart colors live in `chartTheme.ts` — corporate steps validated for CVD/contrast (`#2563eb`, `#059669`, `#d97706`); slate is neutral only. Every multi-series chart has a legend or direct labels.
+- `GET /api/reminders` (`controllers/reminderController.js`): per-user action items computed live (approvals to decide, stalled candidates, unassigned queue, interviews in 48h, decided requests, new applicants for leads). Shown in the header bell (`components/notifications/NotificationBell.tsx`, polls every 60s) and the dashboard Action Center. "Seen" state is per viewer in localStorage.
+- Reminder links deep-link into the Pipeline: `?view=approvals`, `?filter=stale`, `?scope=unassigned|me|all`.
+
+### H. Kelola Lowongan ATS (`/admin/jobs`, `jobs.manage`)
+- Card grid with search + Aktif/Ditutup filter. Clicking a card opens `JobDetailDrawer` (`GET /api/jobs/:id/manage`: job incl. closed ones, applicants per stage, top candidates, "Lihat di Pipeline" → `/admin/pipeline?jobId=`). `JobFormModal` handles create and edit (keyword chips, salary range, requirements, open/closed).
+- `jobController.sanitizeJobInput` whitelists writable fields (no id/slug/timestamps), dedupes keywords, validates salaryMin ≤ salaryMax.
+- Public `GET /api/jobs/:id` returns active jobs only and **never** includes applicants.
+- Jobs with applicants cannot be deleted (cascade would wipe their applications) — close them instead.
+- UI: `frontend/src/components/jobs/*`.
+
+### I. Dual-Intake ATS & Template Ingestion
 - `backend/services/atsParserService.js`: Multi-format PDF/DOCX/TXT resume heuristic parsing engine (`POST /api/ats/parse-cv`).
 - `backend/services/excelTemplateService.js`: Single-sheet standardized Excel template (*Data Pelamar*) with bulk ingestion and preview mode.
 
@@ -171,12 +184,14 @@ d:\MRA Project\HR HUB
 │   │   ├── assignmentController.js # Claim / release / assign, activity log, move guard
 │   │   ├── userController.js # User management (users.manage)
 │   │   ├── teamController.js # TA performance & activity feed (team.monitor)
+│   │   ├── dashboardController.js # Dashboard analytics (/api/stats/dashboard)
+│   │   ├── reminderController.js  # Per-user action reminders (/api/reminders)
+│   │   ├── jobController.js  # Jobs: public list/detail, admin manage view, sanitized create/update
 │   │   ├── pipelineController.js   # Board listing + bulk moves (gate-aware)
 │   │   ├── transitionController.js # Single move: preview / execute / request approval
 │   │   ├── approvalController.js   # List / decide / withdraw stage approvals
 │   │   ├── atsController.js
 │   │   ├── candidateController.js
-│   │   ├── jobController.js
 │   │   └── templateController.js
 │   ├── middlewares/
 │   │   └── authMiddleware.js # requireAuth (DB-backed), requireRole, requirePermission
@@ -217,6 +232,9 @@ d:\MRA Project\HR HUB
 │       │   ├── pipeline/     # Board, column, card, toolbar, bulk bar, ownership rules
 │       │   │   ├── transition/ # TransitionModal + StageField (gate form)
 │       │   │   └── approvals/  # ApprovalsDrawer + useApprovals hook
+│       │   ├── dashboard/    # KPI tiles, trend, funnel, aging, histogram, top jobs, Action Center
+│       │   ├── jobs/         # JobCard, JobDetailDrawer, JobFormModal, SkillTagInput
+│       │   ├── notifications/ # NotificationBell, ReminderList, useReminders
 │       │   ├── team/         # StageMixBar, ActivityFeed, MemberDetailDrawer
 │       │   ├── users/        # AccessMatrix, UserFormModal
 │       │   └── public/       # HeroSearchBar & JobDetailModal

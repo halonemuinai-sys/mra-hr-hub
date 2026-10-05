@@ -53,6 +53,7 @@ export const api = {
     return fetchApi(`/jobs${q ? `?${q}` : ''}`);
   },
   getJobById: (id: string) => fetchApi(`/jobs/${id}`),
+  getJobForManagement: (id: string) => fetchApi(`/jobs/${id}/manage`),
   createJob: (data: any) => fetchApi('/jobs', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -168,5 +169,9 @@ export const api = {
   }),
 
   // KPIs
-  getKpis: () => fetchApi('/stats/kpis')
+  getKpis: () => fetchApi('/stats/kpis'),
+  getDashboard: (weeks = 12) => fetchApi(`/stats/dashboard?weeks=${weeks}`),
+
+  // Reminders (header bell + dashboard Action Center)
+  getReminders: () => fetchApi('/reminders')
 };

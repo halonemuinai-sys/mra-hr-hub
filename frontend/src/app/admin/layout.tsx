@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
 import { can, CurrentUserProvider, Permission, ROLE_LABELS } from '@/lib/permissions';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export default function DashboardLayout({
   children,
@@ -288,6 +289,7 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {!permissionsMissing && <NotificationBell userId={currentUser?.id} pathname={pathname} />}
             <a
               href="http://localhost:5006/api/templates/download"
               target="_blank"

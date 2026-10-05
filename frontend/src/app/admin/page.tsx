@@ -1,260 +1,160 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Users,
-  Award,
-  CheckCircle2,
-  FileSpreadsheet,
-  ArrowUpRight,
-  Briefcase,
-  TrendingUp,
-  Layers,
+  Inbox,
   KanbanSquare,
   RefreshCw,
-  UploadCloud,
-  PenLine
+  Users,
+  AlertTriangle,
+  CheckCircle2,
+  Timer,
+  TrendingUp,
+  Filter,
+  Hourglass,
+  Award,
+  Briefcase,
+  Layers
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useCurrentUser } from '@/lib/permissions';
+import KpiTile from '@/components/dashboard/KpiTile';
+import DashboardCard from '@/components/dashboard/DashboardCard';
+import TrendChart from '@/components/dashboard/TrendChart';
+import ConversionFunnel from '@/components/dashboard/ConversionFunnel';
+import ScoreHistogram from '@/components/dashboard/ScoreHistogram';
+import StageAgingChart from '@/components/dashboard/StageAgingChart';
+import TopJobsTable from '@/components/dashboard/TopJobsTable';
+import TalentMix from '@/components/dashboard/TalentMix';
+import ActionCenter from '@/components/dashboard/ActionCenter';
+import { fmtWeek } from '@/components/dashboard/chartTheme';
 
-const FUNNEL_STAGES = [
-  { label: 'Baru Masuk', keys: ['APPLIED'], color: 'bg-amber-500' },
-  { label: 'Lolos Pre-screen ATS', keys: ['ATS_SCREENED'], color: 'bg-blue-400' },
-  { label: 'Shortlisted HR', keys: ['SHORTLISTED'], color: 'bg-blue-500' },
-  { label: 'Interview (HR / User)', keys: ['INTERVIEW_HR', 'INTERVIEW_USER'], color: 'bg-blue-700' },
-  { label: 'Offering Letter', keys: ['OFFERING'], color: 'bg-emerald-500' },
-  { label: 'Diterima (Hired)', keys: ['HIRED'], color: 'bg-emerald-600' }
-];
-
-const JOB_FAMILIES = [
-  { key: 'IT_DIGITAL', label: 'IT & Digital Software' },
-  { key: 'RETAIL_OPS', label: 'Retail & Store Operations' },
-  { key: 'CORPORATE_SERVICES', label: 'Corporate (Legal/GA/Finance)' },
-  { key: 'CREATIVE_MEDIA', label: 'Creative & Broadcasting' }
-];
-
-const SOURCES = [
-  { key: 'ATS_RESUME_UPLOAD', label: 'Upload CV ATS (PDF/Word)', icon: UploadCloud },
-  { key: 'EXCEL_TEMPLATE', label: 'Template Ingestion (.xlsx)', icon: FileSpreadsheet },
-  { key: 'MANUAL_INPUT', label: 'Input Manual', icon: PenLine }
-];
+const PERIODS = [8, 12, 26];
 
 export default function AdminDashboardPage() {
-  const [kpis, setKpis] = useState<any | null>(null);
+  const user = useCurrentUser();
+  const [weeks, setWeeks] = useState(12);
+  const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const loadKpis = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const res = await api.getKpis();
-      if (res.success && res.data) {
-        setKpis(res.data);
-      }
-    } catch (err) {
-      console.error('Error fetching dashboard KPIs:', err);
+      const res = await api.getDashboard(weeks);
+      if (res.success) setData(res.data);
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [weeks]);
 
   useEffect(() => {
-    loadKpis();
-  }, []);
+    load();
+  }, [load]);
 
-  const stages = kpis?.stagesBreakdown || {};
-  const families = kpis?.jobFamilyDistribution || {};
-  const sources = kpis?.sourceDistribution || {};
-
-  const val = (v: any) => (loading ? '…' : v ?? 0);
-
-  const funnel = FUNNEL_STAGES.map((s) => ({
-    ...s,
-    count: s.keys.reduce((n, k) => n + (stages[k] || 0), 0)
-  }));
-  const funnelMax = Math.max(1, ...funnel.map((s) => s.count));
-  const archived = (stages.TALENT_POOL || 0) + (stages.REJECTED || 0);
-
-  const familyTotal = Math.max(1, JOB_FAMILIES.reduce((n, f) => n + (families[f.key] || 0), 0));
-  const sourceTotal = Math.max(1, SOURCES.reduce((n, s) => n + (sources[s.key] || 0), 0));
-
-  const kpiCards = [
-    {
-      label: 'Total Database',
-      value: val(kpis?.totalCandidates),
-      hint: `${kpis?.totalApplications || 0} lamaran tercatat`,
-      icon: Users,
-      tone: 'bg-blue-50 text-blue-600 border-blue-100'
-    },
-    {
-      label: 'Rata-Rata Skor ATS',
-      value: loading ? '…' : `${kpis?.averageAtsScore || 0}%`,
-      hint: 'Seluruh lamaran',
-      icon: Award,
-      tone: 'bg-emerald-50 text-emerald-600 border-emerald-100'
-    },
-    {
-      label: 'Shortlist Ratio',
-      value: loading ? '…' : `${kpis?.shortlistRatio || 0}%`,
-      hint: 'Siap wawancara HR/User',
-      icon: TrendingUp,
-      tone: 'bg-blue-50 text-blue-600 border-blue-100'
-    },
-    {
-      label: 'Diterima (Hired)',
-      value: val(kpis?.hiredCount),
-      hint: `${kpis?.activeJobs || 0} posisi terbuka`,
-      icon: CheckCircle2,
-      tone: 'bg-emerald-50 text-emerald-600 border-emerald-100'
-    }
-  ];
+  const k = data?.kpis;
+  const v = (x: any) => (loading && !data ? '…' : x ?? '—');
+  const spark = (data?.trend || []).map((t: any) => ({ label: fmtWeek(t.weekStart), value: t.applications }));
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-5 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dashboard Rekrutmen</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Ringkasan pelacakan kandidat, skor ATS, dan talent pool MRA Group
+            Kinerja funnel, kualitas pelamar, dan hambatan proses MRA Group
+            {data?.generatedAt && ` · diperbarui ${new Date(data.generatedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={loadKpis}
-            className="p-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl transition-colors"
-            title="Muat ulang data"
-          >
+          <div className="inline-flex bg-white border border-slate-200/80 rounded-xl p-1 shadow-xs" role="group" aria-label="Rentang tren">
+            {PERIODS.map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setWeeks(w)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                  weeks === w ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {w} mgg
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={load} className="p-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl" title="Muat ulang">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <Link
             href="/admin/pipeline"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs shadow-blue-600/20 flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5"
           >
             <KanbanSquare className="w-3.5 h-3.5" />
             Buka Pipeline
           </Link>
-          <Link
-            href="/admin/candidates"
-            className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-colors"
-          >
-            <Users className="w-3.5 h-3.5 text-blue-600" />
-            Database Kandidat
-          </Link>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpiCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={card.label}
-              className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between"
-            >
-              <div>
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">{card.label}</p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1 tabular-nums">{card.value}</h3>
-                <span className="text-[11px] font-medium text-slate-500 mt-1 inline-block">{card.hint}</span>
-              </div>
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${card.tone}`}>
-                <Icon className="w-5 h-5" />
-              </div>
-            </div>
-          );
-        })}
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl px-4 py-3 text-xs font-semibold">
+          Gagal memuat analitik: {error}
+        </div>
+      )}
+
+      {/* KPI row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <KpiTile label="Lamaran 30 hari" value={v(k?.applications30d)} delta={k?.applicationsDelta ?? null} spark={spark} hint={`${v(k?.totalCandidates)} kandidat di database`} icon={Inbox} />
+        <KpiTile label="Pipeline aktif" value={v(k?.activePipeline)} hint={`${v(k?.unassigned)} belum diambil · ${v(k?.openJobs)} lowongan buka`} icon={Users} />
+        <KpiTile label="Tertahan ≥7 hari" value={v(k?.stale)} hint="Butuh tindak lanjut" icon={AlertTriangle} tone="amber" />
+        <KpiTile label="Diterima 30 hari" value={v(k?.hired30d)} delta={k?.hiredDelta ?? null} hint={`Rata-rata ATS ${v(k?.avgAtsScore)}%`} icon={CheckCircle2} tone="emerald" />
+        <KpiTile label="Waktu ke Hired" value={k?.avgTimeToHireDays != null ? `${k.avgTimeToHireDays} hari` : v(null)} hint="Rata-rata lamar → diterima" icon={Timer} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Funnel */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-blue-600" />
-              Funnel Tahapan Seleksi
-            </h3>
-            <Link
-              href="/admin/pipeline"
-              className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
-            >
-              Kelola di Pipeline <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-
-          <div className="space-y-3.5">
-            {funnel.map((st) => (
-              <div key={st.label} className="grid grid-cols-[150px_1fr_40px] sm:grid-cols-[180px_1fr_48px] items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-700 truncate">{st.label}</span>
-                <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full ${st.color} transition-all duration-500`}
-                    style={{ width: `${(st.count / funnelMax) * 100}%` }}
-                  />
-                </div>
-                <span className="text-right font-bold text-slate-900 tabular-nums">{loading ? '…' : st.count}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Arsip (Talent Pool + Tidak Lolos)</span>
-            <span className="font-bold text-slate-700 tabular-nums">{loading ? '…' : archived}</span>
-          </div>
-        </div>
-
-        {/* Distribution */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-6">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-blue-600" />
-              Kelompok Bidang (Job Family)
-            </h3>
-            <div className="space-y-3 text-xs">
-              {JOB_FAMILIES.map((f) => {
-                const n = families[f.key] || 0;
-                return (
-                  <div key={f.key}>
-                    <div className="flex justify-between mb-1">
-                      <span className="font-semibold text-slate-700">{f.label}</span>
-                      <span className="font-bold text-slate-900 tabular-nums">{loading ? '…' : n}</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-600 rounded-full" style={{ width: `${(n / familyTotal) * 100}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="pt-5 border-t border-slate-100">
-            <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              Saluran Masuk (Intake Source)
-            </h3>
-            <div className="space-y-2.5 text-xs">
-              {SOURCES.map((s) => {
-                const Icon = s.icon;
-                const n = sources[s.key] || 0;
-                return (
-                  <div key={s.key} className="flex items-center justify-between text-slate-600">
-                    <span className="flex items-center gap-2">
-                      <Icon className="w-3.5 h-3.5 text-slate-400" />
-                      {s.label}
-                    </span>
-                    <span className="font-bold text-slate-900 tabular-nums">
-                      {loading ? '…' : n}
-                      <span className="text-slate-400 font-medium ml-1">({Math.round((n / sourceTotal) * 100)}%)</span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+      {/* Trend + actions */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <DashboardCard title="Tren Mingguan" subtitle={`Lamaran masuk vs hasil, ${weeks} minggu terakhir`} icon={TrendingUp} className="xl:col-span-2 min-h-[320px]">
+          {data ? <TrendChart data={data.trend} /> : <div className="h-[260px] rounded-xl bg-slate-100 animate-pulse" />}
+        </DashboardCard>
+        <ActionCenter userId={user?.id} />
       </div>
+
+      {/* Funnel + bottlenecks */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <DashboardCard
+          title="Konversi Funnel"
+          subtitle="Berapa yang mencapai tiap tahap & berapa persen yang lanjut"
+          icon={Filter}
+          action={<Link href="/admin/pipeline" className="text-[11px] font-bold text-blue-600 hover:text-blue-800">Kelola →</Link>}
+        >
+          {data ? <ConversionFunnel steps={data.funnel} archived={data.archived} /> : <div className="h-[280px] rounded-xl bg-slate-100 animate-pulse" />}
+        </DashboardCard>
+        <DashboardCard
+          title="Hambatan per Tahap"
+          subtitle="Rata-rata lama kandidat di tahap saat ini"
+          icon={Hourglass}
+          action={<Link href="/admin/pipeline?filter=stale" className="text-[11px] font-bold text-amber-700 hover:text-amber-800">Lihat tertahan →</Link>}
+        >
+          {data ? <StageAgingChart rows={data.stageAging} /> : <div className="h-[240px] rounded-xl bg-slate-100 animate-pulse" />}
+        </DashboardCard>
+      </div>
+
+      {/* Quality + jobs */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <DashboardCard title="Distribusi Skor ATS" subtitle="Kualitas kecocokan seluruh lamaran" icon={Award} className="min-h-[300px]">
+          {data ? <ScoreHistogram data={data.scoreDistribution} /> : <div className="h-[220px] rounded-xl bg-slate-100 animate-pulse" />}
+        </DashboardCard>
+        <DashboardCard title="Lowongan Teramai" subtitle="6 lowongan dengan pelamar terbanyak" icon={Briefcase} className="xl:col-span-2">
+          {data ? <TopJobsTable jobs={data.topJobs} /> : <div className="h-[220px] rounded-xl bg-slate-100 animate-pulse" />}
+        </DashboardCard>
+      </div>
+
+      <DashboardCard title="Komposisi Talent" subtitle="Kelompok bidang kandidat & saluran masuk" icon={Layers}>
+        {data ? <TalentMix jobFamily={data.jobFamily} intakeSource={data.intakeSource} /> : <div className="h-[160px] rounded-xl bg-slate-100 animate-pulse" />}
+      </DashboardCard>
     </div>
   );
 }

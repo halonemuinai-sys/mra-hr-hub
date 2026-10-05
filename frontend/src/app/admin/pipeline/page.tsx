@@ -81,6 +81,22 @@ export default function PipelinePage() {
     setScope(p.scope && (p.scope !== 'me' || mayOwn) ? p.scope : defaultScope(user));
     if (p.sort) setSort(p.sort);
     if (p.showClosed) setShowClosed(true);
+
+    // Deep links: ?view=approvals · ?filter=stale · ?scope=unassigned|me|all · ?jobId=<id>
+    const q = new URLSearchParams(window.location.search);
+    const linkScope = q.get('scope') as OwnerScope | null;
+    if (linkScope && ['me', 'unassigned', 'all'].includes(linkScope) && (linkScope !== 'me' || mayOwn)) setScope(linkScope);
+    if (q.get('filter') === 'stale') {
+      setFilters((f) => ({ ...f, staleOnly: true }));
+      if (!linkScope) setScope(mayOwn && !isLead(user) ? 'me' : 'all');
+    }
+    if (q.get('view') === 'approvals') setShowApprovals(true);
+    const linkJob = q.get('jobId');
+    if (linkJob) {
+      setFilters((f) => ({ ...f, jobId: linkJob }));
+      if (!linkScope) setScope('all');
+    }
+
     setPrefsLoaded(true);
   }, [user]);
 

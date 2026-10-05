@@ -7,6 +7,7 @@ const templateRoutes = require('../routes/templateRoutes');
 const candidateRoutes = require('../routes/candidateRoutes');
 const userRoutes = require('../routes/userRoutes');
 const teamRoutes = require('../routes/teamRoutes');
+const reminderRoutes = require('../routes/reminderRoutes');
 const jobRoutes = require('../routes/jobRoutes');
 const statsRoutes = require('../routes/statsRoutes');
 const authRoutes = require('../routes/authRoutes');
@@ -43,6 +44,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/team', teamRoutes);
+app.use('/api/reminders', reminderRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
