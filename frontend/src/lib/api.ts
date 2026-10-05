@@ -156,6 +156,12 @@ export const api = {
 
   // Templates
   downloadTemplateUrl: `${API_BASE_URL}/templates/download`,
+  // Public career portal: one applicant per file
+  applyWithTemplate: (formData: FormData) => fetchApi('/templates/apply', {
+    method: 'POST',
+    body: formData
+  }),
+  // CMS bulk import (requires login + candidate.import)
   uploadTemplate: (formData: FormData, preview = false) => fetchApi(`/templates/upload${preview ? '?preview=true' : ''}`, {
     method: 'POST',
     body: formData

@@ -85,7 +85,9 @@ Fixed roles (Prisma enum `Role`); permissions are defined in **one file**: `back
 
 - Backend guard: `requirePermission('perm')` (`middlewares/authMiddleware.js`). Sidebar items and the admin route guard in `admin/layout.tsx` are keyed by permission.
 - To change who can do what, edit `ROLE_PERMISSIONS` in `permissions.js` — nothing else.
-- Public (no auth): `GET /api/jobs*`, `POST /api/candidates/apply`, `GET /api/candidates/status?email=`, `/api/ats/*`, `/api/templates/*` (career portal intake).
+- Public (no auth): `GET /api/jobs*`, `POST /api/candidates/apply`, `GET /api/candidates/status?email=`, `/api/ats/*`, `GET /api/templates/download`, `POST /api/templates/apply` (career portal intake). `POST /api/templates/upload` (bulk import) requires `candidate.import`.
+- **Candidate intake** (`services/candidateIntakeService.js`) is the single write path for new applicants. Public intake **never overwrites an existing candidate** (matched by email): the stored profile is kept, the application is still recorded, and the submitted data is logged as a `PROFILE_RESUBMITTED` activity. Only the admin bulk import may update profiles. The public template apply accepts exactly one applicant row (the template's built-in example rows are ignored).
+- JWT settings live in `backend/config/jwt.js`; the server refuses to start without a `JWT_SECRET` of ≥32 characters (no fallback secret in code).
 
 ---
 
@@ -161,6 +163,7 @@ d:\MRA Project\HR HUB
 │   │   ├── index.js          # Express server entry point (port 5006)
 │   │   └── db.js             # PrismaPg connection pooler client (hr_hub schema)
 │   ├── config/
+│   │   ├── jwt.js            # JWT secret (required, no fallback) & expiry
 │   │   ├── permissions.js    # RBAC: roles, permission catalog, role → permissions
 │   │   └── stageRules.js     # Stage gate: fields, checks, approvals per stage
 │   ├── controllers/
@@ -186,6 +189,7 @@ d:\MRA Project\HR HUB
 │   │   ├── teamRoutes.js     # /api/team (performance, activity)
 │   │   └── userRoutes.js     # /api/users (+ access-matrix)
 │   ├── services/
+│   │   ├── candidateIntakeService.js # Apply / template intake (no overwrite of existing profiles)
 │   │   ├── stageGateService.js # Evaluate a stage move (pure)
 │   │   └── stageMoveService.js # applyStageChange — the single write path for stage changes
 │   └── scripts/

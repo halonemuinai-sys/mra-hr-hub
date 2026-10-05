@@ -314,7 +314,7 @@ export default function PublicCareersPage() {
       fd.append('template', templateFile);
       if (selectedJob?.id) fd.append('jobId', selectedJob.id);
 
-      const res = await api.uploadTemplate(fd);
+      const res = await api.applyWithTemplate(fd);
       if (res.success) {
         setSubmitSuccess({
           message: res.message,

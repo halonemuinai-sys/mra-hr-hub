@@ -38,6 +38,8 @@ export function describeActivity(a: any) {
       return { who, text: `menyetujui ${cand} → ${stageLabel(a.toStatus)}` };
     case 'APPROVAL_REJECTED':
       return { who, text: `menolak approval ${cand} → ${stageLabel(a.toStatus)}` };
+    case 'PROFILE_RESUBMITTED':
+      return { who: cand, text: 'mengirim ulang lamaran (profil tersimpan tidak diubah)' };
     case 'APPROVAL_CANCELLED':
       return { who, text: `membatalkan approval ${cand} → ${stageLabel(a.toStatus)}` };
     default:

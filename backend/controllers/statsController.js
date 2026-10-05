@@ -80,7 +80,7 @@ async function getExecutiveKpis(req, res) {
         totalApplications,
         shortlistRatio: totalApplications > 0 ? Math.round((shortlistedCount / totalApplications) * 100) : 0,
         hiredCount,
-        averageAtsScore: avgScore || 78,
+        averageAtsScore: avgScore,
         stagesBreakdown: stagesMap,
         jobFamilyDistribution: jobFamilyDist,
         sourceDistribution: sourceDist,

@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../api/db');
 const { hasPermission } = require('../config/permissions');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hr_hub_secure_jwt_secret_token_2026_mra_automation';
+const { JWT_SECRET } = require('../config/jwt');
 
 /**
  * Middleware untuk memverifikasi JWT Bearer Token pada endpoint CMS

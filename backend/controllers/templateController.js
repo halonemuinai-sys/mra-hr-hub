@@ -1,6 +1,11 @@
-const { generateCandidateTemplateWorkbook, parseCandidateTemplateWorkbook } = require('../services/excelTemplateService');
+const {
+  generateCandidateTemplateWorkbook,
+  parseCandidateTemplateWorkbook,
+  TEMPLATE_EXAMPLE_EMAILS
+} = require('../services/excelTemplateService');
 const { classifyCandidateProfiling, calculateAtsMatchScore } = require('../services/profilingService');
 const prisma = require('../api/db');
+const { intakeCandidate } = require('../services/candidateIntakeService');
 
 async function downloadTemplate(req, res) {
   try {
@@ -16,202 +21,117 @@ async function downloadTemplate(req, res) {
   }
 }
 
+/** Parse the uploaded workbook and resolve the optional target job */
+async function readTemplate(req) {
+  if (!req.file) throw Object.assign(new Error('File Excel (.xlsx) wajib diunggah.'), { status: 400 });
+  const parsed = await parseCandidateTemplateWorkbook(req.file.buffer);
+  if (parsed.candidates.length === 0) {
+    throw Object.assign(new Error('Tidak ada data kandidat valid yang ditemukan dalam file Excel.'), {
+      status: 400,
+      errors: parsed.errors
+    });
+  }
+  const jobId = req.body.jobId || null;
+  const job = jobId ? await prisma.jobPosting.findUnique({ where: { id: jobId } }) : null;
+  return { parsed, job };
+}
+
+function sendError(res, error, fallback) {
+  if (error.status === 400) return res.status(400).json({ success: false, message: error.message, errors: error.errors });
+  console.error(fallback, error);
+  return res.status(500).json({ success: false, message: fallback });
+}
+
+/**
+ * POST /api/templates/upload  (CMS, candidate.import) — bulk import; may update existing profiles.
+ * ?preview=true returns the parsed rows without writing.
+ */
 async function uploadTemplate(req, res) {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'File Excel (.xlsx) wajib diunggah.' });
-    }
+    const { parsed, job } = await readTemplate(req);
 
-    const previewOnly = req.query.preview === 'true';
-    const targetJobId = req.body.jobId || null;
-
-    const parsedResult = await parseCandidateTemplateWorkbook(req.file.buffer);
-
-    if (parsedResult.candidates.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Tidak ada data kandidat valid yang ditemukan dalam file Excel.',
-        errors: parsedResult.errors
+    if (req.query.preview === 'true') {
+      const data = parsed.candidates.map((cand) => {
+        const evaluation = calculateAtsMatchScore(cand, job);
+        const classification = classifyCandidateProfiling(cand, evaluation.atsScore);
+        return { ...cand, ...classification, atsScore: evaluation.atsScore, evaluation };
       });
+      return res.json({ success: true, preview: true, total: data.length, errors: parsed.errors, data });
     }
 
-    let targetJob = null;
-    if (targetJobId) {
-      targetJob = await prisma.jobPosting.findUnique({ where: { id: targetJobId } });
-    }
-
-    // Process and enrich candidates
-    const enrichedCandidates = parsedResult.candidates.map(cand => {
-      const evaluation = calculateAtsMatchScore(cand, targetJob);
-      const classification = classifyCandidateProfiling(cand, evaluation.atsScore);
-      return {
-        ...cand,
-        jobFamily: classification.jobFamily,
-        seniorityLevel: classification.seniorityLevel,
-        tags: classification.tags,
-        atsScore: evaluation.atsScore,
-        evaluation
-      };
-    });
-
-    // If preview mode, return extracted list without writing to DB
-    if (previewOnly) {
-      return res.json({
-        success: true,
-        preview: true,
-        total: enrichedCandidates.length,
-        errors: parsedResult.errors,
-        data: enrichedCandidates
-      });
-    }
-
-    // Persist to Database (Transaction / sequential upserts)
     let savedCount = 0;
-    for (const cand of enrichedCandidates) {
+    for (const cand of parsed.candidates) {
       try {
-        const candidateRecord = await prisma.candidate.upsert({
-          where: { email: cand.email },
-          update: {
-            fullName: cand.fullName,
-            phone: cand.phone,
-            location: cand.location,
-            headline: cand.headline,
-            currentCompany: cand.currentCompany,
-            totalExperienceYrs: cand.totalExperienceYrs,
-            expectedSalary: cand.expectedSalary,
-            availability: cand.availability,
-            profileSummary: cand.profileSummary,
-            intakeSource: 'EXCEL_TEMPLATE',
-            jobFamily: cand.jobFamily,
-            seniorityLevel: cand.seniorityLevel,
-            tags: cand.tags
-          },
-          create: {
-            fullName: cand.fullName,
-            email: cand.email,
-            phone: cand.phone,
-            location: cand.location,
-            headline: cand.headline,
-            currentCompany: cand.currentCompany,
-            totalExperienceYrs: cand.totalExperienceYrs,
-            expectedSalary: cand.expectedSalary,
-            availability: cand.availability,
-            profileSummary: cand.profileSummary,
-            intakeSource: 'EXCEL_TEMPLATE',
-            jobFamily: cand.jobFamily,
-            seniorityLevel: cand.seniorityLevel,
-            tags: cand.tags
-          }
-        });
-
-        // Insert or replace skills
-        if (cand.skills && cand.skills.length > 0) {
-          await prisma.candidateSkill.deleteMany({ where: { candidateId: candidateRecord.id } });
-          await prisma.candidateSkill.createMany({
-            data: cand.skills.map(s => ({
-              candidateId: candidateRecord.id,
-              skillName: s.skillName,
-              category: s.category,
-              proficiency: s.proficiency
-            }))
-          });
-        }
-
-        // Insert or replace experiences
-        if (cand.experiences && cand.experiences.length > 0) {
-          await prisma.candidateExperience.deleteMany({ where: { candidateId: candidateRecord.id } });
-          await prisma.candidateExperience.createMany({
-            data: cand.experiences.map(e => ({
-              candidateId: candidateRecord.id,
-              companyName: e.companyName,
-              roleTitle: e.roleTitle,
-              industry: e.industry,
-              startDate: e.startDate,
-              endDate: e.endDate,
-              isCurrent: e.isCurrent,
-              description: e.description
-            }))
-          });
-        }
-
-        // Insert or replace educations
-        if (cand.educations && cand.educations.length > 0) {
-          await prisma.candidateEducation.deleteMany({ where: { candidateId: candidateRecord.id } });
-          await prisma.candidateEducation.createMany({
-            data: cand.educations.map(ed => ({
-              candidateId: candidateRecord.id,
-              institution: ed.institution,
-              degree: ed.degree,
-              major: ed.major,
-              graduationYear: ed.graduationYear,
-              gpa: ed.gpa
-            }))
-          });
-        }
-
-        // If a target job was selected, link application
-        if (targetJob) {
-          await prisma.jobApplication.upsert({
-            where: {
-              // Using compound unique or findFirst
-              id: `${targetJob.id}_${candidateRecord.id}`
-            },
-            update: {
-              atsScore: cand.atsScore,
-              skillsScore: cand.evaluation.skillsScore,
-              expScore: cand.evaluation.expScore,
-              eduScore: cand.evaluation.eduScore,
-              matchedKeywords: cand.evaluation.matchedKeywords,
-              missingKeywords: cand.evaluation.missingKeywords
-            },
-            create: {
-              id: `${targetJob.id}_${candidateRecord.id}`,
-              jobId: targetJob.id,
-              candidateId: candidateRecord.id,
-              status: 'APPLIED',
-              atsScore: cand.atsScore,
-              skillsScore: cand.evaluation.skillsScore,
-              expScore: cand.evaluation.expScore,
-              eduScore: cand.evaluation.eduScore,
-              matchedKeywords: cand.evaluation.matchedKeywords,
-              missingKeywords: cand.evaluation.missingKeywords
-            }
-          });
-        }
-
+        await intakeCandidate({ profile: cand, job, source: 'EXCEL_TEMPLATE', overwriteExisting: true });
         savedCount++;
       } catch (err) {
-        console.error('Error saving candidate row:', cand.email, err.message);
-        parsedResult.errors.push(`Gagal menyimpan kandidat ${cand.email}: ${err.message}`);
+        parsed.errors.push(`Gagal menyimpan kandidat ${cand.email}: ${err.message}`);
       }
     }
 
-    // Log upload history
     await prisma.templateUploadLog.create({
       data: {
         fileName: req.file.originalname,
-        totalRows: parsedResult.candidates.length,
+        totalRows: parsed.candidates.length,
         successRows: savedCount,
-        failedRows: parsedResult.candidates.length - savedCount,
-        errorLog: parsedResult.errors.join('\n'),
-        uploadedBy: req.user ? req.user.name : 'System/HR'
+        failedRows: parsed.candidates.length - savedCount,
+        errorLog: parsed.errors.join('\n'),
+        uploadedBy: req.user.name
       }
     });
 
     return res.json({
       success: true,
-      message: `Berhasil mengimpor ${savedCount} dari ${parsedResult.candidates.length} kandidat.`,
+      message: `Berhasil mengimpor ${savedCount} dari ${parsed.candidates.length} kandidat.`,
       savedCount,
-      totalCount: parsedResult.candidates.length,
-      errors: parsedResult.errors
+      totalCount: parsed.candidates.length,
+      errors: parsed.errors
     });
   } catch (error) {
-    console.error('Error uploading template:', error);
-    res.status(500).json({ success: false, message: error.message || 'Gagal memproses file template.' });
+    return sendError(res, error, 'Gagal memproses file template.');
+  }
+}
+
+/**
+ * POST /api/templates/apply  (public career portal) — exactly one applicant per file;
+ * never overwrites an existing candidate's profile.
+ */
+async function applyWithTemplate(req, res) {
+  try {
+    const { parsed, job } = await readTemplate(req);
+    // Applicants often leave the template's example rows in place — ignore them
+    const rows = parsed.candidates.filter((c) => !TEMPLATE_EXAMPLE_EMAILS.includes(String(c.email).toLowerCase()));
+    if (rows.length !== 1) {
+      return res.status(400).json({
+        success: false,
+        message: rows.length
+          ? 'Template lamaran hanya boleh berisi data satu pelamar.'
+          : 'Isi data Anda di template (baris contoh tidak dihitung).'
+      });
+    }
+    if (req.body.jobId && (!job || !job.isActive)) {
+      return res.status(404).json({ success: false, message: 'Lowongan tidak ditemukan atau sudah ditutup.' });
+    }
+
+    const result = await intakeCandidate({
+      profile: rows[0],
+      job,
+      source: 'EXCEL_TEMPLATE',
+      overwriteExisting: false
+    });
+    return res.status(201).json({
+      success: true,
+      message: 'Lamaran kerja berhasil didaftarkan.',
+      savedCount: 1,
+      data: { atsScore: result.evaluation.atsScore }
+    });
+  } catch (error) {
+    return sendError(res, error, 'Gagal memproses file template.');
   }
 }
 
 module.exports = {
   downloadTemplate,
-  uploadTemplate
+  uploadTemplate,
+  applyWithTemplate
 };

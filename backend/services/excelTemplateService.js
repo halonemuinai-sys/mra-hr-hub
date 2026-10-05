@@ -1,5 +1,8 @@
 const ExcelJS = require('exceljs');
 
+// Example rows shipped in the downloadable template (ignored by the public apply endpoint)
+const TEMPLATE_EXAMPLE_EMAILS = ['budi.pratama@mra.co.id', 'jessica.tanuwidjaja@gmail.com'];
+
 /**
  * Generate official Single-Sheet Master Candidate Excel Template
  * Designed for simplicity: 1 Sheet containing all candidate attributes
@@ -70,7 +73,7 @@ async function generateCandidateTemplateWorkbook() {
   const sample1 = ws.addRow({
     no: 1,
     fullName: 'Budi Pratama',
-    email: 'budi.pratama@mra.co.id',
+    email: TEMPLATE_EXAMPLE_EMAILS[0],
     phone: '081234567890',
     location: 'Jakarta Selatan',
     headline: 'Senior Frontend Developer',
@@ -88,7 +91,7 @@ async function generateCandidateTemplateWorkbook() {
   const sample2 = ws.addRow({
     no: 2,
     fullName: 'Jessica Tanuwidjaja',
-    email: 'jessica.tanuwidjaja@gmail.com',
+    email: TEMPLATE_EXAMPLE_EMAILS[1],
     phone: '081898765432',
     location: 'Jakarta Pusat',
     headline: 'Store Operations Manager',
@@ -337,6 +340,7 @@ async function parseCandidateTemplateWorkbook(buffer) {
 }
 
 module.exports = {
+  TEMPLATE_EXAMPLE_EMAILS,
   generateCandidateTemplateWorkbook,
   parseCandidateTemplateWorkbook
 };

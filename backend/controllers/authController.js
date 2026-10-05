@@ -3,8 +3,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../api/db');
 const { permissionsFor } = require('../config/permissions');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hr_hub_secure_jwt_secret_token_2026_mra_automation';
-const JWT_EXPIRES_IN = '7d';
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/jwt');
 
 /**
  * POST /api/auth/login

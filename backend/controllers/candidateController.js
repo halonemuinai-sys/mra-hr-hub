@@ -1,5 +1,6 @@
 const prisma = require('../api/db');
-const { calculateAtsMatchScore, classifyCandidateProfiling } = require('../services/profilingService');
+const { calculateAtsMatchScore } = require('../services/profilingService');
+const { intakeCandidate } = require('../services/candidateIntakeService');
 const { resolveMovePermission } = require('./assignmentController');
 const { evaluateTransition } = require('../services/stageGateService');
 const { loadApplicationForGate, applyStageChange } = require('../services/stageMoveService');
@@ -35,11 +36,14 @@ async function listCandidates(req, res) {
       where.seniorityLevel = seniorityLevel;
     }
 
-    if (jobId || status) {
+    // minScore is applied in the query (not after paging) so totals and pages stay consistent
+    const minVal = minScore ? parseFloat(minScore) : NaN;
+    if (jobId || status || !Number.isNaN(minVal)) {
       where.applications = {
         some: {
           ...(jobId ? { jobId } : {}),
-          ...(status ? { status } : {})
+          ...(status ? { status } : {}),
+          ...(!Number.isNaN(minVal) ? { atsScore: { gte: minVal } } : {})
         }
       };
     }
@@ -75,12 +79,7 @@ async function listCandidates(req, res) {
       };
     });
 
-    // Filter by minScore if provided in query
-    let filteredCandidates = candidates;
-    if (minScore) {
-      const minVal = parseFloat(minScore);
-      filteredCandidates = candidates.filter(c => c.atsScore >= minVal);
-    }
+    const filteredCandidates = candidates;
 
     // Summary KPIs for filter header
     const allCandidatesCount = await prisma.candidate.count();
@@ -152,175 +151,34 @@ async function getCandidateById(req, res) {
 }
 
 /**
- * Create candidate and application from Public Portal (ATS Upload or Manual Apply)
+ * Career portal apply (public). Existing candidates are never overwritten — see
+ * services/candidateIntakeService.js. The response only carries what the applicant
+ * needs to see (no stored profile data).
  */
 async function createCandidateWithApplication(req, res) {
   try {
-    const {
-      fullName,
-      email,
-      phone,
-      location,
-      headline,
-      currentCompany,
-      totalExperienceYrs,
-      expectedSalary,
-      availability,
-      intakeSource,
-      profileSummary,
-      skills,
-      experiences,
-      educations,
-      jobId
-    } = req.body;
-
-    if (!fullName || !email) {
+    const { jobId, intakeSource } = req.body;
+    if (!req.body.fullName || !req.body.email) {
       return res.status(400).json({ success: false, message: 'Nama dan Email wajib diisi.' });
     }
 
-    let jobPosting = null;
-    if (jobId) {
-      jobPosting = await prisma.jobPosting.findUnique({ where: { id: jobId } });
+    const job = jobId ? await prisma.jobPosting.findFirst({ where: { id: jobId, isActive: true } }) : null;
+    if (jobId && !job) {
+      return res.status(404).json({ success: false, message: 'Lowongan tidak ditemukan atau sudah ditutup.' });
     }
 
-    // Evaluate ATS match score
-    const tempCandidate = {
-      fullName,
-      email,
-      headline,
-      totalExperienceYrs: parseFloat(totalExperienceYrs) || 0,
-      profileSummary,
-      skills: skills || [],
-      experiences: experiences || [],
-      educations: educations || []
-    };
-
-    const evaluation = calculateAtsMatchScore(tempCandidate, jobPosting);
-    const classification = classifyCandidateProfiling(tempCandidate, evaluation.atsScore);
-
-    // Upsert Candidate Record
-    const candidate = await prisma.candidate.upsert({
-      where: { email },
-      update: {
-        fullName,
-        phone: phone || '',
-        location: location || '',
-        headline: headline || '',
-        currentCompany: currentCompany || '',
-        totalExperienceYrs: parseFloat(totalExperienceYrs) || 0,
-        expectedSalary: expectedSalary ? parseFloat(expectedSalary) : null,
-        availability: availability || 'IMMEDIATE',
-        intakeSource: intakeSource || 'ATS_RESUME_UPLOAD',
-        profileSummary: profileSummary || '',
-        jobFamily: classification.jobFamily,
-        seniorityLevel: classification.seniorityLevel,
-        tags: classification.tags
-      },
-      create: {
-        fullName,
-        email,
-        phone: phone || '',
-        location: location || '',
-        headline: headline || '',
-        currentCompany: currentCompany || '',
-        totalExperienceYrs: parseFloat(totalExperienceYrs) || 0,
-        expectedSalary: expectedSalary ? parseFloat(expectedSalary) : null,
-        availability: availability || 'IMMEDIATE',
-        intakeSource: intakeSource || 'ATS_RESUME_UPLOAD',
-        profileSummary: profileSummary || '',
-        jobFamily: classification.jobFamily,
-        seniorityLevel: classification.seniorityLevel,
-        tags: classification.tags
-      }
-    });
-
-    // Upsert Skills
-    if (skills && Array.isArray(skills) && skills.length > 0) {
-      await prisma.candidateSkill.deleteMany({ where: { candidateId: candidate.id } });
-      await prisma.candidateSkill.createMany({
-        data: skills.map(s => ({
-          candidateId: candidate.id,
-          skillName: typeof s === 'string' ? s : s.skillName,
-          category: (s && s.category) ? s.category : 'TECHNICAL',
-          proficiency: (s && s.proficiency) ? s.proficiency : 'INTERMEDIATE'
-        }))
-      });
-    }
-
-    // Upsert Experiences
-    if (experiences && Array.isArray(experiences) && experiences.length > 0) {
-      await prisma.candidateExperience.deleteMany({ where: { candidateId: candidate.id } });
-      await prisma.candidateExperience.createMany({
-        data: experiences.map(e => ({
-          candidateId: candidate.id,
-          companyName: e.companyName || 'Perusahaan',
-          roleTitle: e.roleTitle || 'Posisi',
-          industry: e.industry || 'Umum',
-          startDate: e.startDate ? new Date(e.startDate) : new Date(),
-          endDate: e.endDate ? new Date(e.endDate) : null,
-          isCurrent: !!e.isCurrent,
-          description: e.description || ''
-        }))
-      });
-    }
-
-    // Upsert Educations
-    if (educations && Array.isArray(educations) && educations.length > 0) {
-      await prisma.candidateEducation.deleteMany({ where: { candidateId: candidate.id } });
-      await prisma.candidateEducation.createMany({
-        data: educations.map(ed => ({
-          candidateId: candidate.id,
-          institution: ed.institution || 'Institusi',
-          degree: ed.degree || 'S1',
-          major: ed.major || 'Umum',
-          graduationYear: ed.graduationYear ? parseInt(ed.graduationYear, 10) : null,
-          gpa: ed.gpa ? parseFloat(ed.gpa) : null
-        }))
-      });
-    }
-
-    // Create or update JobApplication
-    let application = null;
-    if (jobPosting) {
-      const appId = `${jobPosting.id}_${candidate.id}`;
-      application = await prisma.jobApplication.upsert({
-        where: { id: appId },
-        update: {
-          atsScore: evaluation.atsScore,
-          skillsScore: evaluation.skillsScore,
-          expScore: evaluation.expScore,
-          eduScore: evaluation.eduScore,
-          matchedKeywords: evaluation.matchedKeywords,
-          missingKeywords: evaluation.missingKeywords
-        },
-        create: {
-          id: appId,
-          jobId: jobPosting.id,
-          candidateId: candidate.id,
-          status: 'APPLIED',
-          atsScore: evaluation.atsScore,
-          skillsScore: evaluation.skillsScore,
-          expScore: evaluation.expScore,
-          eduScore: evaluation.eduScore,
-          matchedKeywords: evaluation.matchedKeywords,
-          missingKeywords: evaluation.missingKeywords
-        }
-      });
-    }
+    const source = ['ATS_RESUME_UPLOAD', 'MANUAL_INPUT'].includes(intakeSource) ? intakeSource : 'ATS_RESUME_UPLOAD';
+    const result = await intakeCandidate({ profile: req.body, job, source, overwriteExisting: false });
 
     return res.status(201).json({
       success: true,
-      message: 'Lamaran kerja dan profil kandidat berhasil didaftarkan.',
-      data: {
-        candidate,
-        application,
-        atsScore: evaluation.atsScore,
-        evaluation
-      }
+      message: 'Lamaran kerja berhasil didaftarkan.',
+      data: { atsScore: result.evaluation.atsScore, applied: !!result.application }
     });
   } catch (error) {
+    if (error.status === 400) return res.status(400).json({ success: false, message: error.message });
     console.error('Error creating candidate application:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: 'Gagal memproses lamaran. Silakan coba lagi.' });
   }
 }
 
