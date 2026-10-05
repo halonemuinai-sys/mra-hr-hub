@@ -1,0 +1,30 @@
+Andre Wijaya, S.Kom.
+Backend Engineer (Node.js)
+andre.wijaya.dev@gmail.com | +6281311223344 | Jakarta Selatan, Indonesia | linkedin.com/in/andrewijaya-backend
+
+PROFESSIONAL SUMMARY
+--------------------
+Backend Engineer dengan 5 tahun pengalaman membangun REST API dan microservices berbasis Node.js, Express, PostgreSQL, dan Prisma. Terbiasa merancang skema database, caching Redis, serta deployment Docker dengan CI/CD di AWS. Fokus pada performa, keamanan, dan kode yang mudah dirawat.
+
+CORE COMPETENCIES & SKILLS
+--------------------------
+Node.js, Express, PostgreSQL, Prisma, REST API, TypeScript, Redis, Docker, AWS, CI/CD, Git, Microservices, Problem Solving
+
+WORK EXPERIENCE
+---------------
+Backend Engineer
+PT Kasir Pintar Indonesia — Jakarta | 2022 - Sekarang
+- Merancang 40+ endpoint REST API Node.js/Express dengan Prisma ORM untuk 1.200 merchant aktif.
+- Menurunkan latensi rata-rata API sebesar 38% melalui indexing PostgreSQL dan caching Redis.
+- Menyusun pipeline CI/CD dan containerization Docker untuk deployment ke AWS ECS.
+
+Junior Backend Developer
+PT Solusi Data Prima — Tangerang | 2020 - 2022
+- Mengembangkan microservices pembayaran dan integrasi webhook pihak ketiga.
+- Menulis unit test dan dokumentasi API (OpenAPI) bersama tim QA.
+
+EDUCATION
+---------
+Sarjana Komputer (S1) Ilmu Komputer
+Universitas Bina Nusantara — Jakarta (2016 - 2020 (IPK: 3.61 / 4.00))
+

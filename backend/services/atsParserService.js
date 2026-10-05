@@ -60,7 +60,10 @@ async function extractTextFromFile(fileBuffer, mimeType = '', originalName = '')
 
     // Default to PDF
     try {
-      const data = await pdfParse(fileBuffer);
+      // Small Node Buffers live inside a shared 8 KB pool (byteOffset > 0). The bundled
+      // pdf.js reads the whole underlying ArrayBuffer, which randomly breaks parsing
+      // ("bad XRef entry"). Hand it a standalone copy instead.
+      const data = await pdfParse(new Uint8Array(fileBuffer));
       return data.text || '';
     } catch (pdfErr) {
       // Fallback: check if buffer is readable plain text
@@ -131,7 +134,18 @@ function parseResumeHeuristics(rawText) {
   // 5. Total experience estimation (Looking for year ranges e.g. 2020 - 2023 or numbers)
   let totalExperienceYrs = 0;
   const yearRangeRegex = /(?:19\d{2}|20\d{2})\s*(?:-|–|to|sampai|s\/d)\s*(?:19\d{2}|20\d{2}|present|sekarang|saat ini)/gi;
-  const yearMatches = rawText.match(yearRangeRegex);
+  // Study periods are not work experience: drop the education section before counting
+  const EDUCATION_HEADING = /^(education|pendidikan|riwayat pendidikan)\b/i;
+  const OTHER_HEADING = /^(work|professional|experience|pengalaman|riwayat pekerjaan|skills?|keahlian|core competencies|certifications?|sertifikasi|projects?|proyek|summary|ringkasan|organi[sz]ations?|organisasi|languages?|bahasa)\b/i;
+  let inEducation = false;
+  const workText = lines
+    .filter((line) => {
+      if (line.length < 60 && EDUCATION_HEADING.test(line)) inEducation = true;
+      else if (line.length < 60 && OTHER_HEADING.test(line)) inEducation = false;
+      return !inEducation;
+    })
+    .join('\n');
+  const yearMatches = workText.match(yearRangeRegex);
   if (yearMatches) {
     const currentYear = new Date().getFullYear();
     let totalMonths = 0;

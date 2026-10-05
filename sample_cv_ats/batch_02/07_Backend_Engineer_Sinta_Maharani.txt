@@ -1,0 +1,28 @@
+Sinta Maharani, S.T.
+Web Developer (PHP / Laravel)
+sinta.maharani.web@yahoo.com | +6285722113344 | Bandung, Indonesia | linkedin.com/in/sintamaharani
+
+PROFESSIONAL SUMMARY
+--------------------
+Web Developer dengan 3 tahun pengalaman utama di PHP Laravel dan MySQL, serta mulai menggunakan Node.js untuk layanan internal. Terbiasa membangun REST API, panel admin, dan integrasi payment gateway. Sedang memperdalam PostgreSQL dan arsitektur microservices.
+
+CORE COMPETENCIES & SKILLS
+--------------------------
+PHP, Laravel, MySQL, REST API, JavaScript, Node.js, Git, HTML, CSS, Teamwork
+
+WORK EXPERIENCE
+---------------
+Web Developer
+PT Karya Digital Bandung — Bandung | 2022 - Sekarang
+- Membangun aplikasi inventory dan e-commerce berbasis Laravel + MySQL untuk 6 klien UMKM.
+- Membuat layanan notifikasi kecil berbasis Node.js untuk antrean email.
+
+Web Developer Intern
+CV Kreatif Kode — Bandung | 2021 - 2022
+- Membantu pengembangan landing page dan integrasi REST API sederhana.
+
+EDUCATION
+---------
+Sarjana Teknik (S1) Teknik Informatika
+Universitas Pasundan — Bandung (2017 - 2021 (IPK: 3.34 / 4.00))
+

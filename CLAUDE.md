@@ -27,6 +27,9 @@ cd "d:\MRA Project\HR HUB\backend"
 node scripts/seedUsers.js
 node scripts/seedPipelineSamples.js          # 50 demo candidates across the pipeline (@sample.hrhub.test)
 node scripts/seedPipelineSamples.js --clean  # remove only the demo candidates
+node scripts/seedJobSamples.js               # top up to 25 jobs with sample postings (slug prefix `sample-`)
+node scripts/seedJobSamples.js --clean       # remove only the sample jobs (cascades to their applications)
+node scripts/generate_sample_cvs.js --batch 2 # 12 sample resumes (.pdf + .txt) → sample_cv_ats/batch_02 (not in DB; for upload tests)
 ```
 
 ### Database Schema Changes (⚠️ never `prisma db push`)
