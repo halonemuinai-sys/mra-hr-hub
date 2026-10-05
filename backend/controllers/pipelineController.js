@@ -6,7 +6,8 @@
 const prisma = require('../api/db');
 const { evaluateTransition, VALID_STATUSES } = require('../services/stageGateService');
 const { PENDING, applyStageChange } = require('../services/stageMoveService');
-const { resolveMovePermission } = require('./assignmentController');
+const { canMoveApplication, resolveMovePermission } = require('./assignmentController');
+const { hasPermission } = require('../config/permissions');
 
 /**
  * ?owner=me|unassigned|all (default all), plus jobId, search, minScore, jobFamily, minRating
@@ -111,26 +112,35 @@ async function bulkUpdateApplicationStatus(req, res) {
     if (!VALID_STATUSES.includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid stage.' });
     }
-
-    const { allowedIds, deniedIds } = await resolveMovePermission(req.user, [...new Set(applicationIds)]);
+    if (!hasPermission(req.user, 'pipeline.move.own') && !hasPermission(req.user, 'pipeline.move.any')) {
+      return res.status(403).json({ success: false, message: 'Your role is not allowed to change candidate stages.' });
+    }
 
     const apps = await prisma.jobApplication.findMany({
-      where: { id: { in: allowedIds } },
+      where: { id: { in: [...new Set(applicationIds)] } },
       include: {
         job: { select: { salaryMax: true } },
         stageRequests: { where: { status: PENDING }, select: { id: true }, take: 1 }
       }
     });
 
+    // Ownership is checked read-only first so cards that end up skipped are never auto-claimed
     const gateData = typeof note === 'string' && note.trim() ? { reason: note.trim() } : {};
-    const toMove = [];
+    const candidates = [];
     const needsReview = [];
+    const deniedIds = [];
     apps.forEach((app) => {
       if (app.status === status) return;
+      if (!canMoveApplication(req.user, app).allowed) return deniedIds.push(app.id);
       const ev = evaluateTransition({ app, toStatus: status, data: gateData, user: req.user });
       if (app.stageRequests.length || ev.blocks.length || ev.errors.length || ev.approval) needsReview.push(app.id);
-      else toMove.push(app);
+      else candidates.push(app);
     });
+
+    // Claims unassigned cards (race-safe) for the ones that will actually move
+    const claim = await resolveMovePermission(req.user, candidates.map((a) => a.id));
+    deniedIds.push(...claim.deniedIds);
+    const toMove = candidates.filter((a) => claim.allowedIds.includes(a.id));
 
     await prisma.$transaction(async (tx) => {
       for (const app of toMove) {

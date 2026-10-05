@@ -47,7 +47,7 @@ import { api } from '@/lib/api';
 import HeroSearchBar from '@/components/public/HeroSearchBar';
 import JobDetailModal from '@/components/public/JobDetailModal';
 
-export const MRA_SIGNATURE_BRANDS = [
+const MRA_SIGNATURE_BRANDS = [
   { name: 'BVLGARI', logo: '/brands/brand_01_bvlgari.png', pillar: 'Retail & Fashion' },
   { name: 'OMEGA', logo: '/brands/brand_02_omega.png', pillar: 'Retail & Fashion' },
   { name: 'Art Jakarta', logo: '/brands/brand_03_artjakarta.png', pillar: 'Media & Arts' },
@@ -67,7 +67,7 @@ export const MRA_SIGNATURE_BRANDS = [
   { name: 'MRA Media', logo: '/brands/brand_17_mramu.png', pillar: 'Corporate & Media' },
 ];
 
-export const CATEGORY_TABS = [
+const CATEGORY_TABS = [
   { id: 'ALL', name: 'Semua Lowongan', icon: Briefcase, defaultCount: 51 },
   { id: 'RETAIL', name: 'Retail & Fashion', icon: ShoppingBag, defaultCount: 18 },
   { id: 'FNB', name: 'Food & Beverage', icon: Coffee, defaultCount: 10 },
