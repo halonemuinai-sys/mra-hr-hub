@@ -67,6 +67,7 @@ SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - `2026-10-07_employees.sql` — `Employee` + `EmploymentStatus` enum, `JobApplication.releasedAt`
 - `2026-10-07_employee_talenta.sql` — `Employee.talentaData/Status/Mode/UserId/EmployeeId/SyncedAt/Error`
 - `2026-10-07_companies.sql` — `Company` (PT) + `JobPosting.companyId` / `Employee.companyId`, seeds PT Mugi Rekso Abadi (`MRA`). Tables are schema-qualified (`public.`) because the shared DB also has a `helpdesk."Company"` table.
+- `2026-10-08_manpower_requests.sql` — `ManpowerRequest` (schema-qualified, links to `User`, `Company`, `JobPosting`)
 
 ### Health Check Endpoints
 - **Backend Health**: `curl http://localhost:5006/api/health`
@@ -107,6 +108,9 @@ Fixed roles (Prisma enum `Role`); permissions are defined in **one file**: `back
 | `employee.view` | ✓ | ✓ | ✓ | ✓ |
 | `employee.sync` (payroll data + send to Talenta) | ✓ | ✓ | – | – |
 | `approval.hire` | ✓ | – | – | ✓ |
+| `manpower.view` | ✓ | ✓ | ✓ | ✓ |
+| `manpower.request` | ✓ | ✓ | – | ✓ |
+| `manpower.approve` | ✓ | ✓ | – | – |
 | `users.manage`, `company.manage` | ✓ | – | – | – |
 
 - Backend guard: `requirePermission('perm')` (`middlewares/authMiddleware.js`). Sidebar items and the admin route guard in `admin/layout.tsx` are keyed by permission.
@@ -207,6 +211,14 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - `Company` master (`/admin/companies`, `company.manage` = Super Admin): code, legal name, NPWP, address, default Talenta branch, active flag. Never deleted — deactivate instead (existing jobs/employees keep it). `GET /api/companies` is open to every CMS user (form options / filters); `controllers/companyController.js`, validation `services/companyInput.js`.
 - Every **job** has a PT (`JobPosting.companyId`; required on create once an active company exists, shown as a code chip on job cards; not shown on the public portal). **Employees** inherit the job's PT at registration and can change it (form, table chip, filter, Excel export column, Journey header). The PT's `talentaBranch` is the first default for the Talenta *Branch* field (one Talenta account for the whole group).
 - PT filter (`?companyId=<id>` or `none` = no PT set) on the pipeline, employees, dashboard (`/api/stats/dashboard` also returns `byCompany` → *Per Company (PT)* card) and the recruitment report (new *Per PT* sheet + PT column on job / hires / applicant sheets).
+
+### N. Manpower Requests (`/admin/manpower`)
+- Flow: a Hiring Manager (or TA Lead) submits a request (`manpower.request`) → a TA Lead or the Super Admin approves / rejects it (`manpower.approve`; rejecting needs a note; nobody approves their own request except the Super Admin) → TA opens it as a job posting (`jobs.manage`) → progress = hired / headcount of that job.
+- Request: PT (required), position, department, division, location, employment type, headcount (1–50), reason `REPLACEMENT` (+ who is replaced) / `ADDITIONAL` / `NEW_POSITION`, justification, priority (`URGENT` flag), target start date, monthly salary budget, min. education / experience, key skills. Numbered `MPR-<year>-0001`. Status `PENDING` → `APPROVED` / `REJECTED`; requester or approver can withdraw (`CANCELLED`) while pending or approved without a job; only pending requests can be edited.
+- Visibility: TA team and approvers see every request; Hiring Managers only their own. Rules live in `services/manpowerRules.js` (pure, unit-tested); endpoints in `controllers/manpowerController.js` (`/api/manpower`).
+- Opening the job: the drawer's *Open job posting* opens `JobFormModal` prefilled (`jobPrefill`: title, PT, division, location, type, budget as **confidential** salary range, skills as must-have keywords, requester as Hiring Manager). `POST /api/jobs` with `manpowerRequestId` creates the job and links it in one transaction (one job per request; 409 otherwise). Job detail shows "From MPR-…".
+- Reminders: approvals waiting (urgent = critical), approved requests without a job (TA Lead), requester's decided requests (3 days).
+- UI: `frontend/src/app/admin/manpower/page.tsx`, `components/manpower/*` (`ManpowerFormModal`, `ManpowerDetailDrawer`, `manpowerFormat.ts`).
 
 ### M. Hide Identity Mode (screenshots / demos)
 - Header toggle **Hide identity** (`components/privacy/IdentityToggle.tsx`), shortcut **Ctrl+Shift+H** on any page (admin, login, public portal), or `?hideIdentity=1|0` in the URL. Stored per browser in `localStorage.hr_hub_hide_identity`.

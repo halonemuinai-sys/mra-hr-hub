@@ -198,6 +198,57 @@ async function getReminders(req, res) {
       });
     }
 
+    // 9. Manpower requests waiting for my approval (not my own, except Super Admin)
+    if (hasPermission(user, 'manpower.approve')) {
+      const pendingMpr = await prisma.manpowerRequest.findMany({
+        where: { status: 'PENDING', ...(user.role === 'SUPERADMIN' ? {} : { NOT: { requestedById: user.id } }) },
+        select: { priority: true, createdAt: true }
+      });
+      if (pendingMpr.length) {
+        const urgent = pendingMpr.filter((m) => m.priority === 'URGENT').length;
+        items.push({
+          id: 'manpower-to-approve',
+          severity: urgent ? 'critical' : 'warning',
+          title: `${plural(pendingMpr.length, 'manpower request')} awaiting your approval`,
+          detail: urgent ? `${urgent} marked urgent.` : 'Approve or reject the headcount requests.',
+          count: pendingMpr.length,
+          href: '/admin/manpower?status=PENDING'
+        });
+      }
+    }
+
+    // 10. Approved requests not opened as a job yet (TA Lead)
+    if (hasPermission(user, 'jobs.manage')) {
+      const toOpen = await prisma.manpowerRequest.count({ where: { status: 'APPROVED', jobId: null } });
+      if (toOpen) {
+        items.push({
+          id: 'manpower-to-open',
+          severity: 'info',
+          title: `${plural(toOpen, 'approved manpower request')} without a job posting`,
+          detail: 'Open them as job postings to start recruiting.',
+          count: toOpen,
+          href: '/admin/manpower?status=APPROVED'
+        });
+      }
+    }
+
+    // 11. My requests decided in the last 3 days
+    const myDecided = await prisma.manpowerRequest.findMany({
+      where: { requestedById: user.id, status: { in: ['APPROVED', 'REJECTED'] }, decidedAt: { gte: new Date(now - 3 * DAY) } },
+      select: { status: true }
+    });
+    if (myDecided.length) {
+      const rejectedMpr = myDecided.filter((m) => m.status === 'REJECTED').length;
+      items.push({
+        id: 'my-manpower-decided',
+        severity: rejectedMpr ? 'warning' : 'info',
+        title: myDecided.length === 1 ? 'Your manpower request was decided' : `${myDecided.length} of your manpower requests were decided`,
+        detail: rejectedMpr ? `${rejectedMpr} rejected — see the approver's note.` : 'Approved.',
+        count: myDecided.length,
+        href: '/admin/manpower?mine=1'
+      });
+    }
+
     items.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
     return res.json({ success: true, data: { items, generatedAt: new Date(now).toISOString() } });
   } catch (error) {

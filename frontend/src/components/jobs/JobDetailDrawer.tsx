@@ -94,6 +94,15 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                   </div>
                   <h2 className="text-xl font-semibold leading-snug">{job.title}</h2>
                   <p className="text-[11px] text-slate-400 mt-0.5">{[job.company?.name || 'No company (PT) set', job.division].join(' · ')}</p>
+                  {job.manpowerRequest && (
+                    <a
+                      href="/admin/manpower"
+                      className="inline-block mt-1 px-1.5 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold"
+                      title={`Requested by ${job.manpowerRequest.requestedBy?.name || '—'}`}
+                    >
+                      From {job.manpowerRequest.requestNo} · {job.manpowerRequest.headcount} headcount
+                    </a>
+                  )}
                 </div>
                 <button type="button" onClick={onClose} aria-label="Close job details" className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
                   <X className="w-5 h-5" />

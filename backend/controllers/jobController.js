@@ -129,7 +129,11 @@ async function getJobForManagement(req, res) {
   try {
     const job = await prisma.jobPosting.findUnique({
       where: { id: req.params.id },
-      include: { hiringManager: { select: { id: true, name: true, email: true } }, company: COMPANY }
+      include: {
+        hiringManager: { select: { id: true, name: true, email: true } },
+        company: COMPANY,
+        manpowerRequest: { select: { id: true, requestNo: true, headcount: true, requestedBy: { select: { name: true } } } }
+      }
     });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' });
 
@@ -187,21 +191,41 @@ async function createJob(req, res) {
 
     const slug = `${data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now().toString().slice(-4)}`;
 
-    const newJob = await prisma.jobPosting.create({
-      data: {
-        division: 'MRA Group',
-        location: 'Jakarta',
-        employmentType: 'Full-time',
-        minExperience: 0,
-        minEducation: 'S1',
-        description: '',
-        requirements: '',
-        mustHaveSkills: [],
-        niceToHaveSkills: [],
-        ...data,
-        slug
+    const jobData = {
+      division: 'MRA Group',
+      location: 'Jakarta',
+      employmentType: 'Full-time',
+      minExperience: 0,
+      minEducation: 'S1',
+      description: '',
+      requirements: '',
+      mustHaveSkills: [],
+      niceToHaveSkills: [],
+      ...data,
+      slug
+    };
+
+    // Opened from an approved manpower request: create and link in one transaction (one job per request)
+    const mprId = req.body && req.body.manpowerRequestId ? String(req.body.manpowerRequestId) : null;
+    let newJob;
+    if (mprId) {
+      const mpr = await prisma.manpowerRequest.findUnique({ where: { id: mprId }, select: { status: true, jobId: true, requestNo: true } });
+      if (!mpr) return res.status(404).json({ success: false, message: 'Manpower request not found.' });
+      if (mpr.status !== 'APPROVED' || mpr.jobId) {
+        return res.status(409).json({ success: false, message: `${mpr.requestNo} is not an approved request without a job.` });
       }
-    });
+      newJob = await prisma.$transaction(async (tx) => {
+        const job = await tx.jobPosting.create({ data: jobData });
+        const linked = await tx.manpowerRequest.updateMany({
+          where: { id: mprId, status: 'APPROVED', jobId: null },
+          data: { jobId: job.id, convertedAt: new Date() }
+        });
+        if (!linked.count) throw Object.assign(new Error('This manpower request was opened as a job in the meantime.'), { status: 409 });
+        return job;
+      });
+    } else {
+      newJob = await prisma.jobPosting.create({ data: jobData });
+    }
 
     return res.status(201).json({
       success: true,
@@ -209,6 +233,7 @@ async function createJob(req, res) {
       data: newJob
     });
   } catch (error) {
+    if (error.status === 409) return res.status(409).json({ success: false, message: error.message });
     console.error('Error creating job:', error);
     return res.status(500).json({ success: false, message: error.message });
   }

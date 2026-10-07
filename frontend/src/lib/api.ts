@@ -225,6 +225,17 @@ export const api = {
   getKpis: () => fetchApi('/stats/kpis'),
   getDashboard: (weeks = 12, companyId = '') => fetchApi(`/stats/dashboard?weeks=${weeks}${companyId ? `&companyId=${companyId}` : ''}`),
 
+  // Manpower requests (permintaan rekrutmen)
+  getManpowerRequests: (params: Record<string, string> = {}) => fetchApi(`/manpower?${new URLSearchParams(params)}`),
+  getManpowerRequest: (id: string) => fetchApi(`/manpower/${id}`),
+  createManpowerRequest: (data: Record<string, any>) => fetchApi('/manpower', { method: 'POST', body: JSON.stringify(data) }),
+  updateManpowerRequest: (id: string, data: Record<string, any>) =>
+    fetchApi(`/manpower/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  decideManpowerRequest: (id: string, decision: 'APPROVE' | 'REJECT', note?: string) =>
+    fetchApi(`/manpower/${id}/decide`, { method: 'POST', body: JSON.stringify({ decision, note }) }),
+  cancelManpowerRequest: (id: string, note?: string) =>
+    fetchApi(`/manpower/${id}/cancel`, { method: 'POST', body: JSON.stringify({ note }) }),
+
   // Companies (PT) of MRA Group
   getCompanies: (activeOnly = false) => fetchApi(`/companies${activeOnly ? '?active=1' : ''}`),
   createCompany: (data: Record<string, any>) => fetchApi('/companies', { method: 'POST', body: JSON.stringify(data) }),

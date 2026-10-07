@@ -61,6 +61,8 @@ model User {
   stageDecisions       StageRequest[]        @relation("StageRequestDecider")
   managedJobs          JobPosting[]          @relation("JobHiringManager")
   employeesCreated     Employee[]            @relation("EmployeeCreatedBy")
+  manpowerRequested    ManpowerRequest[]     @relation("ManpowerRequester")
+  manpowerDecided      ManpowerRequest[]     @relation("ManpowerDecider")
   employeesAnnounced   Employee[]            @relation("EmployeeAnnouncedBy")
 }
 
@@ -92,6 +94,7 @@ model JobPosting {
   hiringManager    User?            @relation("JobHiringManager", fields: [hiringManagerId], references: [id], onDelete: SetNull)
   employees        Employee[]
   company          Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  manpowerRequest  ManpowerRequest?
 
   @@index([hiringManagerId])
   @@index([companyId])
@@ -312,4 +315,46 @@ model Company {
   updatedAt     DateTime     @updatedAt
   jobs          JobPosting[]
   employees     Employee[]
+  manpowerRequests ManpowerRequest[]
+}
+
+// Manpower request (permintaan rekrutmen): a Hiring Manager asks for headcount, a TA Lead / Director
+// approves it, then it is opened as a job posting (jobId) and tracked until the headcount is hired.
+model ManpowerRequest {
+  id              String      @id @default(uuid())
+  requestNo       String      @unique // MPR-2026-0001
+  requestedById   String?
+  companyId       String?
+  positionTitle   String
+  department      String
+  division        String
+  location        String
+  employmentType  String      // Full-time, Contract, Internship, Part-time
+  headcount       Int         @default(1)
+  reason          String      // REPLACEMENT, ADDITIONAL, NEW_POSITION
+  replacementFor  String?     // who is being replaced (REPLACEMENT)
+  justification   String      @db.Text
+  priority        String      @default("NORMAL") // NORMAL, URGENT
+  targetStartDate DateTime?
+  salaryMin       Decimal?
+  salaryMax       Decimal?
+  minEducation    String?
+  minExperience   Int?
+  skills          String[]
+  status          String      @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  decidedById     String?
+  decidedAt       DateTime?
+  decisionNote    String?     @db.Text
+  jobId           String?     @unique
+  convertedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  requestedBy     User?       @relation("ManpowerRequester", fields: [requestedById], references: [id], onDelete: SetNull)
+  decidedBy       User?       @relation("ManpowerDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  company         Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  job             JobPosting? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([requestedById])
 }

@@ -14,6 +14,10 @@ interface Props {
   job: any | null;
   onClose: () => void;
   onSaved: (message: string) => void;
+  /** Create mode: values to start from (e.g. an approved manpower request) */
+  prefill?: Partial<JobForm>;
+  /** Create mode: link the new job to this approved manpower request */
+  manpowerRequestId?: string;
 }
 
 const inputCls =
@@ -32,9 +36,9 @@ function Field({ label, required, hint, children }: { label: string; required?: 
   );
 }
 
-export default function JobFormModal({ job, onClose, onSaved }: Props) {
+export default function JobFormModal({ job, onClose, onSaved, prefill, manpowerRequestId }: Props) {
   const isEdit = !!job;
-  const [form, setForm] = useState<JobForm>(() => (job ? toForm(job) : EMPTY_JOB));
+  const [form, setForm] = useState<JobForm>(() => (job ? toForm(job) : { ...EMPTY_JOB, ...(prefill || {}) }));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [managers, setManagers] = useState<any[]>([]);
@@ -65,7 +69,8 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
         salaryMin: !hasSalary || form.salaryMin === '' ? null : Number(form.salaryMin),
         salaryMax: !hasSalary || form.salaryMax === '' ? null : Number(form.salaryMax),
         hiringManagerId: form.hiringManagerId || null,
-        companyId: form.companyId || null
+        companyId: form.companyId || null,
+        ...(manpowerRequestId ? { manpowerRequestId } : {})
       };
       const res = isEdit ? await api.updateJob(job.id, payload) : await api.createJob(payload);
       onSaved(res.message);
@@ -90,7 +95,7 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
       >
         <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-slate-900">{isEdit ? 'Edit Job & ATS Criteria' : 'Add Job & ATS Criteria'}</h3>
+            <h3 className="text-lg font-semibold text-slate-900">{isEdit ? 'Edit Job & ATS Criteria' : manpowerRequestId ? 'Open Job from Manpower Request' : 'Add Job & ATS Criteria'}</h3>
             {isEdit && <p className="text-[11px] text-slate-500">Keyword changes apply to ATS scoring for future applications.</p>}
           </div>
           <button type="button" onClick={onClose} aria-label="Close form" className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">

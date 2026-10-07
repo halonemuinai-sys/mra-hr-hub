@@ -25,6 +25,9 @@ const PERMISSIONS = [
   { key: 'candidate.import', group: 'Kandidat', label: 'Import bulk via template Excel' },
   { key: 'candidate.delete', group: 'Kandidat', label: 'Hapus data kandidat' },
 
+  { key: 'manpower.view', group: 'Lowongan', label: 'Lihat permintaan rekrutmen (manpower request)' },
+  { key: 'manpower.request', group: 'Lowongan', label: 'Ajukan permintaan rekrutmen' },
+  { key: 'manpower.approve', group: 'Approval', label: 'Setujui / tolak permintaan rekrutmen' },
   { key: 'jobs.manage', group: 'Lowongan', label: 'Tambah / ubah / hapus lowongan' },
 
   { key: 'employee.view', group: 'Karyawan', label: 'Lihat karyawan baru hasil rekrutmen' },
@@ -53,11 +56,21 @@ const ROLE_PERMISSIONS = {
     'candidate.view',
     'candidate.evaluate',
     'candidate.import',
+    'manpower.view',
     // Own hires only (same rule as moving a card)
     'employee.view',
     'employee.manage'
   ],
-  HIRING_MANAGER: ['dashboard.view', 'pipeline.view', 'candidate.view', 'candidate.evaluate', 'approval.hire', 'employee.view']
+  HIRING_MANAGER: [
+    'dashboard.view',
+    'pipeline.view',
+    'candidate.view',
+    'candidate.evaluate',
+    'approval.hire',
+    'employee.view',
+    'manpower.view',
+    'manpower.request'
+  ]
 };
 
 function permissionsFor(role) {
