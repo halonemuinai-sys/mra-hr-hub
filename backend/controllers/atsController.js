@@ -1,4 +1,5 @@
 const { parseResume } = require('../services/atsParserService');
+const { saveTemp } = require('../services/resumeStorage');
 const { calculateAtsMatchScore } = require('../services/profilingService');
 const prisma = require('../api/db');
 
@@ -10,11 +11,13 @@ async function parseResumeUpload(req, res) {
 
     const { buffer, mimetype, originalname } = req.file;
     const parsedData = await parseResume(buffer, mimetype, originalname);
+    // Keep the original file; the apply step claims it with this token
+    const resumeToken = saveTemp(buffer, originalname);
 
     return res.json({
       success: true,
       message: 'CV berhasil diekstraksi oleh ATS Parser.',
-      data: parsedData
+      data: { ...parsedData, resumeToken }
     });
   } catch (error) {
     console.error('Error parsing resume:', error);

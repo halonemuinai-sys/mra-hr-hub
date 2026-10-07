@@ -27,6 +27,7 @@ import { formatRupiah, formatDate, getScoreBadge, getStatusBadge } from '@/lib/u
 import CandidateRadarChart from './CandidateRadarChart';
 import StageHistory from './StageHistory';
 import ApplicationHistory from './ApplicationHistory';
+import ResumeButton from './ResumeButton';
 import { api } from '@/lib/api';
 import { useCurrentUser } from '@/lib/permissions';
 import { canMove } from '@/components/pipeline/ownership';
@@ -251,6 +252,8 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                   </button>
                 )}
               </div>
+
+              <ResumeButton candidateId={candidate.id} available={!!candidate.rawResumePath} candidateName={candidate.fullName} />
             </div>
 
             {/* Candidate DNA & Match Profiling */}

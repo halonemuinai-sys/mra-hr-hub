@@ -1,7 +1,9 @@
+const path = require('path');
 const prisma = require('../api/db');
 const { calculateAtsMatchScore } = require('../services/profilingService');
 const { intakeCandidate } = require('../services/candidateIntakeService');
 const { jobScope, applicationScope, isScopedHiringManager } = require('../services/hiringManagerScope');
+const { resolveStored, removeStored, mimeOf } = require('../services/resumeStorage');
 const { resolveMovePermission } = require('./assignmentController');
 const { evaluateTransition } = require('../services/stageGateService');
 const { loadApplicationForGate, applyStageChange } = require('../services/stageMoveService');
@@ -175,7 +177,13 @@ async function createCandidateWithApplication(req, res) {
     }
 
     const source = ['ATS_RESUME_UPLOAD', 'MANUAL_INPUT'].includes(intakeSource) ? intakeSource : 'ATS_RESUME_UPLOAD';
-    const result = await intakeCandidate({ profile: req.body, job, source, overwriteExisting: false });
+    const result = await intakeCandidate({
+      profile: req.body,
+      job,
+      source,
+      overwriteExisting: false,
+      resumeToken: req.body.resumeToken || null
+    });
 
     return res.status(201).json({
       success: true,
@@ -308,7 +316,8 @@ async function getPublicApplicationStatus(req, res) {
 async function deleteCandidate(req, res) {
   try {
     const { id } = req.params;
-    await prisma.candidate.delete({ where: { id } });
+    const removed = await prisma.candidate.delete({ where: { id }, select: { rawResumePath: true } });
+    removeStored(removed.rawResumePath);
     return res.json({ success: true, message: 'Data kandidat berhasil dihapus.' });
   } catch (error) {
     console.error('Error deleting candidate:', error);
@@ -316,7 +325,35 @@ async function deleteCandidate(req, res) {
   }
 }
 
+/**
+ * GET /api/candidates/:id/resume — stream the original CV file (CMS, candidate.view;
+ * Hiring Managers only for candidates of their jobs).
+ */
+async function downloadResume(req, res) {
+  try {
+    const candidate = await prisma.candidate.findUnique({
+      where: { id: req.params.id },
+      select: { fullName: true, rawResumePath: true, applications: { where: applicationScope(req.user), select: { id: true }, take: 1 } }
+    });
+    if (!candidate || (isScopedHiringManager(req.user) && !candidate.applications.length)) {
+      return res.status(404).json({ success: false, message: 'Kandidat tidak ditemukan.' });
+    }
+    const abs = resolveStored(candidate.rawResumePath);
+    if (!abs) return res.status(404).json({ success: false, message: 'File CV asli tidak tersedia untuk kandidat ini.' });
+
+    const safeName = candidate.fullName.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'kandidat';
+    res.setHeader('Content-Type', mimeOf(abs));
+    res.setHeader('Content-Disposition', `inline; filename="CV_${safeName}${path.extname(abs)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    return res.sendFile(abs);
+  } catch (error) {
+    console.error('Error downloading resume:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
 module.exports = {
+  downloadResume,
   listCandidates,
   getCandidateById,
   createCandidateWithApplication,

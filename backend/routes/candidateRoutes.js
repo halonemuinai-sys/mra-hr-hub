@@ -7,7 +7,8 @@ const {
   createCandidateWithApplication,
   updateApplicationStatus,
   getPublicApplicationStatus,
-  deleteCandidate
+  deleteCandidate,
+  downloadResume
 } = require('../controllers/candidateController');
 const { listPipeline, bulkUpdateApplicationStatus } = require('../controllers/pipelineController');
 const { listCandidateApplications, findDuplicates } = require('../controllers/candidateInsightController');
@@ -49,6 +50,7 @@ router.post('/approvals/:requestId/cancel', cancelApproval);
 
 router.patch('/applications/:applicationId/status', updateApplicationStatus);
 router.get('/applications/:applicationId/activity', requirePermission('candidate.view'), listApplicationActivity);
+router.get('/:id/resume', requirePermission('candidate.view'), downloadResume);
 router.get('/:id/applications', requirePermission('candidate.view'), listCandidateApplications);
 // Shows other people's names/contacts — TA only (not Hiring Managers)
 router.get('/:id/duplicates', requirePermission('pipeline.claim'), findDuplicates);

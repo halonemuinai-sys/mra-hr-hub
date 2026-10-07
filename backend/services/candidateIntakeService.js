@@ -10,6 +10,7 @@
  */
 const prisma = require('../api/db');
 const { calculateAtsMatchScore, classifyCandidateProfiling } = require('./profilingService');
+const { claimTemp } = require('./resumeStorage');
 
 const profileRelations = { skills: true, experiences: true, educations: true };
 
@@ -105,7 +106,7 @@ function scoreFields(evaluation) {
  * @param {boolean} p.overwriteExisting  admin import only
  * @returns {{ candidateId, application, evaluation, existing }}
  */
-async function intakeCandidate({ profile, job = null, source, overwriteExisting = false }) {
+async function intakeCandidate({ profile, job = null, source, overwriteExisting = false, resumeToken = null }) {
   const p = normalizeProfile(profile);
   if (!p.fullName || !p.email) throw Object.assign(new Error('Nama dan Email wajib diisi.'), { status: 400 });
 
@@ -116,6 +117,8 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
 
   let candidateId;
   let evaluation;
+  // Original CV uploaded at the parse step (null when none / expired / invalid token)
+  const resumePath = resumeToken ? claimTemp(resumeToken) : null;
 
   if (!existing || overwriteExisting) {
     evaluation = calculateAtsMatchScore(p, job);
@@ -127,6 +130,7 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
         data: {
           ...fields,
           email: p.email,
+          rawResumePath: resumePath,
           skills: { create: p.skills },
           experiences: { create: p.experiences },
           educations: { create: p.educations }
@@ -136,7 +140,7 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
     } else {
       candidateId = existing.id;
       await prisma.$transaction(async (tx) => {
-        await tx.candidate.update({ where: { id: candidateId }, data: fields });
+        await tx.candidate.update({ where: { id: candidateId }, data: { ...fields, ...(resumePath ? { rawResumePath: resumePath } : {}) } });
         // Replace a relation only when the import actually provides it
         if (p.skills.length) {
           await tx.candidateSkill.deleteMany({ where: { candidateId } });
@@ -156,6 +160,10 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
     // Existing candidate via public intake: score against the stored profile, change nothing
     candidateId = existing.id;
     evaluation = calculateAtsMatchScore(existing, job);
+    // Profile stays untouched, but a first CV file may still be attached
+    if (resumePath && !existing.rawResumePath) {
+      await prisma.candidate.update({ where: { id: candidateId }, data: { rawResumePath: resumePath } });
+    }
   }
 
   let application = null;
@@ -178,7 +186,7 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
           applicationId: application.id,
           action: 'PROFILE_RESUBMITTED',
           note: 'Applicant re-submitted via the career portal; stored profile was not changed.',
-          stageData: submissionSnapshot(p, source)
+          stageData: { ...submissionSnapshot(p, source), ...(resumePath ? { resumePath } : {}) }
         }
       });
     }

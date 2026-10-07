@@ -88,6 +88,8 @@ export default function PublicCareersPage() {
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [applyMode, setApplyMode] = useState<'ATS' | 'TEMPLATE'>('ATS');
   const [cvFile, setCvFile] = useState<File | null>(null);
+  // Token for the original CV kept by the parse step; sent with the application
+  const [resumeToken, setResumeToken] = useState<string | null>(null);
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [parsingCv, setParsingCv] = useState(false);
   const [scanStep, setScanStep] = useState<string>('');
@@ -248,6 +250,7 @@ export default function PublicCareersPage() {
         if (d.skills && d.skills.length > 0) newAutoFilled.add('skills');
 
         setAutoFilledFields(newAutoFilled);
+        setResumeToken(d.resumeToken || null);
 
         setFormData((prev) => ({
           ...prev,
@@ -286,6 +289,7 @@ export default function PublicCareersPage() {
         ...formData,
         jobId: selectedJob?.id,
         intakeSource: 'ATS_RESUME_UPLOAD',
+        resumeToken,
         skills: formData.skills.map((s) => ({ skillName: s, category: 'TECHNICAL', proficiency: 'INTERMEDIATE' }))
       };
 
@@ -331,6 +335,7 @@ export default function PublicCareersPage() {
   const resetModal = () => {
     setSelectedJob(null);
     setCvFile(null);
+    setResumeToken(null);
     setTemplateFile(null);
     setSubmitSuccess(null);
     setAutoFilledFields(new Set());

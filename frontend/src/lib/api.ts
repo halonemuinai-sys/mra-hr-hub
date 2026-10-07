@@ -37,6 +37,22 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
+/** Original CV file as a Blob (needs the CMS token, so it can't be a plain link) */
+export async function fetchResumeBlob(candidateId: string): Promise<Blob> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('hr_hub_token') : null;
+  const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/resume`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      msg = (await res.json()).message || msg;
+    } catch {}
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 export const api = {
   // Auth
   login: (credentials: { email: string; password: string }) => fetchApi('/auth/login', {
