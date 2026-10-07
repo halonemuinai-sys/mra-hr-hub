@@ -68,6 +68,8 @@ test('permissions are enforced per role', async () => {
   assert.equal((await call('PATCH', '/candidates/applications/bulk-status', { token: tokens.HIRING_MANAGER, body: { applicationIds: ['x'], status: 'HIRED' } })).status, 403);
   assert.equal((await call('POST', '/candidates/applications/claim', { token: tokens.HIRING_MANAGER, body: { applicationIds: ['x'] } })).status, 403);
   assert.equal((await call('GET', '/users', { token: tokens.SUPERADMIN })).status, 200);
+  assert.equal((await call('GET', '/jobs/hiring-managers', { token: tokens.RECRUITER })).status, 403);
+  assert.equal((await call('GET', '/jobs/hiring-managers', { token: tokens.SUPERADMIN })).status, 200);
 });
 
 test('Super Admin cannot demote themselves', async () => {
@@ -99,6 +101,10 @@ test('validation rejects bad input before writing', async () => {
   assert.equal((await call('PATCH', '/candidates/applications/bulk-status', { token: tokens.RECRUITER, body: { applicationIds: [], status: 'HIRED' } })).status, 400);
   assert.equal((await call('PATCH', '/candidates/applications/bulk-status', { token: tokens.RECRUITER, body: { applicationIds: ['x'], status: 'BOGUS' } })).status, 400);
   assert.equal((await call('PUT', '/jobs/does-not-exist', { token: tokens.SUPERADMIN, body: { title: 'x' } })).status, 404);
+  // Only an active HIRING_MANAGER can own a job (validated before the job lookup writes anything)
+  const jobs = (await call('GET', '/jobs')).body.data;
+  const me = await call('GET', '/auth/me', { token: tokens.SUPERADMIN });
+  assert.equal((await call('PUT', `/jobs/${jobs[0].id}`, { token: tokens.SUPERADMIN, body: { hiringManagerId: me.body.user.id } })).status, 400);
 });
 
 test('templates: bulk upload needs login', async () => {

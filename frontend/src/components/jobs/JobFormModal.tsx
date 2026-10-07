@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { X, Loader2, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
@@ -35,7 +35,14 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
   const [form, setForm] = useState<JobForm>(() => (job ? toForm(job) : EMPTY_JOB));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [managers, setManagers] = useState<any[]>([]);
   const set = (patch: Partial<JobForm>) => setForm((f) => ({ ...f, ...patch }));
+
+  useEffect(() => {
+    api.getHiringManagers()
+      .then((res: any) => res.success && setManagers(res.data || []))
+      .catch(() => {});
+  }, []);
 
   const divisionOptions = DIVISIONS.includes(form.division) ? DIVISIONS : [form.division, ...DIVISIONS];
   const salaryInvalid = form.salaryMin && form.salaryMax && Number(form.salaryMin) > Number(form.salaryMax);
@@ -50,7 +57,8 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
       const payload = {
         ...form,
         salaryMin: form.salaryMin === '' ? null : Number(form.salaryMin),
-        salaryMax: form.salaryMax === '' ? null : Number(form.salaryMax)
+        salaryMax: form.salaryMax === '' ? null : Number(form.salaryMax),
+        hiringManagerId: form.hiringManagerId || null
       };
       const res = isEdit ? await api.updateJob(job.id, payload) : await api.createJob(payload);
       onSaved(res.message);
@@ -102,6 +110,16 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
               </Field>
               <Field label="Lokasi">
                 <input value={form.location} onChange={(e) => set({ location: e.target.value })} className={inputCls} />
+              </Field>
+              <Field label="Hiring Manager" hint="Hanya HM ini yang melihat kandidat lowongan ini & mengonfirmasi Hired. Kosong = semua HM.">
+                <select value={form.hiringManagerId} onChange={(e) => set({ hiringManagerId: e.target.value })} className={inputCls}>
+                  <option value="">— Belum ditentukan —</option>
+                  {managers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.jobCount} lowongan)
+                    </option>
+                  ))}
+                </select>
               </Field>
               <Field label="Tipe kerja">
                 <select value={form.employmentType} onChange={(e) => set({ employmentType: e.target.value })} className={inputCls}>

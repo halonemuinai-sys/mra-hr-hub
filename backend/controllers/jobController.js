@@ -26,6 +26,7 @@ function sanitizeJobInput(body, { partial }) {
   if (body.mustHaveSkills !== undefined) data.mustHaveSkills = list(body.mustHaveSkills);
   if (body.niceToHaveSkills !== undefined) data.niceToHaveSkills = list(body.niceToHaveSkills);
   if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
+  if (body.hiringManagerId !== undefined) data.hiringManagerId = body.hiringManagerId ? String(body.hiringManagerId) : null;
 
   if (!partial && (!data.title || !data.department)) return { error: 'Judul dan Departemen wajib diisi.' };
   if (partial && (data.title === '' || data.department === '')) return { error: 'Judul dan Departemen tidak boleh kosong.' };
@@ -33,6 +34,28 @@ function sanitizeJobInput(body, { partial }) {
     if (data[k] != null && (!Number.isFinite(data[k]) || data[k] < 0)) return { error: 'Gaji harus berupa angka positif.' };
   }
   return { data };
+}
+
+/** The assigned Hiring Manager must be an active HIRING_MANAGER user */
+async function hiringManagerError(hiringManagerId) {
+  if (!hiringManagerId) return null;
+  const u = await prisma.user.findUnique({ where: { id: hiringManagerId }, select: { role: true, isActive: true } });
+  return u && u.role === 'HIRING_MANAGER' && u.isActive ? null : 'Hiring Manager tidak valid atau tidak aktif.';
+}
+
+/** GET /api/jobs/hiring-managers (jobs.manage) — options for the job form */
+async function listHiringManagers(req, res) {
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: 'HIRING_MANAGER', isActive: true },
+      select: { id: true, name: true, email: true, _count: { select: { managedJobs: true } } },
+      orderBy: { name: 'asc' }
+    });
+    return res.json({ success: true, data: users.map(({ _count, ...u }) => ({ ...u, jobCount: _count.managedJobs })) });
+  } catch (error) {
+    console.error('Error listing hiring managers:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
 }
 
 /** salaryMin must not exceed salaryMax (checked against stored values on partial updates) */
@@ -94,7 +117,10 @@ async function getJobById(req, res) {
  */
 async function getJobForManagement(req, res) {
   try {
-    const job = await prisma.jobPosting.findUnique({ where: { id: req.params.id } });
+    const job = await prisma.jobPosting.findUnique({
+      where: { id: req.params.id },
+      include: { hiringManager: { select: { id: true, name: true, email: true } } }
+    });
     if (!job) return res.status(404).json({ success: false, message: 'Lowongan tidak ditemukan.' });
 
     const apps = await prisma.jobApplication.findMany({
@@ -141,7 +167,7 @@ async function createJob(req, res) {
   try {
     const { data, error } = sanitizeJobInput(req.body, { partial: false });
     if (error) return res.status(400).json({ success: false, message: error });
-    const rangeError = salaryRangeError(data.salaryMin, data.salaryMax);
+    const rangeError = salaryRangeError(data.salaryMin, data.salaryMax) || (await hiringManagerError(data.hiringManagerId));
     if (rangeError) return res.status(400).json({ success: false, message: rangeError });
 
     const slug = `${data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now().toString().slice(-4)}`;
@@ -189,6 +215,8 @@ async function updateJob(req, res) {
       data.salaryMax !== undefined ? data.salaryMax : current.salaryMax
     );
     if (rangeError) return res.status(400).json({ success: false, message: rangeError });
+    const hmError = await hiringManagerError(data.hiringManagerId);
+    if (hmError) return res.status(400).json({ success: false, message: hmError });
 
     const updatedJob = await prisma.jobPosting.update({ where: { id: req.params.id }, data });
 
@@ -233,6 +261,7 @@ module.exports = {
   listJobs,
   getJobById,
   getJobForManagement,
+  listHiringManagers,
   createJob,
   updateJob,
   deleteJob

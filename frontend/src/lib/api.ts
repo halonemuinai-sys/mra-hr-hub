@@ -54,6 +54,7 @@ export const api = {
   },
   getJobById: (id: string) => fetchApi(`/jobs/${id}`),
   getJobForManagement: (id: string) => fetchApi(`/jobs/${id}/manage`),
+  getHiringManagers: () => fetchApi('/jobs/hiring-managers'),
   createJob: (data: any) => fetchApi('/jobs', {
     method: 'POST',
     body: JSON.stringify(data)

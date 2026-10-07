@@ -8,6 +8,7 @@
 const prisma = require('../api/db');
 const { hasPermission, PERMISSIONS } = require('../config/permissions');
 const { CLOSED } = require('../config/stageRules');
+const { jobScope, applicationScope } = require('../services/hiringManagerScope');
 
 const DAY = 86400000;
 const STALE_DAYS = 7;
@@ -28,7 +29,11 @@ async function getReminders(req, res) {
     const approvalKeys = PERMISSIONS.filter((p) => p.key.startsWith('approval.') && hasPermission(user, p.key)).map((p) => p.key);
     if (approvalKeys.length) {
       const pending = await prisma.stageRequest.findMany({
-        where: { status: 'PENDING', approvalPermission: { in: approvalKeys } },
+        where: {
+          status: 'PENDING',
+          approvalPermission: { in: approvalKeys },
+          ...(jobScope(user) ? { application: { job: jobScope(user) } } : {})
+        },
         select: { createdAt: true, toStatus: true }
       });
       if (pending.length) {
@@ -92,7 +97,7 @@ async function getReminders(req, res) {
     const interviewApps = await prisma.jobApplication.findMany({
       where: {
         status: { in: ['INTERVIEW_HR', 'INTERVIEW_USER'] },
-        ...(isLead || hasPermission(user, 'approval.hire') ? {} : { assignedRecruiterId: user.id })
+        ...(isLead || hasPermission(user, 'approval.hire') ? applicationScope(user) : { assignedRecruiterId: user.id })
       },
       select: {
         id: true,

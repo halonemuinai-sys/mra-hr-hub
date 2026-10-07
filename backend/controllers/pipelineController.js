@@ -8,6 +8,7 @@ const { evaluateTransition, VALID_STATUSES } = require('../services/stageGateSer
 const { PENDING, applyStageChange } = require('../services/stageMoveService');
 const { canMoveApplication, resolveMovePermission } = require('./assignmentController');
 const { hasPermission } = require('../config/permissions');
+const { jobScope } = require('../services/hiringManagerScope');
 
 /**
  * ?owner=me|unassigned|all (default all), plus jobId, search, minScore, jobFamily, minRating
@@ -31,6 +32,8 @@ async function listPipeline(req, res) {
       ];
     }
     if (Object.keys(candidateWhere).length) where.candidate = candidateWhere;
+    const hmJob = jobScope(req.user);
+    if (hmJob) where.job = hmJob;
 
     const rows = await prisma.jobApplication.findMany({
       where,

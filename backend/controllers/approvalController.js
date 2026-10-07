@@ -7,6 +7,7 @@
 const prisma = require('../api/db');
 const { hasPermission, PERMISSIONS } = require('../config/permissions');
 const { PENDING, applyStageChange } = require('../services/stageMoveService');
+const { jobScope, canAccessJob } = require('../services/hiringManagerScope');
 
 const requestInclude = {
   requestedBy: { select: { id: true, name: true } },
@@ -30,7 +31,11 @@ async function listApprovals(req, res) {
     const [toDecide, myRequests] = await Promise.all([
       decidable.length
         ? prisma.stageRequest.findMany({
-            where: { status: PENDING, approvalPermission: { in: decidable } },
+            where: {
+              status: PENDING,
+              approvalPermission: { in: decidable },
+              ...(jobScope(req.user) ? { application: { job: jobScope(req.user) } } : {})
+            },
             orderBy: { createdAt: 'asc' },
             include: requestInclude
           })
@@ -62,13 +67,17 @@ async function decideApproval(req, res) {
 
     const request = await prisma.stageRequest.findUnique({
       where: { id: req.params.requestId },
-      include: { application: { select: { id: true, status: true, recruiterNotes: true, candidate: { select: { fullName: true } } } } }
+      include: {
+        application: {
+          select: { id: true, status: true, recruiterNotes: true, candidate: { select: { fullName: true } }, job: { select: { hiringManagerId: true } } }
+        }
+      }
     });
     if (!request) return res.status(404).json({ success: false, message: 'Request not found.' });
     if (request.status !== PENDING) {
       return res.status(409).json({ success: false, message: `This request was already ${request.status.toLowerCase()}.` });
     }
-    if (!hasPermission(req.user, request.approvalPermission)) {
+    if (!hasPermission(req.user, request.approvalPermission) || !canAccessJob(req.user, request.application.job)) {
       return res.status(403).json({ success: false, message: 'You are not allowed to decide this request.' });
     }
 

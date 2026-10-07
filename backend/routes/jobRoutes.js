@@ -5,12 +5,14 @@ const {
   listJobs,
   getJobById,
   getJobForManagement,
+  listHiringManagers,
   createJob,
   updateJob,
   deleteJob
 } = require('../controllers/jobController');
 
 router.get('/', listJobs);
+router.get('/hiring-managers', requireAuth, requirePermission('jobs.manage'), listHiringManagers);
 router.get('/:id/manage', requireAuth, requirePermission('jobs.manage'), getJobForManagement);
 router.get('/:id', getJobById);
 // Writes are CMS-only; listing stays public for the career portal

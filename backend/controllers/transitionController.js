@@ -7,6 +7,7 @@ const prisma = require('../api/db');
 const { evaluateTransition } = require('../services/stageGateService');
 const { loadApplicationForGate, applyStageChange, pickStageData } = require('../services/stageMoveService');
 const { canMoveApplication, resolveMovePermission } = require('./assignmentController');
+const { canAccessJob } = require('../services/hiringManagerScope');
 
 const OWNERSHIP_BLOCK = 'This candidate is owned by another recruiter — only the owner or a TA Lead can change the stage.';
 const PENDING_BLOCK = 'This candidate has a stage move awaiting approval.';
@@ -21,7 +22,7 @@ function gateBlocks(app, user, evaluation) {
 async function previewTransition(req, res) {
   try {
     const app = await loadApplicationForGate(req.params.applicationId);
-    if (!app) return res.status(404).json({ success: false, message: 'Application not found.' });
+    if (!app || !canAccessJob(req.user, app.job)) return res.status(404).json({ success: false, message: 'Application not found.' });
 
     const evaluation = evaluateTransition({ app, toStatus: req.query.to, data: {}, user: req.user });
     return res.json({

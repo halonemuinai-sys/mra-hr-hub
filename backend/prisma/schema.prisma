@@ -52,6 +52,7 @@ model User {
   activities           ApplicationActivity[]
   stageRequests        StageRequest[]        @relation("StageRequestRequester")
   stageDecisions       StageRequest[]        @relation("StageRequestDecider")
+  managedJobs          JobPosting[]          @relation("JobHiringManager")
 }
 
 model JobPosting {
@@ -71,9 +72,14 @@ model JobPosting {
   mustHaveSkills   String[]         // Required skills keywords
   niceToHaveSkills String[]         // Bonus skills keywords
   isActive         Boolean          @default(true)
+  // Hiring Manager who owns this job (sees its candidates, confirms hires). Null = any Hiring Manager.
+  hiringManagerId  String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   applications     JobApplication[]
+  hiringManager    User?            @relation("JobHiringManager", fields: [hiringManagerId], references: [id], onDelete: SetNull)
+
+  @@index([hiringManagerId])
 }
 
 model Candidate {

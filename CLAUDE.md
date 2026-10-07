@@ -61,6 +61,7 @@ SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - `2026-10-04_ta_ownership.sql` — `JobApplication.assignedRecruiterId/assignedAt/stageChangedAt` + `ApplicationActivity`
 - `2026-10-04_user_active.sql` — `User.isActive`
 - `2026-10-04_stage_gate.sql` — `ApplicationActivity.stageData` + `StageRequest` (approvals)
+- `2026-10-07_job_hiring_manager.sql` — `JobPosting.hiringManagerId`
 
 ### Health Check Endpoints
 - **Backend Health**: `curl http://localhost:5006/api/health`
@@ -178,6 +179,7 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - `jobController.sanitizeJobInput` whitelists writable fields (no id/slug/timestamps), dedupes keywords, validates salaryMin ≤ salaryMax.
 - Public `GET /api/jobs/:id` returns active jobs only and **never** includes applicants.
 - Jobs with applicants cannot be deleted (cascade would wipe their applications) — close them instead.
+- **Hiring Manager per job** (`JobPosting.hiringManagerId`, chosen in the job form from `GET /api/jobs/hiring-managers`; only active `HIRING_MANAGER` users are accepted). `services/hiringManagerScope.js` limits a Hiring Manager to their jobs **plus jobs without an assigned HM** in: pipeline, candidate list/detail, activity log, transition preview, hire approvals (list + decide) and reminders. Other roles are unrestricted.
 - UI: `frontend/src/components/jobs/*`.
 
 ### I. Dual-Intake ATS & Template Ingestion
@@ -227,6 +229,7 @@ d:\MRA Project\HR HUB
 │   ├── services/
 │   │   ├── keywordMatcher.js # ATS keyword matching (normalize, synonyms, partial cores)
 │   │   ├── candidateIntakeService.js # Apply / template intake (no overwrite of existing profiles)
+│   │   ├── hiringManagerScope.js # Limits Hiring Managers to their own jobs
 │   │   ├── stageGateService.js # Evaluate a stage move (pure)
 │   │   └── stageMoveService.js # applyStageChange — the single write path for stage changes
 │   └── scripts/

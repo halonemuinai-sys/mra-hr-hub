@@ -1,5 +1,6 @@
 const prisma = require('../api/db');
 const { hasPermission, PIC_ROLES } = require('../config/permissions');
+const { isScopedHiringManager, canAccessJob } = require('../services/hiringManagerScope');
 
 const CLOSED_STATUSES = ['HIRED', 'REJECTED', 'TALENT_POOL'];
 const STALE_DAYS = 7;
@@ -199,6 +200,15 @@ async function assignApplications(req, res) {
  */
 async function listApplicationActivity(req, res) {
   try {
+    if (isScopedHiringManager(req.user)) {
+      const app = await prisma.jobApplication.findUnique({
+        where: { id: req.params.applicationId },
+        select: { job: { select: { hiringManagerId: true } } }
+      });
+      if (!app || !canAccessJob(req.user, app.job)) {
+        return res.status(404).json({ success: false, message: 'Lamaran tidak ditemukan.' });
+      }
+    }
     const rows = await prisma.applicationActivity.findMany({
       where: { applicationId: req.params.applicationId },
       orderBy: { createdAt: 'desc' },

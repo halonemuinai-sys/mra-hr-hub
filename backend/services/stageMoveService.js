@@ -11,7 +11,7 @@ function loadApplicationForGate(id) {
   return prisma.jobApplication.findUnique({
     where: { id },
     include: {
-      job: { select: { id: true, title: true, salaryMax: true } },
+      job: { select: { id: true, title: true, salaryMax: true, hiringManagerId: true } },
       candidate: { select: { id: true, fullName: true } },
       stageRequests: { where: { status: PENDING }, select: { id: true, toStatus: true }, take: 1 }
     }

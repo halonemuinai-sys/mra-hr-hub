@@ -1,6 +1,7 @@
 const prisma = require('../api/db');
 const { calculateAtsMatchScore } = require('../services/profilingService');
 const { intakeCandidate } = require('../services/candidateIntakeService');
+const { jobScope, applicationScope, isScopedHiringManager } = require('../services/hiringManagerScope');
 const { resolveMovePermission } = require('./assignmentController');
 const { evaluateTransition } = require('../services/stageGateService');
 const { loadApplicationForGate, applyStageChange } = require('../services/stageMoveService');
@@ -38,12 +39,15 @@ async function listCandidates(req, res) {
 
     // minScore is applied in the query (not after paging) so totals and pages stay consistent
     const minVal = minScore ? parseFloat(minScore) : NaN;
-    if (jobId || status || !Number.isNaN(minVal)) {
+    // Hiring Managers only see candidates who applied to their jobs
+    const hmJob = jobScope(req.user);
+    if (jobId || status || !Number.isNaN(minVal) || hmJob) {
       where.applications = {
         some: {
           ...(jobId ? { jobId } : {}),
           ...(status ? { status } : {}),
-          ...(!Number.isNaN(minVal) ? { atsScore: { gte: minVal } } : {})
+          ...(!Number.isNaN(minVal) ? { atsScore: { gte: minVal } } : {}),
+          ...(hmJob ? { job: hmJob } : {})
         }
       };
     }
@@ -60,6 +64,7 @@ async function listCandidates(req, res) {
           experiences: { orderBy: { startDate: 'desc' }, take: 3 },
           educations: { take: 2 },
           applications: {
+            where: applicationScope(req.user),
             include: { job: { select: { id: true, title: true, department: true } } },
             orderBy: { appliedAt: 'desc' },
             take: 1
@@ -123,13 +128,15 @@ async function getCandidateById(req, res) {
         experiences: { orderBy: { startDate: 'desc' } },
         educations: { orderBy: { graduationYear: 'desc' } },
         applications: {
+          where: applicationScope(req.user),
           include: { job: true },
           orderBy: { appliedAt: 'desc' }
         }
       }
     });
 
-    if (!candidate) {
+    // A Hiring Manager may only open candidates of their own jobs
+    if (!candidate || (isScopedHiringManager(req.user) && candidate.applications.length === 0)) {
       return res.status(404).json({ success: false, message: 'Kandidat tidak ditemukan.' });
     }
 

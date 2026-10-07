@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { X, Pencil, MapPin, Clock, GraduationCap, Wallet, Sparkles, KanbanSquare, Power, Trash2, Users, Loader2 } from 'lucide-react';
+import { X, Pencil, MapPin, Clock, GraduationCap, Wallet, Sparkles, KanbanSquare, Power, Trash2, Users, Loader2, UserCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import { formatRupiah, getScoreBadge } from '@/lib/utils';
 import { ACTIVE_STAGES, CLOSED_STAGES } from '@/components/pipeline/stages';
@@ -102,6 +102,10 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                 <span className="flex items-center gap-1.5 text-slate-300"><MapPin className="w-3.5 h-3.5 text-blue-400" />{job.location}</span>
                 <span className="flex items-center gap-1.5 text-slate-300"><Clock className="w-3.5 h-3.5 text-blue-400" />{job.employmentType} · min. {job.minExperience} th</span>
                 <span className="flex items-center gap-1.5 text-slate-300"><GraduationCap className="w-3.5 h-3.5 text-blue-400" />Min. {job.minEducation}</span>
+                <span className="flex items-center gap-1.5 text-slate-300 col-span-2">
+                  <UserCheck className="w-3.5 h-3.5 text-blue-400" />
+                  Hiring Manager: {job.hiringManager ? job.hiringManager.name : <span className="text-amber-300">belum ditentukan (semua HM)</span>}
+                </span>
                 <span className="flex items-center gap-1.5 text-slate-300">
                   <Wallet className="w-3.5 h-3.5 text-blue-400" />
                   {job.salaryMin || job.salaryMax ? `${formatRupiah(job.salaryMin)} – ${formatRupiah(job.salaryMax)}` : 'Gaji belum diisi'}
