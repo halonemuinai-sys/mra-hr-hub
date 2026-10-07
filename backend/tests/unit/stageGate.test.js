@@ -85,3 +85,8 @@ test('invalid and same-stage moves are blocked', () => {
   assert.ok(ev({}, 'NOPE').blocks.length > 0);
   assert.ok(ev({}, 'SHORTLISTED').blocks.some((b) => b.includes('already')));
 });
+
+test('released hires cannot change stage', () => {
+  const r = ev({ status: 'HIRED', releasedAt: new Date() }, 'REJECTED', { reason: 'No show' }, lead);
+  assert.ok(r.blocks.some((b) => b.includes('released')));
+});

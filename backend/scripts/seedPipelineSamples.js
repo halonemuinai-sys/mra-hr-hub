@@ -54,6 +54,8 @@ const STAGE_PLAN = [
 const FUNNEL = ['APPLIED', 'ATS_SCREENED', 'SHORTLISTED', 'INTERVIEW_HR', 'INTERVIEW_USER', 'OFFERING', 'HIRED'];
 
 async function clean() {
+  // Employee records keep their own copy of the data (candidate link is SET NULL), so remove them explicitly
+  await prisma.employee.deleteMany({ where: { personalEmail: { endsWith: SAMPLE_DOMAIN } } });
   const r = await prisma.candidate.deleteMany({ where: { email: { endsWith: SAMPLE_DOMAIN } } });
   console.log(`🧹 Removed ${r.count} sample candidates (applications & activity cascade).`);
 }

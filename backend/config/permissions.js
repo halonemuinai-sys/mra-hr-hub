@@ -27,6 +27,9 @@ const PERMISSIONS = [
 
   { key: 'jobs.manage', group: 'Lowongan', label: 'Tambah / ubah / hapus lowongan' },
 
+  { key: 'employee.view', group: 'Karyawan', label: 'Lihat karyawan baru hasil rekrutmen' },
+  { key: 'employee.manage', group: 'Karyawan', label: 'Daftarkan karyawan, release dari pipeline & umumkan' },
+
   { key: 'approval.offer', group: 'Approval', label: 'Setujui offering di atas budget lowongan' },
   { key: 'approval.hire', group: 'Approval', label: 'Konfirmasi kandidat diterima (Hired)' },
 
@@ -47,9 +50,12 @@ const ROLE_PERMISSIONS = {
     'pipeline.move.own',
     'candidate.view',
     'candidate.evaluate',
-    'candidate.import'
+    'candidate.import',
+    // Own hires only (same rule as moving a card)
+    'employee.view',
+    'employee.manage'
   ],
-  HIRING_MANAGER: ['dashboard.view', 'pipeline.view', 'candidate.view', 'candidate.evaluate', 'approval.hire']
+  HIRING_MANAGER: ['dashboard.view', 'pipeline.view', 'candidate.view', 'candidate.evaluate', 'approval.hire', 'employee.view']
 };
 
 function permissionsFor(role) {

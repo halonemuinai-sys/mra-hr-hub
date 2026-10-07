@@ -62,6 +62,7 @@ SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - `2026-10-04_user_active.sql` — `User.isActive`
 - `2026-10-04_stage_gate.sql` — `ApplicationActivity.stageData` + `StageRequest` (approvals)
 - `2026-10-07_job_hiring_manager.sql` — `JobPosting.hiringManagerId`
+- `2026-10-07_employees.sql` — `Employee` + `EmploymentStatus` enum, `JobApplication.releasedAt`
 
 ### Health Check Endpoints
 - **Backend Health**: `curl http://localhost:5006/api/health`
@@ -98,6 +99,8 @@ Fixed roles (Prisma enum `Role`); permissions are defined in **one file**: `back
 | `pipeline.claim`, `pipeline.move.own`, `candidate.import` | ✓ | ✓ | ✓ | – |
 | `pipeline.move.any`, `pipeline.assign`, `candidate.delete`, `jobs.manage` | ✓ | ✓ | – | – |
 | `team.monitor`, `approval.offer` | ✓ | ✓ | – | – |
+| `employee.manage` (own hires for TA) | ✓ | ✓ | ✓ | – |
+| `employee.view` | ✓ | ✓ | ✓ | ✓ |
 | `approval.hire` | ✓ | – | – | ✓ |
 | `users.manage` | ✓ | – | – | – |
 
@@ -186,6 +189,13 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - **Hiring Manager per job** (`JobPosting.hiringManagerId`, chosen in the job form from `GET /api/jobs/hiring-managers`; only active `HIRING_MANAGER` users are accepted). `services/hiringManagerScope.js` limits a Hiring Manager to their jobs **plus jobs without an assigned HM** in: pipeline, candidate list/detail, activity log, transition preview, hire approvals (list + decide) and reminders. Other roles are unrestricted.
 - UI: `frontend/src/components/jobs/*`.
 
+### J. Karyawan Baru & Pengumuman (after the hire)
+- **Hired cards** show *Register employee* and *Release* (`canHandleHire`: `employee.manage` + own card, or `pipeline.move.any`). Registering creates an `Employee` (own copy of name/contact/placement — survives deleting the candidate/job; `employeeNo` unique, suggested `MRA-<year>-0001`) and sets `JobApplication.releasedAt`. Release only sets `releasedAt` (undo / restore while not registered).
+- Released applications are hidden from the board (`listPipeline` filters `releasedAt: null`) and the stage gate blocks any further move. They still count as HIRED in dashboard, team and report metrics.
+- `/admin/employees` (`employee.view`; Hiring Managers scoped to their jobs): tabs *Menunggu Registrasi* (HIRED without employee) / *Terdaftar*, edit, announce, Excel export for HRIS. `/admin/announcements` (`dashboard.view`): "Selamat Bergabung" board without contact details; also a dashboard widget and reminders (`hires-to-register`, `new-colleagues`).
+- Activity actions: `EMPLOYEE_REGISTERED`, `EMPLOYEE_ANNOUNCED`, `HIRE_RELEASED`, `HIRE_RESTORED`.
+- Backend: `controllers/employeeController.js`, `routes/employeeRoutes.js` (`/api/employees`), `routes/announcementRoutes.js` (`/api/announcements`), validation in `services/employeeInput.js` (unit-tested). UI: `components/employees/*`, `components/announcements/AnnouncementCard.tsx`, `components/dashboard/NewColleagues.tsx`.
+
 ### I. Dual-Intake ATS & Template Ingestion
 - `backend/services/atsParserService.js`: PDF/DOCX/TXT resume parser (`POST /api/ats/parse-cv`). Splits the CV into sections (summary / skills / experience / education); skills = taxonomy hits **plus** the CV's own skills section; the real experience text is kept on `experiences[0].description`; education year ranges are not counted as work experience. Always passes pdf.js a standalone `Uint8Array` (small Node Buffers share a pool and broke parsing at random).
 - ATS score (`services/profilingService.js`): `0.55 × skills + 0.30 × experience + 0.15 × education`. Skills = 80% must-have ratio + 20% nice-to-have ratio. Matching lives in `services/keywordMatcher.js`: whole-word/phrase matching after normalization (no substring hits such as "sql" in "postgresql"), a synonym table (F&B ↔ food and beverage, Excel ↔ Microsoft Excel, manajemen ↔ management, …) and a 0.75 partial match when the keyword's core is present without generic words ("Team Leadership" ≈ "Leadership"). Extend `SYNONYMS` / `GENERIC` there.
@@ -215,6 +225,7 @@ d:\MRA Project\HR HUB
 │   │   ├── dashboardController.js # Dashboard analytics (/api/stats/dashboard)
 │   │   ├── reminderController.js  # Per-user action reminders (/api/reminders)
 │   │   ├── reportController.js    # Recruitment report workbook (/api/reports/recruitment.xlsx)
+│   │   ├── employeeController.js  # Register hires as employees, release from board, announcements
 │   │   ├── jobController.js  # Jobs: public list/detail, admin manage view, sanitized create/update
 │   │   ├── pipelineController.js   # Board listing + bulk moves (gate-aware)
 │   │   ├── transitionController.js # Single move: preview / execute / request approval
@@ -258,6 +269,8 @@ d:\MRA Project\HR HUB
 │       │       ├── users/    # User & Hak Akses (Super Admin)
 │       │       ├── candidates/ # Candidate profiling cockpit
 │       │       ├── jobs/     # Job management
+│       │       ├── employees/ # Karyawan Baru (register, announce, export)
+│       │       ├── announcements/ # Selamat Bergabung board
 │       │       └── templates/# Excel ingestion
 │       ├── components/
 │       │   ├── candidates/   # CandidateDetailDrawer & CandidateRadarChart
@@ -269,6 +282,8 @@ d:\MRA Project\HR HUB
 │       │   ├── notifications/ # NotificationBell, ReminderList, useReminders
 │       │   ├── team/         # Leaderboard, WorkloadChart, RebalancePanel, TeamHighlights, MemberDetailDrawer, ActivityFeed
 │       │   ├── users/        # AccessMatrix, UserFormModal
+│       │   ├── employees/    # EmployeeFormModal, PendingHiresTable, EmployeeTable, AnnounceModal
+│       │   ├── announcements/ # AnnouncementCard
 │       │   └── public/       # HeroSearchBar & JobDetailModal; careers/ = portal sections + QuickApplyModal
 │       └── lib/
 │           ├── api.ts        # API client with auto JWT Bearer injection

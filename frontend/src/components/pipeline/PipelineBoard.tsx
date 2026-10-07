@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import PipelineColumn from './PipelineColumn';
 import PipelineCard from './PipelineCard';
 import { Stage } from './stages';
-import { canClaim, canMove, CmsUser } from './ownership';
+import { canClaim, canHandleHire, canMove, CmsUser } from './ownership';
 
 interface Props {
   stages: Stage[];
@@ -20,6 +20,8 @@ interface Props {
   onToggleSelectColumn: (ids: string[]) => void;
   onMove: (ids: string[], status: string) => void;
   onClaim: (id: string) => void;
+  onRegisterHire: (app: any) => void;
+  onReleaseHire: (app: any) => void;
   onOpen: (app: any) => void;
   onDragStart: (ids: string[]) => void;
   onDragEnd: () => void;
@@ -42,6 +44,8 @@ export default function PipelineBoard({
   onToggleSelectColumn,
   onMove,
   onClaim,
+  onRegisterHire,
+  onReleaseHire,
   onOpen,
   onDragStart,
   onDragEnd
@@ -76,6 +80,9 @@ export default function PipelineBoard({
                 movable={canMove(user, app)}
                 claimable={canClaim(user, app)}
                 currentUserId={user?.id}
+                hireActions={canHandleHire(user, app)}
+                onRegister={() => onRegisterHire(app)}
+                onReleaseHire={() => onReleaseHire(app)}
                 onClaim={() => onClaim(app.id)}
                 onToggleSelect={(shift) => onToggleSelect(app, shift, items)}
                 onDragStart={(e) => {

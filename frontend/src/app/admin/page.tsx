@@ -29,6 +29,7 @@ import StageAgingChart from '@/components/dashboard/StageAgingChart';
 import TopJobsTable from '@/components/dashboard/TopJobsTable';
 import TalentMix from '@/components/dashboard/TalentMix';
 import ActionCenter from '@/components/dashboard/ActionCenter';
+import NewColleagues from '@/components/dashboard/NewColleagues';
 import { fmtWeek } from '@/components/dashboard/chartTheme';
 
 const PERIODS = [8, 12, 26];
@@ -154,9 +155,12 @@ export default function AdminDashboardPage() {
         </DashboardCard>
       </div>
 
-      <DashboardCard title="Komposisi Talent" subtitle="Kelompok bidang kandidat & saluran masuk" icon={Layers}>
-        {data ? <TalentMix jobFamily={data.jobFamily} intakeSource={data.intakeSource} /> : <div className="h-[160px] rounded-xl bg-slate-100 animate-pulse" />}
-      </DashboardCard>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <DashboardCard title="Komposisi Talent" subtitle="Kelompok bidang kandidat & saluran masuk" icon={Layers} className="xl:col-span-2">
+          {data ? <TalentMix jobFamily={data.jobFamily} intakeSource={data.intakeSource} /> : <div className="h-[160px] rounded-xl bg-slate-100 animate-pulse" />}
+        </DashboardCard>
+        <NewColleagues />
+      </div>
     </div>
   );
 }

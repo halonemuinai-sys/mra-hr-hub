@@ -23,6 +23,13 @@ export const canRelease = (user: CmsUser | null, app: any) =>
   !!app.assignedRecruiterId &&
   (can(user, 'pipeline.assign') || (can(user, 'pipeline.claim') && app.assignedRecruiterId === user?.id));
 
+/** Register / release a hire — mirrors canHandleHire in backend/controllers/employeeController.js */
+export const canHandleHire = (user: CmsUser | null, app: any) =>
+  app.status === 'HIRED' &&
+  !app.pendingRequest &&
+  can(user, 'employee.manage') &&
+  (can(user, 'pipeline.move.any') || (!!app.assignedRecruiterId && app.assignedRecruiterId === user?.id));
+
 /** Recruiters land on their own candidates; leads & viewers see the whole team */
 export const defaultScope = (user: CmsUser | null): OwnerScope =>
   can(user, 'pipeline.claim') && !can(user, 'pipeline.assign') ? 'me' : 'all';

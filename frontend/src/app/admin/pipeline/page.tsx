@@ -8,6 +8,7 @@ import PipelineHeader from '@/components/pipeline/PipelineHeader';
 import FunnelStrip from '@/components/pipeline/FunnelStrip';
 import PipelineBoard from '@/components/pipeline/PipelineBoard';
 import { usePipelineSelection } from '@/components/pipeline/usePipelineSelection';
+import EmployeeFormModal from '@/components/employees/EmployeeFormModal';
 import PipelineToolbar, { PipelineFilters, EMPTY_FILTERS } from '@/components/pipeline/PipelineToolbar';
 import OwnerScopeBar from '@/components/pipeline/OwnerScopeBar';
 import BulkActionBar from '@/components/pipeline/BulkActionBar';
@@ -69,6 +70,7 @@ export default function PipelinePage() {
   const dismissToast = useCallback(() => setToast(null), []);
   const [transition, setTransition] = useState<{ appId: string; preview: TransitionPreview } | null>(null);
   const [showApprovals, setShowApprovals] = useState(false);
+  const [registerApp, setRegisterApp] = useState<any | null>(null);
 
   const lead = isLead(user);
   const notify = (tone: ToastState['tone'], message: string, onUndo?: () => void) =>
@@ -332,6 +334,34 @@ export default function PipelinePage() {
   const assign = (ids: string[], recruiterId: string) =>
     runOwnership(ids, () => api.assignApplications(ids, recruiterId));
 
+  // ---- After the hire ----
+  const dropCard = (id: string) => setApplications((list) => list.filter((a) => a.id !== id));
+
+  const releaseHire = async (app: any) => {
+    setBusyIds(new Set([app.id]));
+    try {
+      const res = await api.releaseHires([app.id]);
+      if (!res.data?.releasedIds?.includes(app.id)) {
+        notify('error', res.message);
+        return;
+      }
+      dropCard(app.id);
+      notify('success', `${app.candidate?.fullName || 'Hire'} released from the board.`, async () => {
+        try {
+          await api.restoreHire(app.id);
+          notify('success', 'Release undone.');
+        } catch (err: any) {
+          notify('error', err.message);
+        }
+        loadPipeline();
+      });
+    } catch (err: any) {
+      notify('error', err.message);
+    } finally {
+      setBusyIds(new Set());
+    }
+  };
+
   // ---- Detail drawer ----
   const openDetail = async (app: any) => {
     setBusyIds(new Set([app.id]));
@@ -426,6 +456,8 @@ export default function PipelinePage() {
         onToggleSelectColumn={toggleSelectColumn}
         onMove={requestMove}
         onClaim={(id) => claim([id])}
+        onRegisterHire={setRegisterApp}
+        onReleaseHire={releaseHire}
         onOpen={openDetail}
         onDragStart={setDraggingIds}
         onDragEnd={() => setDraggingIds([])}
@@ -486,6 +518,20 @@ export default function PipelinePage() {
             onClose={() => setShowApprovals(false)}
             onDecide={approvals.decide}
             onCancel={approvals.cancel}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {registerApp && (
+          <EmployeeFormModal
+            applicationId={registerApp.id}
+            onClose={() => setRegisterApp(null)}
+            onSaved={(_, message) => {
+              dropCard(registerApp.id);
+              setRegisterApp(null);
+              notify('success', message);
+            }}
           />
         )}
       </AnimatePresence>

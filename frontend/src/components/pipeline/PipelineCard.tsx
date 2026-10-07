@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Briefcase, MapPin, Star, Clock, Loader2, ChevronsRight, Check, AlertTriangle, Lock, Hand, UserRound, ShieldCheck } from 'lucide-react';
+import { Briefcase, MapPin, Star, Clock, Loader2, ChevronsRight, Check, AlertTriangle, Lock, Hand, UserRound, ShieldCheck, BadgeCheck, ArchiveX } from 'lucide-react';
 import { getScoreBadge } from '@/lib/utils';
 import {
   ALL_STAGES,
@@ -26,6 +26,10 @@ interface Props {
   /** Current user may claim this (unassigned) card */
   claimable: boolean;
   currentUserId?: string;
+  /** Hired card the current user may register as employee / release from the board */
+  hireActions: boolean;
+  onRegister: () => void;
+  onReleaseHire: () => void;
   onClaim: () => void;
   onToggleSelect: (shiftKey: boolean) => void;
   onDragStart: (e: React.DragEvent) => void;
@@ -43,6 +47,9 @@ export default function PipelineCard({
   movable,
   claimable,
   currentUserId,
+  hireActions,
+  onRegister,
+  onReleaseHire,
   onClaim,
   onToggleSelect,
   onDragStart,
@@ -226,6 +233,29 @@ export default function PipelineCard({
               <ChevronsRight className="w-3.5 h-3.5" />
             </button>
           )}
+        </div>
+      )}
+
+      {/* After the hire: register as employee (leaves the board) or just take it off */}
+      {hireActions && (
+        <div className="mt-2 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={onRegister}
+            className="min-w-0 flex-1 px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
+          >
+            <BadgeCheck className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Register employee</span>
+          </button>
+          <button
+            type="button"
+            onClick={onReleaseHire}
+            title="Take this hire off the board without registering (can be restored from Karyawan Baru)"
+            className="shrink-0 px-2 py-1 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-[11px] font-bold flex items-center gap-1 transition-colors"
+          >
+            <ArchiveX className="w-3.5 h-3.5" />
+            Release
+          </button>
         </div>
       )}
     </div>

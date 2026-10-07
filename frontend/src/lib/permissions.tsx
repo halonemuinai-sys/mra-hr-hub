@@ -18,6 +18,8 @@ export type Permission =
   | 'candidate.import'
   | 'candidate.delete'
   | 'jobs.manage'
+  | 'employee.view'
+  | 'employee.manage'
   | 'approval.offer'
   | 'approval.hire'
   | 'team.monitor'

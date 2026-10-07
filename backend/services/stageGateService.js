@@ -64,6 +64,8 @@ function evaluateTransition({ app, toStatus, data = {}, user }) {
 
   const ctx = { app, fromStatus, toStatus, data: { ...data, ...values }, user };
   const results = [
+    // Registered as employee / released from the board: the hire is final
+    ...(app.releasedAt ? [{ type: 'block', message: 'This hire has been released from the pipeline and can no longer change stage.' }] : []),
     ...directionChecks({ fromStatus, toStatus, canMoveAny: hasPermission(user, 'pipeline.move.any') }),
     ...(backward ? [] : rule.checks(ctx))
   ];

@@ -31,6 +31,13 @@ enum ApplicationStatus {
   TALENT_POOL
 }
 
+enum EmploymentStatus {
+  PROBATION
+  CONTRACT
+  PERMANENT
+  INTERNSHIP
+}
+
 enum AvailabilityStatus {
   IMMEDIATE
   ONE_MONTH_NOTICE
@@ -53,6 +60,8 @@ model User {
   stageRequests        StageRequest[]        @relation("StageRequestRequester")
   stageDecisions       StageRequest[]        @relation("StageRequestDecider")
   managedJobs          JobPosting[]          @relation("JobHiringManager")
+  employeesCreated     Employee[]            @relation("EmployeeCreatedBy")
+  employeesAnnounced   Employee[]            @relation("EmployeeAnnouncedBy")
 }
 
 model JobPosting {
@@ -78,6 +87,7 @@ model JobPosting {
   updatedAt        DateTime         @updatedAt
   applications     JobApplication[]
   hiringManager    User?            @relation("JobHiringManager", fields: [hiringManagerId], references: [id], onDelete: SetNull)
+  employees        Employee[]
 
   @@index([hiringManagerId])
 }
@@ -109,6 +119,7 @@ model Candidate {
   experiences        CandidateExperience[]
   educations         CandidateEducation[]
   applications       JobApplication[]
+  employees          Employee[]
 }
 
 model CandidateSkill {
@@ -164,12 +175,15 @@ model JobApplication {
   assignedRecruiterId String?
   assignedAt          DateTime?
   stageChangedAt      DateTime          @default(now())
+  // Hired and taken off the board (registered as employee, or released manually)
+  releasedAt          DateTime?
 
   job               JobPosting            @relation(fields: [jobId], references: [id], onDelete: Cascade)
   candidate         Candidate             @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   assignedRecruiter User?                 @relation("ApplicationRecruiter", fields: [assignedRecruiterId], references: [id], onDelete: SetNull)
   activities        ApplicationActivity[]
   stageRequests     StageRequest[]
+  employee          Employee?
 
   @@index([assignedRecruiterId])
 }
@@ -227,4 +241,42 @@ model StageRequest {
 
   @@index([status, createdAt])
   @@index([applicationId, status])
+}
+
+// New hire registered from a HIRED application. Keeps its own copy of the person's data,
+// so the record survives deleting the candidate or job.
+model Employee {
+  id                  String           @id @default(uuid())
+  employeeNo          String           @unique // NIK karyawan
+  applicationId       String?          @unique
+  candidateId         String?
+  jobId               String?
+  fullName            String
+  personalEmail       String
+  workEmail           String?
+  phone               String?
+  position            String
+  department          String
+  division            String
+  workLocation        String
+  employmentStatus    EmploymentStatus @default(PROBATION)
+  joinDate            DateTime
+  managerName         String?
+  notes               String?          @db.Text
+  createdById         String?
+  // Internal "Selamat Bergabung" announcement
+  announcedAt         DateTime?
+  announcedById       String?
+  announcementMessage String?          @db.Text
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  application         JobApplication?  @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  candidate           Candidate?       @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  job                 JobPosting?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  createdBy           User?            @relation("EmployeeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  announcedBy         User?            @relation("EmployeeAnnouncedBy", fields: [announcedById], references: [id], onDelete: SetNull)
+
+  @@index([announcedAt])
+  @@index([joinDate])
 }

@@ -17,7 +17,8 @@ async function listPipeline(req, res) {
   try {
     const { jobId, search, minScore, jobFamily, minRating, owner } = req.query;
 
-    const where = {};
+    // Released hires (registered as employee or taken off manually) leave the board
+    const where = { releasedAt: null };
     if (jobId) where.jobId = jobId;
     if (minScore) where.atsScore = { gte: parseFloat(minScore) || 0 };
     if (minRating) where.scorecardRating = { gte: parseInt(minRating, 10) || 0 };

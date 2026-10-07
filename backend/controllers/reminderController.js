@@ -161,6 +161,43 @@ async function getReminders(req, res) {
       }
     }
 
+    // 7. Hires not registered as employees yet (mine for recruiters, all for leads)
+    if (hasPermission(user, 'employee.manage')) {
+      const unregistered = await prisma.jobApplication.findMany({
+        where: { status: 'HIRED', employee: null, ...(isLead ? {} : { assignedRecruiterId: user.id }) },
+        select: { stageChangedAt: true }
+      });
+      if (unregistered.length) {
+        const oldest = Math.max(...unregistered.map((a) => now - new Date(a.stageChangedAt)));
+        items.push({
+          id: 'hires-to-register',
+          severity: oldest >= STALE_DAYS * DAY ? 'warning' : 'info',
+          title: `${plural(unregistered.length, 'kandidat Hired')} belum didaftarkan sebagai karyawan`,
+          detail: 'Lengkapi NIK & data penempatan, lalu umumkan.',
+          count: unregistered.length,
+          href: '/admin/employees'
+        });
+      }
+    }
+
+    // 8. New colleagues announced in the last 7 days (everyone)
+    const announced = await prisma.employee.findMany({
+      where: { announcedAt: { gte: new Date(now - STALE_DAYS * DAY) } },
+      orderBy: { announcedAt: 'desc' },
+      select: { fullName: true }
+    });
+    if (announced.length) {
+      const names = announced.slice(0, 2).map((e) => e.fullName).join(', ');
+      items.push({
+        id: 'new-colleagues',
+        severity: 'info',
+        title: `Selamat bergabung: ${names}${announced.length > 2 ? ` +${announced.length - 2}` : ''}`,
+        detail: `${plural(announced.length, 'karyawan baru')} diumumkan minggu ini.`,
+        count: announced.length,
+        href: '/admin/announcements'
+      });
+    }
+
     items.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
     return res.json({ success: true, data: { items, generatedAt: new Date(now).toISOString() } });
   } catch (error) {

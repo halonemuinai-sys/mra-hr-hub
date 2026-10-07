@@ -42,6 +42,14 @@ export function describeActivity(a: any) {
       return { who: cand, text: 'mengirim ulang lamaran (profil tersimpan tidak diubah)' };
     case 'APPROVAL_CANCELLED':
       return { who, text: `membatalkan approval ${cand} → ${stageLabel(a.toStatus)}` };
+    case 'EMPLOYEE_REGISTERED':
+      return { who, text: `mendaftarkan ${cand} sebagai karyawan${a.note ? ` (${a.note})` : ''}` };
+    case 'EMPLOYEE_ANNOUNCED':
+      return { who, text: `mengumumkan ${cand} sebagai karyawan baru` };
+    case 'HIRE_RELEASED':
+      return { who, text: `mengeluarkan ${cand} dari pipeline` };
+    case 'HIRE_RESTORED':
+      return { who, text: `mengembalikan ${cand} ke pipeline` };
     default:
       return { who, text: `${a.action} ${cand}` };
   }

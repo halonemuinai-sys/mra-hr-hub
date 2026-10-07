@@ -20,7 +20,9 @@ import {
   KanbanSquare,
   UserCog,
   Lock,
-  Activity
+  Activity,
+  BadgeCheck,
+  Megaphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '@/lib/api';
@@ -118,6 +120,8 @@ export default function DashboardLayout({
     { name: 'Database & Profiling', href: '/admin/candidates', icon: Users, permission: 'candidate.view' },
     { name: 'Template & Bulk Ingest', href: '/admin/templates', icon: FileSpreadsheet, permission: 'candidate.import' },
     { name: 'Kelola Lowongan ATS', href: '/admin/jobs', icon: Briefcase, permission: 'jobs.manage' },
+    { name: 'Karyawan Baru', href: '/admin/employees', icon: BadgeCheck, permission: 'employee.view' },
+    { name: 'Pengumuman', href: '/admin/announcements', icon: Megaphone, permission: 'dashboard.view' },
     { name: 'Kinerja Tim TA', href: '/admin/team', icon: Activity, permission: 'team.monitor' },
     { name: 'User & Hak Akses', href: '/admin/users', icon: UserCog, permission: 'users.manage' }
   ];

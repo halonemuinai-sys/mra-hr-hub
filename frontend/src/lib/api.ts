@@ -53,6 +53,22 @@ export async function fetchResumeBlob(candidateId: string): Promise<Blob> {
   return res.blob();
 }
 
+/** New-employees workbook (same filters as the list) for HRIS / payroll import */
+export async function downloadEmployees(params: Record<string, string> = {}): Promise<Blob> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('hr_hub_token') : null;
+  const res = await fetch(`${API_BASE_URL}/employees/export.xlsx?${new URLSearchParams(params)}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      msg = (await res.json()).message || msg;
+    } catch {}
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 /** Recruitment report workbook for a period (YYYY-MM-DD, inclusive) */
 export async function downloadReport(from: string, to: string): Promise<Blob> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('hr_hub_token') : null;
@@ -209,5 +225,21 @@ export const api = {
   getDashboard: (weeks = 12) => fetchApi(`/stats/dashboard?weeks=${weeks}`),
 
   // Reminders (header bell + dashboard Action Center)
-  getReminders: () => fetchApi('/reminders')
+  getReminders: () => fetchApi('/reminders'),
+
+  // Employees (after the hire) & announcements
+  getEmployees: (params: Record<string, string> = {}) => fetchApi(`/employees?${new URLSearchParams(params)}`),
+  getPendingHires: () => fetchApi('/employees/pending'),
+  getEmployeePrefill: (applicationId: string) => fetchApi(`/employees/prefill/${applicationId}`),
+  registerEmployee: (data: Record<string, any>) => fetchApi('/employees', { method: 'POST', body: JSON.stringify(data) }),
+  updateEmployee: (id: string, data: Record<string, any>) =>
+    fetchApi(`/employees/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  announceEmployee: (id: string, message: string) =>
+    fetchApi(`/employees/${id}/announce`, { method: 'POST', body: JSON.stringify({ message }) }),
+  withdrawAnnouncement: (id: string) => fetchApi(`/employees/${id}/announce`, { method: 'DELETE' }),
+  releaseHires: (applicationIds: string[]) =>
+    fetchApi('/employees/release', { method: 'POST', body: JSON.stringify({ applicationIds }) }),
+  restoreHire: (applicationId: string) =>
+    fetchApi('/employees/restore', { method: 'POST', body: JSON.stringify({ applicationId }) }),
+  getAnnouncements: (limit = 30) => fetchApi(`/announcements?limit=${limit}`)
 };
