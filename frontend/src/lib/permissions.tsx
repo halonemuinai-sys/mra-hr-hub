@@ -20,6 +20,7 @@ export type Permission =
   | 'jobs.manage'
   | 'employee.view'
   | 'employee.manage'
+  | 'employee.sync'
   | 'approval.offer'
   | 'approval.hire'
   | 'team.monitor'

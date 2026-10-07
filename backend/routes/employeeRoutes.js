@@ -4,6 +4,7 @@ const { requireAuth, requirePermission } = require('../middlewares/authMiddlewar
 const {
   listEmployees,
   listPendingHires,
+  getEmployeeJourney,
   prefillEmployee,
   registerEmployee,
   updateEmployee,
@@ -19,6 +20,7 @@ router.use(requireAuth);
 router.get('/', requirePermission('employee.view'), listEmployees);
 router.get('/pending', requirePermission('employee.view'), listPendingHires);
 router.get('/export.xlsx', requirePermission('employee.view'), exportEmployees);
+router.get('/:id/journey', requirePermission('employee.view'), getEmployeeJourney);
 router.get('/prefill/:applicationId', requirePermission('employee.manage'), prefillEmployee);
 router.post('/', requirePermission('employee.manage'), registerEmployee);
 router.post('/release', requirePermission('employee.manage'), releaseHires);

@@ -63,6 +63,7 @@ SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - `2026-10-04_stage_gate.sql` — `ApplicationActivity.stageData` + `StageRequest` (approvals)
 - `2026-10-07_job_hiring_manager.sql` — `JobPosting.hiringManagerId`
 - `2026-10-07_employees.sql` — `Employee` + `EmploymentStatus` enum, `JobApplication.releasedAt`
+- `2026-10-07_employee_talenta.sql` — `Employee.talentaData/Status/Mode/UserId/EmployeeId/SyncedAt/Error`
 
 ### Health Check Endpoints
 - **Backend Health**: `curl http://localhost:5006/api/health`
@@ -101,6 +102,7 @@ Fixed roles (Prisma enum `Role`); permissions are defined in **one file**: `back
 | `team.monitor`, `approval.offer` | ✓ | ✓ | – | – |
 | `employee.manage` (own hires for TA) | ✓ | ✓ | ✓ | – |
 | `employee.view` | ✓ | ✓ | ✓ | ✓ |
+| `employee.sync` (payroll data + send to Talenta) | ✓ | ✓ | – | – |
 | `approval.hire` | ✓ | – | – | ✓ |
 | `users.manage` | ✓ | – | – | – |
 
@@ -194,7 +196,16 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - Released applications are hidden from the board (`listPipeline` filters `releasedAt: null`) and the stage gate blocks any further move. They still count as HIRED in dashboard, team and report metrics.
 - `/admin/employees` (`employee.view`; Hiring Managers scoped to their jobs): tabs *Menunggu Registrasi* (HIRED without employee) / *Terdaftar*, edit, announce, Excel export for HRIS. `/admin/announcements` (`dashboard.view`): "Selamat Bergabung" board without contact details; also a dashboard widget and reminders (`hires-to-register`, `new-colleagues`).
 - Activity actions: `EMPLOYEE_REGISTERED`, `EMPLOYEE_ANNOUNCED`, `HIRE_RELEASED`, `HIRE_RESTORED`.
+- **Recruitment Journey** (Journey button / employee name on the *Terdaftar* tab): `GET /api/employees/:id/journey` (`employee.view`, Hiring Manager scope) → `services/journeyService.js` `buildJourney` (pure, unit-tested) turns the activity log + stage requests into stage visits with durations and the events of each visit, after-hire actions, approvals and metrics (applied → hired, time to claim / first interview, offer → hire, hire → join, back moves, people involved, slowest stage). UI: `components/employees/journey/*`; activity labels shared with `StageHistory` via `components/candidates/activityFormat.tsx`.
 - Backend: `controllers/employeeController.js`, `routes/employeeRoutes.js` (`/api/employees`), `routes/announcementRoutes.js` (`/api/announcements`), validation in `services/employeeInput.js` (unit-tested). UI: `components/employees/*`, `components/announcements/AnnouncementCard.tsx`, `components/dashboard/NewColleagues.tsx`.
+
+### K. Talenta (Mekari HRIS) Integration
+- Registered employees are sent to Talenta with **Add Employee** (`POST /v2/talenta/v3/employee`, docs: https://documenter.getpostman.com/view/12246328/UVR5qp6v). HR (`employee.sync`) fills personal, placement, payroll/tax, BPJS and bank data in the *Talenta* drawer on `/admin/employees`, saves a draft, then sends.
+- Config in `backend/.env` (see `.env.example`, read by `config/talenta.js`): `TALENTA_MODE=off|mock|sandbox|production` (default **mock** in development, **off** when `NODE_ENV=production`), `TALENTA_HMAC_USERNAME`, `TALENTA_HMAC_SECRET` (HMAC client from Mekari Developer Center, requested by the Talenta company owner), `TALENTA_COMPANY_ID` (default `me`).
+- **mock** = local simulator (`services/talenta/talentaMock.js`): master data + Add Employee with Talenta-style errors (`{ message, errors[] }`, duplicate email / employee_id, unknown branch/organization/position/level). Nothing leaves the server; records sent in mock are flagged `talentaMode = 'mock'` and can be sent again once sandbox/production is configured (a record counts as sent only for the mode it went to).
+- Modules: `talentaHmac.js` (signature = base64 HMAC-SHA256 of `date: <RFC1123>` + newline + `<METHOD> <path> HTTP/1.1`), `talentaClient.js` (signed fetch, 20s timeout, `TalentaError`), `talentaMasterData.js` (branches / organizations / job positions / job levels / employment statuses, 10-min cache), `talentaEmployeePayload.js` (pure: `FIELDS` definitions shared with the form, defaults incl. offer salary from the Offering stage data, validation, masking). Endpoints in `controllers/talentaController.js` (`/api/talenta/*`). UI: `components/employees/talenta/*`.
+- Branch / organization / job position / job level must match Talenta master names exactly — the form offers them as dropdowns from the live master data. Sends are claimed atomically (`SENDING`) so double clicks never create two employees. `talentaData` (salary, KTP, NPWP, bank) is never returned by the general employee endpoints.
+- Activity actions: `TALENTA_SYNCED`, `TALENTA_SYNC_FAILED`. Changes after a successful send are made in Talenta directly (no PATCH sync yet).
 
 ### I. Dual-Intake ATS & Template Ingestion
 - `backend/services/atsParserService.js`: PDF/DOCX/TXT resume parser (`POST /api/ats/parse-cv`). Splits the CV into sections (summary / skills / experience / education); skills = taxonomy hits **plus** the CV's own skills section; the real experience text is kept on `experiences[0].description`; education year ranges are not counted as work experience. Always passes pdf.js a standalone `Uint8Array` (small Node Buffers share a pool and broke parsing at random).
@@ -226,6 +237,7 @@ d:\MRA Project\HR HUB
 │   │   ├── reminderController.js  # Per-user action reminders (/api/reminders)
 │   │   ├── reportController.js    # Recruitment report workbook (/api/reports/recruitment.xlsx)
 │   │   ├── employeeController.js  # Register hires as employees, release from board, announcements
+│   │   ├── talentaController.js   # Talenta HRIS sync (payroll data, master data, send)
 │   │   ├── jobController.js  # Jobs: public list/detail, admin manage view, sanitized create/update
 │   │   ├── pipelineController.js   # Board listing + bulk moves (gate-aware)
 │   │   ├── transitionController.js # Single move: preview / execute / request approval
@@ -248,6 +260,7 @@ d:\MRA Project\HR HUB
 │   │   ├── candidateIntakeService.js # Apply / template intake (no overwrite of existing profiles)
 │   │   ├── hiringManagerScope.js # Limits Hiring Managers to their own jobs
 │   │   ├── resumeStorage.js  # Original CV files: temp token → permanent file, safe resolve
+│   │   ├── talenta/          # Talenta HMAC client, simulator, master data, Add Employee payload
 │   │   ├── stageGateService.js # Evaluate a stage move (pure)
 │   │   └── stageMoveService.js # applyStageChange — the single write path for stage changes
 │   └── scripts/

@@ -1,19 +1,26 @@
 'use client';
 
 import React from 'react';
-import { Megaphone, Pencil, Users } from 'lucide-react';
+import { CloudUpload, Megaphone, Pencil, Route, Users } from 'lucide-react';
 import { getInitials } from '@/components/pipeline/stages';
 import { shortName } from '@/components/pipeline/ownership';
 import { fmtDate, joinBadge, statusMeta } from './employeeFormat';
+import TalentaStatusBadge from './talenta/TalentaStatusBadge';
 
 interface Props {
   rows: any[];
   loading: boolean;
   onEdit: (emp: any) => void;
   onAnnounce: (emp: any) => void;
+  /** HR may fill payroll data and send to Talenta */
+  canSync: boolean;
+  talentaMode: string | null;
+  onTalenta: (emp: any) => void;
+  /** CV received → hired → onboarding timeline */
+  onJourney: (emp: any) => void;
 }
 
-export default function EmployeeTable({ rows, loading, onEdit, onAnnounce }: Props) {
+export default function EmployeeTable({ rows, loading, onEdit, onAnnounce, canSync, talentaMode, onTalenta, onJourney }: Props) {
   if (loading && !rows.length) {
     return (
       <div className="p-4 space-y-2">
@@ -28,7 +35,9 @@ export default function EmployeeTable({ rows, loading, onEdit, onAnnounce }: Pro
       <div className="py-14 text-center">
         <Users className="w-8 h-8 text-slate-300 mx-auto" />
         <p className="text-sm font-bold text-slate-800 mt-2">Belum ada karyawan terdaftar</p>
-        <p className="text-xs text-slate-500 mt-1">Daftarkan kandidat Hired dari tab &quot;Menunggu Registrasi&quot; atau langsung dari pipeline.</p>
+        <p className="text-xs text-slate-500 mt-1">
+          Daftarkan kandidat Hired dari tab &quot;Menunggu Registrasi&quot; atau langsung dari pipeline.
+        </p>
       </div>
     );
   }
@@ -44,6 +53,7 @@ export default function EmployeeTable({ rows, loading, onEdit, onAnnounce }: Pro
             <th className="px-4 py-2.5 font-bold">Status</th>
             <th className="px-4 py-2.5 font-bold">Bergabung</th>
             <th className="px-4 py-2.5 font-bold">Pengumuman</th>
+            <th className="px-4 py-2.5 font-bold">Talenta</th>
             <th className="px-4 py-2.5" />
           </tr>
         </thead>
@@ -59,7 +69,13 @@ export default function EmployeeTable({ rows, loading, onEdit, onAnnounce }: Pro
                       {getInitials(e.fullName)}
                     </span>
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-900 truncate">{e.fullName}</p>
+                      <button
+                        type="button"
+                        onClick={() => onJourney(e)}
+                        className="block max-w-full font-bold text-slate-900 hover:text-blue-700 truncate text-left"
+                      >
+                        {e.fullName}
+                      </button>
                       <p className="text-[11px] text-slate-500 font-mono">{e.employeeNo}</p>
                     </div>
                   </div>
@@ -77,11 +93,18 @@ export default function EmployeeTable({ rows, loading, onEdit, onAnnounce }: Pro
                 </td>
                 <td className="px-4 py-3">
                   <p className="font-semibold text-slate-800 tabular-nums">{fmtDate(e.joinDate)}</p>
-                  {jb && <span className={`inline-block mt-0.5 px-1.5 py-0.5 rounded border text-[9px] font-bold ${jb.cls}`}>{jb.label}</span>}
+                  {jb && (
+                    <span className={`inline-block whitespace-nowrap mt-0.5 px-1.5 py-0.5 rounded border text-[9px] font-bold ${jb.cls}`}>
+                      {jb.label}
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {e.announcedAt ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700" title={`oleh ${shortName(e.announcedBy?.name)}`}>
+                    <span
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-700"
+                      title={`oleh ${shortName(e.announcedBy?.name)}`}
+                    >
                       <Megaphone className="w-3.5 h-3.5" /> {fmtDate(e.announcedAt)}
                     </span>
                   ) : (
@@ -89,29 +112,54 @@ export default function EmployeeTable({ rows, loading, onEdit, onAnnounce }: Pro
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  {e.canEdit && (
+                  <TalentaStatusBadge emp={e} currentMode={talentaMode} />
+                </td>
+                <td className="px-4 py-3">
+                  {
                     <div className="flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        onClick={() => onAnnounce(e)}
-                        className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 ${
-                          e.announcedAt
-                            ? 'border border-blue-200 text-blue-700 hover:bg-blue-50'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
+                        onClick={() => onJourney(e)}
+                        title="Perjalanan rekrutmen: CV masuk sampai hired"
+                        className="px-2.5 py-1.5 rounded-lg border border-blue-200 text-blue-700 hover:bg-blue-50 text-[11px] font-bold flex items-center gap-1"
                       >
-                        <Megaphone className="w-3.5 h-3.5" /> {e.announcedAt ? 'Pengumuman' : 'Umumkan'}
+                        <Route className="w-3.5 h-3.5" /> Journey
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => onEdit(e)}
-                        aria-label={`Ubah ${e.fullName}`}
-                        className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      {canSync && (
+                        <button
+                          type="button"
+                          onClick={() => onTalenta(e)}
+                          title="Data payroll & kirim ke Talenta"
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-[11px] font-bold flex items-center gap-1"
+                        >
+                          <CloudUpload className="w-3.5 h-3.5" /> Talenta
+                        </button>
+                      )}
+                      {e.canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onAnnounce(e)}
+                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1 ${
+                            e.announcedAt
+                              ? 'border border-blue-200 text-blue-700 hover:bg-blue-50'
+                              : 'bg-blue-600 hover:bg-blue-700 text-white'
+                          }`}
+                        >
+                          <Megaphone className="w-3.5 h-3.5" /> {e.announcedAt ? 'Pengumuman' : 'Umumkan'}
+                        </button>
+                      )}
+                      {e.canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(e)}
+                          aria-label={`Ubah ${e.fullName}`}
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                  )}
+                  }
                 </td>
               </tr>
             );

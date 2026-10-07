@@ -48,6 +48,10 @@ export function describeActivity(a: any) {
       return { who, text: `mengumumkan ${cand} sebagai karyawan baru` };
     case 'HIRE_RELEASED':
       return { who, text: `mengeluarkan ${cand} dari pipeline` };
+    case 'TALENTA_SYNCED':
+      return { who, text: `mengirim ${cand} ke Talenta (${a.note || ''})` };
+    case 'TALENTA_SYNC_FAILED':
+      return { who, text: `gagal mengirim ${cand} ke Talenta: ${a.note || ''}` };
     case 'HIRE_RESTORED':
       return { who, text: `mengembalikan ${cand} ke pipeline` };
     default:

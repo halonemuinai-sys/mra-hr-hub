@@ -5,6 +5,7 @@
  *   GET    /api/employees                       → registered employees (employee.view)
  *   GET    /api/employees/pending               → HIRED applications not registered yet (employee.view)
  *   GET    /api/employees/export.xlsx           → employees workbook for HRIS / payroll (employee.view)
+ *   GET    /api/employees/:id/journey           → CV received → hired → onboarding timeline (employee.view)
  *   GET    /api/employees/prefill/:applicationId → suggested form values (employee.manage)
  *   POST   /api/employees                       → register (+ release, optional announce) (employee.manage)
  *   PATCH  /api/employees/:id                   → edit (employee.manage)
@@ -20,7 +21,8 @@ const ExcelJS = require('exceljs');
 const prisma = require('../api/db');
 const { hasPermission } = require('../config/permissions');
 const { PENDING } = require('../services/stageMoveService');
-const { jobScope, applicationScope } = require('../services/hiringManagerScope');
+const { jobScope, applicationScope, canAccessJob } = require('../services/hiringManagerScope');
+const { buildJourney } = require('../services/journeyService');
 const { sanitizeEmployeeInput, suggestEmployeeNo } = require('../services/employeeInput');
 
 const STATUS_FROM_JOB_TYPE = { contract: 'CONTRACT', internship: 'INTERNSHIP', magang: 'INTERNSHIP', kontrak: 'CONTRACT' };
@@ -41,6 +43,9 @@ function canEditEmployee(user, emp) {
   if (isLead(user)) return true;
   return emp.createdById === user.id || (emp.application && emp.application.assignedRecruiterId === user.id);
 }
+
+/** Drop HR-only Talenta data; keep only the sync status for the list */
+const publicEmployee = ({ talentaData, ...e }, user) => ({ ...e, canEdit: canEditEmployee(user, e) });
 
 const dayString = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
 
@@ -87,7 +92,7 @@ async function listEmployees(req, res) {
       orderBy: [{ joinDate: 'desc' }, { createdAt: 'desc' }],
       include: EMPLOYEE_INCLUDE
     });
-    return res.json({ success: true, data: rows.map((e) => ({ ...e, canEdit: canEditEmployee(req.user, e) })) });
+    return res.json({ success: true, data: rows.map((e) => publicEmployee(e, req.user)) });
   } catch (error) {
     console.error('Error listing employees:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -229,7 +234,7 @@ async function registerEmployee(req, res) {
     return res.status(201).json({
       success: true,
       message: `${employee.fullName} terdaftar sebagai karyawan (${employee.employeeNo})${announce ? ' dan sudah diumumkan' : ''}.`,
-      data: { ...employee, canEdit: true }
+      data: publicEmployee(employee, req.user)
     });
   } catch (error) {
     if (duplicateNo(error)) return res.status(409).json({ success: false, message: 'NIK karyawan sudah dipakai. Gunakan nomor lain.' });
@@ -254,7 +259,7 @@ async function updateEmployee(req, res) {
     if (!Object.keys(data).length) return res.status(400).json({ success: false, message: 'Tidak ada perubahan.' });
 
     const updated = await prisma.employee.update({ where: { id: emp.id }, data, include: EMPLOYEE_INCLUDE });
-    return res.json({ success: true, message: 'Data karyawan diperbarui.', data: { ...updated, canEdit: true } });
+    return res.json({ success: true, message: 'Data karyawan diperbarui.', data: publicEmployee(updated, req.user) });
   } catch (error) {
     if (duplicateNo(error)) return res.status(409).json({ success: false, message: 'NIK karyawan sudah dipakai. Gunakan nomor lain.' });
     console.error('Error updating employee:', error);
@@ -282,7 +287,7 @@ async function announceEmployee(req, res) {
       }
       return u;
     });
-    return res.json({ success: true, message: first ? `${emp.fullName} sudah diumumkan.` : 'Pengumuman diperbarui.', data: { ...updated, canEdit: true } });
+    return res.json({ success: true, message: first ? `${emp.fullName} sudah diumumkan.` : 'Pengumuman diperbarui.', data: publicEmployee(updated, req.user) });
   } catch (error) {
     console.error('Error announcing employee:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -299,9 +304,73 @@ async function withdrawAnnouncement(req, res) {
       data: { announcedAt: null, announcedById: null },
       include: EMPLOYEE_INCLUDE
     });
-    return res.json({ success: true, message: 'Pengumuman ditarik.', data: { ...updated, canEdit: true } });
+    return res.json({ success: true, message: 'Pengumuman ditarik.', data: publicEmployee(updated, req.user) });
   } catch (error) {
     console.error('Error withdrawing announcement:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+/** Whole recruitment journey behind an employee record */
+async function getEmployeeJourney(req, res) {
+  try {
+    const emp = await prisma.employee.findUnique({
+      where: { id: String(req.params.id) },
+      include: {
+        ...EMPLOYEE_INCLUDE,
+        job: { select: { id: true, title: true, department: true, division: true, location: true, hiringManagerId: true, hiringManager: { select: { name: true } } } }
+      }
+    });
+    if (!emp || !canAccessJob(req.user, emp.job)) return res.status(404).json({ success: false, message: 'Data karyawan tidak ditemukan.' });
+
+    const app = emp.applicationId
+      ? await prisma.jobApplication.findUnique({
+          where: { id: emp.applicationId },
+          select: {
+            id: true,
+            status: true,
+            appliedAt: true,
+            atsScore: true,
+            skillsScore: true,
+            expScore: true,
+            eduScore: true,
+            matchedKeywords: true,
+            missingKeywords: true,
+            scorecardRating: true,
+            releasedAt: true,
+            assignedRecruiter: { select: { id: true, name: true } },
+            candidate: {
+              select: {
+                id: true, fullName: true, email: true, headline: true, location: true, currentCompany: true,
+                totalExperienceYrs: true, intakeSource: true, rawResumePath: true
+              }
+            },
+            activities: { orderBy: { createdAt: 'asc' }, include: { actor: { select: { id: true, name: true } } } },
+            stageRequests: {
+              orderBy: { createdAt: 'asc' },
+              include: { requestedBy: { select: { id: true, name: true } }, decidedBy: { select: { id: true, name: true } } }
+            }
+          }
+        })
+      : null;
+
+    const { hiringManagerId, ...job } = emp.job || {};
+    const base = { employee: publicEmployee({ ...emp, job: emp.job ? job : null }, req.user) };
+    if (!app) return res.json({ success: true, data: { ...base, application: null, journey: null } });
+
+    const { activities, stageRequests, candidate, ...application } = app;
+    const { rawResumePath, ...candidatePublic } = candidate || {};
+    return res.json({
+      success: true,
+      data: {
+        ...base,
+        application,
+        candidate: candidate ? { ...candidatePublic, hasResume: !!rawResumePath } : null,
+        journey: buildJourney({ application: app, activities, requests: stageRequests, employee: emp })
+      }
+    });
+  } catch (error) {
+    console.error('Error building employee journey:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 }
@@ -447,6 +516,7 @@ module.exports = {
   canHandleHire,
   listEmployees,
   listPendingHires,
+  getEmployeeJourney,
   prefillEmployee,
   registerEmployee,
   updateEmployee,

@@ -268,6 +268,14 @@ model Employee {
   announcedAt         DateTime?
   announcedById       String?
   announcementMessage String?          @db.Text
+  // Talenta (Mekari HRIS) sync — talentaData holds personal & payroll fields (HR only)
+  talentaData         Json?
+  talentaStatus       String?          // null = not sent, SENT, FAILED
+  talentaMode         String?          // mock / sandbox / production the last attempt went to
+  talentaUserId       Int?
+  talentaEmployeeId   String?
+  talentaSyncedAt     DateTime?
+  talentaError        String?          @db.Text
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 

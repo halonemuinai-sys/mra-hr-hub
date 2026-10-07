@@ -230,6 +230,7 @@ export const api = {
   // Employees (after the hire) & announcements
   getEmployees: (params: Record<string, string> = {}) => fetchApi(`/employees?${new URLSearchParams(params)}`),
   getPendingHires: () => fetchApi('/employees/pending'),
+  getEmployeeJourney: (id: string) => fetchApi(`/employees/${id}/journey`),
   getEmployeePrefill: (applicationId: string) => fetchApi(`/employees/prefill/${applicationId}`),
   registerEmployee: (data: Record<string, any>) => fetchApi('/employees', { method: 'POST', body: JSON.stringify(data) }),
   updateEmployee: (id: string, data: Record<string, any>) =>
@@ -241,5 +242,14 @@ export const api = {
     fetchApi('/employees/release', { method: 'POST', body: JSON.stringify({ applicationIds }) }),
   restoreHire: (applicationId: string) =>
     fetchApi('/employees/restore', { method: 'POST', body: JSON.stringify({ applicationId }) }),
-  getAnnouncements: (limit = 30) => fetchApi(`/announcements?limit=${limit}`)
+  getAnnouncements: (limit = 30) => fetchApi(`/announcements?limit=${limit}`),
+
+  // Talenta (Mekari HRIS) sync — HR only
+  getTalentaStatus: () => fetchApi('/talenta/status'),
+  getTalentaMasters: (refresh = false) => fetchApi(`/talenta/master-data${refresh ? '?refresh=1' : ''}`),
+  getEmployeeTalenta: (id: string) => fetchApi(`/talenta/employees/${id}`),
+  saveEmployeeTalenta: (id: string, data: Record<string, any>) =>
+    fetchApi(`/talenta/employees/${id}`, { method: 'PUT', body: JSON.stringify({ data }) }),
+  syncEmployeeTalenta: (id: string, data: Record<string, any>) =>
+    fetchApi(`/talenta/employees/${id}/sync`, { method: 'POST', body: JSON.stringify({ data }) })
 };

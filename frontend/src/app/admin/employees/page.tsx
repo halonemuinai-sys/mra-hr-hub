@@ -10,13 +10,14 @@ import PendingHiresTable from '@/components/employees/PendingHiresTable';
 import EmployeeTable from '@/components/employees/EmployeeTable';
 import EmployeeFormModal from '@/components/employees/EmployeeFormModal';
 import AnnounceModal from '@/components/employees/AnnounceModal';
+import TalentaSyncDrawer from '@/components/employees/talenta/TalentaSyncDrawer';
+import EmployeeJourneyDrawer from '@/components/employees/journey/EmployeeJourneyDrawer';
 import { EMPLOYMENT_STATUSES } from '@/components/employees/employeeFormat';
 import PipelineToast, { ToastState } from '@/components/pipeline/PipelineToast';
 
 type Tab = 'pending' | 'registered';
 
-const matches = (q: string, ...fields: (string | undefined | null)[]) =>
-  !q || fields.some((f) => (f || '').toLowerCase().includes(q));
+const matches = (q: string, ...fields: (string | undefined | null)[]) => !q || fields.some((f) => (f || '').toLowerCase().includes(q));
 
 export default function EmployeesPage() {
   const user = useCurrentUser();
@@ -30,6 +31,9 @@ export default function EmployeesPage() {
   const [registerApp, setRegisterApp] = useState<any | null>(null);
   const [editEmp, setEditEmp] = useState<any | null>(null);
   const [announceEmp, setAnnounceEmp] = useState<any | null>(null);
+  const [talentaEmp, setTalentaEmp] = useState<any | null>(null);
+  const [journeyEmp, setJourneyEmp] = useState<any | null>(null);
+  const [talenta, setTalenta] = useState<{ mode: string; label: string; ready: boolean } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -51,6 +55,10 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     load();
+    api
+      .getTalentaStatus()
+      .then((res: any) => setTalenta(res.data))
+      .catch(() => {});
   }, [load]);
 
   // Open on the tab that has work, unless the user already picked one
@@ -145,15 +153,31 @@ export default function EmployeesPage() {
             .
           </p>
         </div>
-        <button
-          type="button"
-          onClick={exportXlsx}
-          disabled={exporting || !employees.length}
-          className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-700 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
-        >
-          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          Export Excel (HRIS)
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {talenta && can(user, 'employee.sync') && (
+            <span
+              className={`px-2.5 py-2 rounded-xl border text-[11px] font-bold ${
+                talenta.mode === 'production'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : talenta.mode === 'sandbox'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200'
+              }`}
+              title="Mode integrasi Talenta (backend/.env)"
+            >
+              Talenta: {talenta.label}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={exportXlsx}
+            disabled={exporting || !employees.length}
+            className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 text-slate-700 rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Export Excel (HRIS)
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -173,10 +197,12 @@ export default function EmployeesPage() {
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs">
         <div className="p-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
           <div className="inline-flex bg-slate-100 rounded-xl p-1" role="tablist">
-            {([
-              ['pending', 'Menunggu Registrasi', stats.pending],
-              ['registered', 'Terdaftar', stats.registered]
-            ] as [Tab, string, number][]).map(([key, label, n]) => (
+            {(
+              [
+                ['pending', 'Menunggu Registrasi', stats.pending],
+                ['registered', 'Terdaftar', stats.registered]
+              ] as [Tab, string, number][]
+            ).map(([key, label, n]) => (
               <button
                 key={key}
                 type="button"
@@ -230,7 +256,16 @@ export default function EmployeesPage() {
         {tab === 'pending' ? (
           <PendingHiresTable rows={pendingRows} loading={loading} busyId={busyId} onRegister={setRegisterApp} onRestore={restore} />
         ) : (
-          <EmployeeTable rows={employeeRows} loading={loading} onEdit={setEditEmp} onAnnounce={setAnnounceEmp} />
+          <EmployeeTable
+            rows={employeeRows}
+            loading={loading}
+            onEdit={setEditEmp}
+            onAnnounce={setAnnounceEmp}
+            canSync={can(user, 'employee.sync')}
+            talentaMode={talenta?.mode || null}
+            onTalenta={setTalentaEmp}
+            onJourney={setJourneyEmp}
+          />
         )}
       </div>
 
@@ -271,6 +306,23 @@ export default function EmployeesPage() {
               setAnnounceEmp(null);
               setEmployees((list) => list.map((e) => (e.id === emp.id ? emp : e)));
               notify('success', message);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {journeyEmp && <EmployeeJourneyDrawer employeeId={journeyEmp.id} onClose={() => setJourneyEmp(null)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {talentaEmp && (
+          <TalentaSyncDrawer
+            employeeId={talentaEmp.id}
+            onClose={() => setTalentaEmp(null)}
+            onChanged={(message, tone) => {
+              notify(tone, message);
+              load();
             }}
           />
         )}

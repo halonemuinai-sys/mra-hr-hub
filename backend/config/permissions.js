@@ -29,6 +29,7 @@ const PERMISSIONS = [
 
   { key: 'employee.view', group: 'Karyawan', label: 'Lihat karyawan baru hasil rekrutmen' },
   { key: 'employee.manage', group: 'Karyawan', label: 'Daftarkan karyawan, release dari pipeline & umumkan' },
+  { key: 'employee.sync', group: 'Karyawan', label: 'Isi data payroll & kirim karyawan ke Talenta' },
 
   { key: 'approval.offer', group: 'Approval', label: 'Setujui offering di atas budget lowongan' },
   { key: 'approval.hire', group: 'Approval', label: 'Konfirmasi kandidat diterima (Hired)' },
