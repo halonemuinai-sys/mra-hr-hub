@@ -12,6 +12,7 @@ const candidateRoutes = require('../routes/candidateRoutes');
 const userRoutes = require('../routes/userRoutes');
 const teamRoutes = require('../routes/teamRoutes');
 const reminderRoutes = require('../routes/reminderRoutes');
+const reportRoutes = require('../routes/reportRoutes');
 const jobRoutes = require('../routes/jobRoutes');
 const statsRoutes = require('../routes/statsRoutes');
 const authRoutes = require('../routes/authRoutes');
@@ -48,6 +49,7 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/team', teamRoutes);
 app.use('/api/reminders', reminderRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

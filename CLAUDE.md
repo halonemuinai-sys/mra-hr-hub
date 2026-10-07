@@ -174,6 +174,7 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - UI split into `frontend/src/components/dashboard/*` (recharts). Chart colors live in `chartTheme.ts` — corporate steps validated for CVD/contrast (`#2563eb`, `#059669`, `#d97706`); slate is neutral only. Every multi-series chart has a legend or direct labels.
 - `GET /api/reminders` (`controllers/reminderController.js`): per-user action items computed live (approvals to decide, stalled candidates, unassigned queue, interviews in 48h, decided requests, new applicants for leads). Shown in the header bell (`components/notifications/NotificationBell.tsx`, polls every 60s) and the dashboard Action Center. "Seen" state is per viewer in localStorage.
 - Reminder links deep-link into the Pipeline: `?view=approvals`, `?filter=stale`, `?scope=unassigned|me|all`.
+- **Recruitment report** (`GET /api/reports/recruitment.xlsx?from=&to=`, `team.monitor`, max 1 year, default = current month; `controllers/reportController.js`): sheets Ringkasan, Per Lowongan, Per Recruiter, Diterima, Pelamar. Dashboard "Unduh Laporan" menu with month / 30 / 90-day presets.
 
 ### H. Kelola Lowongan ATS (`/admin/jobs`, `jobs.manage`)
 - Card grid with search + Aktif/Ditutup filter. Clicking a card opens `JobDetailDrawer` (`GET /api/jobs/:id/manage`: job incl. closed ones, applicants per stage, top candidates, "Lihat di Pipeline" → `/admin/pipeline?jobId=`). `JobFormModal` handles create and edit (keyword chips, salary range, requirements, open/closed).
@@ -211,6 +212,7 @@ d:\MRA Project\HR HUB
 │   │   ├── teamController.js # TA performance & activity feed (team.monitor)
 │   │   ├── dashboardController.js # Dashboard analytics (/api/stats/dashboard)
 │   │   ├── reminderController.js  # Per-user action reminders (/api/reminders)
+│   │   ├── reportController.js    # Recruitment report workbook (/api/reports/recruitment.xlsx)
 │   │   ├── jobController.js  # Jobs: public list/detail, admin manage view, sanitized create/update
 │   │   ├── pipelineController.js   # Board listing + bulk moves (gate-aware)
 │   │   ├── transitionController.js # Single move: preview / execute / request approval

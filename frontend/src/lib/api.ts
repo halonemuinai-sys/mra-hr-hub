@@ -53,6 +53,22 @@ export async function fetchResumeBlob(candidateId: string): Promise<Blob> {
   return res.blob();
 }
 
+/** Recruitment report workbook for a period (YYYY-MM-DD, inclusive) */
+export async function downloadReport(from: string, to: string): Promise<Blob> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('hr_hub_token') : null;
+  const res = await fetch(`${API_BASE_URL}/reports/recruitment.xlsx?from=${from}&to=${to}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      msg = (await res.json()).message || msg;
+    } catch {}
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 export const api = {
   // Auth
   login: (credentials: { email: string; password: string }) => fetchApi('/auth/login', {

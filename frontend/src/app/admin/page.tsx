@@ -18,7 +18,8 @@ import {
   Layers
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useCurrentUser } from '@/lib/permissions';
+import { can, useCurrentUser } from '@/lib/permissions';
+import ReportDownload from '@/components/dashboard/ReportDownload';
 import KpiTile from '@/components/dashboard/KpiTile';
 import DashboardCard from '@/components/dashboard/DashboardCard';
 import TrendChart from '@/components/dashboard/TrendChart';
@@ -86,6 +87,7 @@ export default function AdminDashboardPage() {
               </button>
             ))}
           </div>
+          {can(user, 'team.monitor') && <ReportDownload />}
           <button type="button" onClick={load} className="p-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl" title="Muat ulang">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
