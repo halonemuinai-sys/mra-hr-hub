@@ -34,7 +34,7 @@ node scripts/generate_sample_cvs.js --batch 2 # 12 sample resumes (.pdf + .txt) 
 
 ### Tests (Node built-in runner, no extra deps)
 ```powershell
-cd "d:\MRA Project\HR HUBackend"
+cd "d:\MRA Project\HR HUB\backend"
 npm test           # unit: stage gate, permissions, job input, intake normalization, CV parser (no DB)
 npm run test:api   # API: auth, RBAC, data-leak and validation checks against the real DB — read-only by design
 ```
