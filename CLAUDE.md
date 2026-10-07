@@ -131,6 +131,7 @@ The user requires **strict color consistency (4–5 colors maximum)** across all
 - Split-screen design (52% left graphic panel with SVG circuit traces, 22 floating particles, floating Donut Chart & Checklist mockup widgets, authentic `mra_logo.png`; 48% right panel with clean login form, one-click demo credentials, and diagonal shine animation button).
 
 ### B. Public Career Portal (`/`)
+- `app/(public)/page.tsx` only holds jobs + filter state; sections live in `components/public/careers/`: `HeroSection`, `BrandShowcase`, `JobListings` (pillar tabs use real counts), `QuickApplyModal` (owns the apply form, CV scan + `resumeToken`, template upload), `careersData.ts` (brands, tabs, `matchPillar`, pillar badge colors).
 - Hero banner with Wisma MRA architectural building and 3D MRA GROUP logo.
 - `HeroSearchBar.tsx`: Accessible `@headlessui/react` Listbox dropdown for 6 MRA work locations with unit icons, instant clear (✕) button, and popular search tags.
 - Marquee carousel with authentic 17 MRA brand logos (BVLGARI, OMEGA, Häagen-Dazs, Hard Rock FM, Harper's Bazaar, etc.).
@@ -267,7 +268,7 @@ d:\MRA Project\HR HUB
 │       │   ├── notifications/ # NotificationBell, ReminderList, useReminders
 │       │   ├── team/         # Leaderboard, WorkloadChart, RebalancePanel, TeamHighlights, MemberDetailDrawer, ActivityFeed
 │       │   ├── users/        # AccessMatrix, UserFormModal
-│       │   └── public/       # HeroSearchBar & JobDetailModal
+│       │   └── public/       # HeroSearchBar & JobDetailModal; careers/ = portal sections + QuickApplyModal
 │       └── lib/
 │           ├── api.ts        # API client with auto JWT Bearer injection
 │           ├── permissions.tsx # can(), useCurrentUser(), role labels
