@@ -4,14 +4,30 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { X, AlertTriangle, ArrowUpRight } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { api } from '@/lib/api';
 import { ROLE_LABELS } from '@/lib/permissions';
-import { ACTIVE_STAGES, getInitials } from '@/components/pipeline/stages';
+import { getInitials, stageLabel } from '@/components/pipeline/stages';
 import { shortName } from '@/components/pipeline/ownership';
+import { CHART, axisTick } from '@/components/dashboard/chartTheme';
 import ActivityFeed from './ActivityFeed';
 import { formatHours, formatRelative } from './teamFormat';
+import { STAGE_COLORS, loadTone } from './teamTheme';
 
-export default function MemberDetailDrawer({ member, days, onClose }: { member: any; days: number; onClose: () => void }) {
+interface Props {
+  member: any;
+  team: any;
+  members: any[];
+  days: number;
+  bucket: 'day' | 'week';
+  capacity: number;
+  onClose: () => void;
+}
+
+const fmtBucket = (iso: string, bucket: 'day' | 'week') =>
+  new Date(iso).toLocaleDateString('id-ID', bucket === 'day' ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' });
+
+export default function MemberDetailDrawer({ member, members, days, bucket, capacity, onClose }: Props) {
   const [activity, setActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,120 +40,163 @@ export default function MemberDetailDrawer({ member, days, onClose }: { member: 
   }, [member.id]);
 
   const p = member.period;
-  const maxStage = Math.max(1, ...ACTIVE_STAGES.map((s) => member.byStage[s.key] || 0));
+  const tone = loadTone(member.utilization);
+  const peers = members.filter((m) => m.isActive && (m.activeCount || m.period.moves));
+  const teamAvg = (fn: (m: any) => number | null) => {
+    const xs = peers.map(fn).filter((x): x is number => x != null);
+    return xs.length ? Math.round((xs.reduce((n, x) => n + x, 0) / xs.length) * 10) / 10 : null;
+  };
+
+  const compare = [
+    { label: 'Pindah tahap', me: p.moves, avg: teamAvg((m) => m.period.moves), better: 'high' },
+    { label: 'Maju tahap %', me: p.advanceRate, avg: teamAvg((m) => m.period.advanceRate), better: 'high', suffix: '%' },
+    { label: 'Diterima', me: p.hired, avg: teamAvg((m) => m.period.hired), better: 'high' },
+    { label: 'SLA (tidak tertahan)', me: member.slaRate, avg: teamAvg((m) => m.slaRate), better: 'high', suffix: '%' },
+    { label: 'Kecepatan ambil (jam)', me: p.avgClaimHours, avg: teamAvg((m) => m.period.avgClaimHours), better: 'low' }
+  ];
+  const maxStage = Math.max(1, ...STAGE_COLORS.map((s) => member.byStage[s.key] || 0));
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
-      />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs" />
       <motion.aside
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-        className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col"
+        className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col"
       >
-        <div className="bg-slate-900 text-white p-5 flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-sm font-bold shrink-0">
-              {getInitials(shortName(member.name))}
+        <div className="bg-slate-900 text-white p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-sm font-bold shrink-0">
+                {getInitials(shortName(member.name))}
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold truncate">{shortName(member.name)}</h2>
+                <p className="text-[11px] text-slate-400 truncate">{ROLE_LABELS[member.role] || member.role} · {member.email}</p>
+                <p className="text-[11px] text-blue-300 mt-0.5">Aktif terakhir: {formatRelative(member.lastActiveAt)}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h2 className="text-sm font-bold truncate">{shortName(member.name)}</h2>
-              <p className="text-[11px] text-slate-400 truncate">
-                {ROLE_LABELS[member.role] || member.role} • {member.email}
-              </p>
-              <p className="text-[11px] text-blue-300 mt-0.5">Aktif terakhir: {formatRelative(member.lastActiveAt)}</p>
+            <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="mt-4">
+            <div className="flex justify-between text-[11px] mb-1">
+              <span className="text-slate-300">Beban kerja: <b className="text-white">{member.activeCount}</b> / {capacity}</span>
+              <span className="text-slate-300">{member.utilization ?? 0}% · {tone.label}</span>
+            </div>
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.min(100, member.utilization || 0)}%` }} />
             </div>
           </div>
-          <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {/* Period outcomes */}
+          {/* Comparison with team average */}
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">{days} hari terakhir</h3>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { label: 'Diambil', value: p.claims },
-                { label: 'Pindah tahap', value: p.moves },
-                { label: 'Maju tahap', value: p.advanced },
-                { label: 'Offering', value: p.offerings },
-                { label: 'Diterima', value: p.hired },
-                { label: 'Ditolak', value: p.rejected }
-              ].map((s) => (
-                <div key={s.label} className="rounded-xl border border-slate-200 p-2.5">
-                  <p className="text-lg font-black text-slate-900 tabular-nums">{s.value}</p>
-                  <p className="text-[10px] font-semibold text-slate-500">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5">
-                <p className="text-[10px] font-semibold text-slate-500">Kecepatan ambil</p>
-                <p className="font-bold text-slate-900">{formatHours(p.avgClaimHours)}</p>
-              </div>
-              <div className="rounded-xl bg-slate-50 border border-slate-200 p-2.5">
-                <p className="text-[10px] font-semibold text-slate-500">Hire rate (dari yang ditutup)</p>
-                <p className="font-bold text-slate-900">{p.hireRate === null ? '—' : `${p.hireRate}%`}</p>
-              </div>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">{days} hari terakhir vs rata-rata tim</h3>
+            <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl">
+              {compare.map((c) => {
+                const ahead =
+                  c.me == null || c.avg == null ? null : c.better === 'high' ? c.me >= c.avg : c.me <= c.avg;
+                return (
+                  <div key={c.label} className="flex items-center justify-between px-3 py-2 text-xs">
+                    <span className="text-slate-600">{c.label}</span>
+                    <span className="flex items-center gap-3 tabular-nums">
+                      <span className="text-[10px] text-slate-400">tim {c.avg ?? '—'}{c.avg != null && c.suffix ? c.suffix : ''}</span>
+                      <b className={ahead == null ? 'text-slate-900' : ahead ? 'text-emerald-700' : 'text-amber-700'}>
+                        {c.me ?? '—'}{c.me != null && c.suffix ? c.suffix : ''}
+                      </b>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </section>
 
-          {/* Current holdings by stage */}
+          {/* Trend */}
           <section>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Kandidat aktif saat ini ({member.activeCount})
-              </h3>
-              {member.staleCount > 0 && (
-                <span className="text-[11px] font-bold text-amber-700 flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  {member.staleCount} tertahan ≥7 hari
-                </span>
-              )}
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Perpindahan tahap per {bucket === 'day' ? 'hari' : 'minggu'}
+            </h3>
+            <div className="h-36">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={member.series} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+                  <CartesianGrid stroke={CHART.grid} strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="t" tickFormatter={(t) => fmtBucket(t, bucket)} tick={axisTick} tickLine={false} axisLine={{ stroke: CHART.grid }} minTickGap={12} />
+                  <YAxis allowDecimals={false} tick={axisTick} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    cursor={{ fill: '#f1f5f9' }}
+                    contentStyle={{ fontSize: 11, borderRadius: 10 }}
+                    labelFormatter={(t) => fmtBucket(String(t), bucket)}
+                    formatter={(v: number, n: string) => [v, n === 'moves' ? 'Pindah tahap' : 'Diterima']}
+                  />
+                  <Bar dataKey="moves" fill={CHART.blue} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="hired" fill={CHART.emerald} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
+            <p className="mt-1 flex gap-4 text-[10px] text-slate-500">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-600" />Pindah tahap ({p.moves})</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-600" />Diterima ({p.hired})</span>
+            </p>
+          </section>
+
+          {/* Holdings by stage */}
+          <section>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Kandidat aktif per tahap ({member.activeCount})</h3>
             <div className="space-y-1.5">
-              {ACTIVE_STAGES.map((s) => {
+              {STAGE_COLORS.map((s) => {
                 const n = member.byStage[s.key] || 0;
                 return (
-                  <div key={s.key} className="grid grid-cols-[110px_1fr_28px] items-center gap-2 text-xs">
+                  <div key={s.key} className="grid grid-cols-[100px_1fr_24px] items-center gap-2 text-xs">
                     <span className="text-slate-600 truncate">{s.label}</span>
                     <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${s.dot}`} style={{ width: `${(n / maxStage) * 100}%` }} />
+                      <div className="h-full rounded-full" style={{ width: `${(n / maxStage) * 100}%`, background: s.color }} />
                     </div>
-                    <span className="text-right font-bold text-slate-900 tabular-nums">{n}</span>
+                    <b className="text-right tabular-nums text-slate-900">{n}</b>
                   </div>
                 );
               })}
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
-              Rata-rata {member.avgDaysInStage ?? '—'} hari di tahap saat ini • rata-rata skor ATS{' '}
-              {member.avgAtsScore ?? '—'}%
+              Rata-rata {member.avgDaysInStage ?? '—'} hari di tahap saat ini · rata-rata ATS {member.avgAtsScore ?? '—'}% · kecepatan ambil {formatHours(p.avgClaimHours)}
             </p>
           </section>
 
-          {/* Activity */}
+          {/* Stalled candidates */}
+          {member.staleCandidates.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Tertahan ≥7 hari ({member.staleCount})
+                </h3>
+                <Link href="/admin/pipeline?filter=stale" className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5">
+                  Buka Pipeline <ArrowUpRight className="w-3 h-3" />
+                </Link>
+              </div>
+              <ul className="divide-y divide-slate-100 border border-amber-200 rounded-xl">
+                {member.staleCandidates.map((c: any) => (
+                  <li key={c.applicationId} className="px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                    <span className="min-w-0">
+                      <span className="block font-bold text-slate-900 truncate">{c.candidate}</span>
+                      <span className="block text-[10px] text-slate-500 truncate">{stageLabel(c.status)} · {c.job}</span>
+                    </span>
+                    <span className={`shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums ${c.days >= 14 ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700'}`}>
+                      {c.days} hari
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section>
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Riwayat aktivitas</h3>
             <ActivityFeed items={activity} loading={loading} compact />
           </section>
-        </div>
-
-        <div className="p-4 border-t border-slate-100">
-          <Link
-            href="/admin/pipeline"
-            className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
-          >
-            Buka Pipeline <ArrowUpRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
       </motion.aside>
     </div>

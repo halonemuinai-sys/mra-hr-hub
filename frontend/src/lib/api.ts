@@ -68,6 +68,7 @@ export const api = {
 
   // Team monitoring (Super Admin / TA Lead)
   getTeamPerformance: (days = 30) => fetchApi(`/team/performance?days=${days}`),
+  getTeamRebalance: () => fetchApi('/team/rebalance'),
   getTeamActivity: (params: Record<string, any> = {}) => {
     const q = new URLSearchParams(params).toString();
     return fetchApi(`/team/activity${q ? `?${q}` : ''}`);

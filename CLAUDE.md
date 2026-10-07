@@ -143,10 +143,11 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - Safeguards: no self-deactivation / self role change; at least one active SUPERADMIN must remain. Users are never deleted.
 
 ### F. Kinerja Tim TA (`/admin/team`, `team.monitor`)
-- Monitoring for Super Admin / TA Lead: `GET /api/team/performance?days=7|30|90` and `GET /api/team/activity?recruiterId=` (`backend/controllers/teamController.js`).
-- Per recruiter: candidates held now + stage mix, stale (≥7d), avg days in stage, and for the period: claims, stage moves, forward moves, offerings, hired/rejected, hire rate, claim speed (applied → claimed), last activity. Row click opens a detail drawer with the recruiter's activity timeline.
+- `GET /api/team/performance?days=7|30|90` (`controllers/teamController.js`): per recruiter — workload vs capacity (`CAPACITY = 15`), stage mix, stale/critical, SLA % (active candidates moved within 7 days), avg days in stage, period outcomes (claims, moves, forward-move rate, interviews, offerings, hired/rejected, hire rate, claim speed), previous-period outcomes, activity sparkline series (daily ≤14 days, else weekly), oldest stalled candidates. Team totals carry % deltas only when the previous period has ≥5 events.
+- `GET /api/team/rebalance`: suggested reassignments — stalled candidates of over-fair-share recruiters plus the unassigned queue waiting ≥2 days go to the least-loaded RECRUITER/HR_ADMIN (cards awaiting approval are never moved). Applied from the UI through `POST /api/candidates/applications/assign` (`pipeline.assign`).
+- `GET /api/team/activity?recruiterId=&action=moves|ownership|approvals`.
+- UI (`frontend/src/components/team/*`): KPI tiles, highlights (most productive / fastest claim / needs help), `WorkloadChart` (stacked by stage vs capacity line), `RebalancePanel`, sortable `Leaderboard` with CSV export, filtered activity feed, `MemberDetailDrawer` (vs team average, trend, stalled list).
 - Period metrics come from `ApplicationActivity`, so history starts when the ownership migration was applied.
-- UI: `frontend/src/app/admin/team/page.tsx` + `frontend/src/components/team/*`.
 
 ### G. Recruitment Dashboard (`/admin`) & Reminder Bell
 - `GET /api/stats/dashboard?weeks=8|12|26` (`controllers/dashboardController.js`): KPIs with 30-day deltas, weekly trend (applications / hired / rejected), funnel conversion based on the furthest stage each application **reached** (from the activity log), ATS score distribution, stage aging (avg days in stage vs 7-day line), top jobs, talent mix.
@@ -201,7 +202,7 @@ d:\MRA Project\HR HUB
 │   ├── routes/
 │   │   ├── authRoutes.js     # /api/auth endpoints
 │   │   ├── candidateRoutes.js # /api/candidates (+ pipeline, claim/assign, public status)
-│   │   ├── teamRoutes.js     # /api/team (performance, activity)
+│   │   ├── teamRoutes.js     # /api/team (performance, rebalance, activity)
 │   │   └── userRoutes.js     # /api/users (+ access-matrix)
 │   ├── services/
 │   │   ├── candidateIntakeService.js # Apply / template intake (no overwrite of existing profiles)
@@ -235,7 +236,7 @@ d:\MRA Project\HR HUB
 │       │   ├── dashboard/    # KPI tiles, trend, funnel, aging, histogram, top jobs, Action Center
 │       │   ├── jobs/         # JobCard, JobDetailDrawer, JobFormModal, SkillTagInput
 │       │   ├── notifications/ # NotificationBell, ReminderList, useReminders
-│       │   ├── team/         # StageMixBar, ActivityFeed, MemberDetailDrawer
+│       │   ├── team/         # Leaderboard, WorkloadChart, RebalancePanel, TeamHighlights, MemberDetailDrawer, ActivityFeed
 │       │   ├── users/        # AccessMatrix, UserFormModal
 │       │   └── public/       # HeroSearchBar & JobDetailModal
 │       └── lib/
