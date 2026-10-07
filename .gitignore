@@ -37,3 +37,6 @@ uploads/
 
 # Isolated production build output (NEXT_DIST_DIR)
 .next-build/
+
+# TypeScript incremental build cache
+*.tsbuildinfo
