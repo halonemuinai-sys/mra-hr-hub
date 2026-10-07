@@ -7,9 +7,9 @@ import { CHART, axisTick, fmtWeek } from './chartTheme';
 type Point = { weekStart: string; applications: number; hired: number; rejected: number; partial?: boolean };
 
 const SERIES = [
-  { key: 'applications', label: 'Lamaran masuk', color: CHART.blue },
-  { key: 'hired', label: 'Diterima', color: CHART.emerald },
-  { key: 'rejected', label: 'Ditolak', color: CHART.amber }
+  { key: 'applications', label: 'Applications', color: CHART.blue },
+  { key: 'hired', label: 'Hired', color: CHART.emerald },
+  { key: 'rejected', label: 'Rejected', color: CHART.amber }
 ] as const;
 
 function TrendTooltip({ active, payload }: any) {
@@ -17,7 +17,7 @@ function TrendTooltip({ active, payload }: any) {
   const p: Point = payload[0].payload;
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-[11px]">
-      <p className="font-bold text-slate-900 mb-1">Minggu {fmtWeek(p.weekStart)}{p.partial ? ' (berjalan)' : ''}</p>
+      <p className="font-bold text-slate-900 mb-1">Week {fmtWeek(p.weekStart)}{p.partial ? ' (in progress)' : ''}</p>
       {SERIES.map((s) => (
         <p key={s.key} className="flex items-center justify-between gap-4 text-slate-600">
           <span className="flex items-center gap-1.5">
@@ -69,7 +69,7 @@ export default function TrendChart({ data: raw }: { data: Point[] }) {
                 x={data[data.length - 1].weekStart}
                 stroke={CHART.slate}
                 strokeDasharray="2 3"
-                label={{ value: 'minggu berjalan', position: 'insideTopRight', fontSize: 10, fill: CHART.axis }}
+                label={{ value: 'current week', position: 'insideTopRight', fontSize: 10, fill: CHART.axis }}
               />
             )}
             <Line type="monotone" dataKey="rejected" stroke={CHART.amber} strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />

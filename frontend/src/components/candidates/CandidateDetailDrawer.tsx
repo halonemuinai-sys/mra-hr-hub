@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -11,19 +11,15 @@ import {
   GraduationCap,
   Calendar,
   CheckCircle2,
-  AlertCircle,
   Star,
   Award,
-  DollarSign,
   Clock,
   Save,
   Copy,
   Check,
-  Building2,
-  Sparkles,
-  ChevronRight
 } from 'lucide-react';
-import { formatRupiah, formatDate, getScoreBadge, getStatusBadge } from '@/lib/utils';
+import { formatRupiah, getScoreBadge, getStatusBadge } from '@/lib/utils';
+import { stageLabel } from '@/components/pipeline/stages';
 import CandidateRadarChart from './CandidateRadarChart';
 import StageHistory from './StageHistory';
 import ApplicationHistory from './ApplicationHistory';
@@ -44,7 +40,17 @@ export default function CandidateDetailDrawer(props: Props) {
   return <CandidateDrawerContent {...props} />;
 }
 
-function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
+function CandidateDrawerContent({ candidate: initialCandidate, onClose, onUpdated }: Props) {
+  const [candidate, setCandidate] = useState(initialCandidate);
+  const [profileError, setProfileError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    api.getCandidateById(initialCandidate.id).then((res) => {
+      if (!cancelled && res.success) setCandidate((previous: any) => ({ ...previous, ...res.data }));
+    }).catch(() => { if (!cancelled) setProfileError('Unable to load the full profile. Showing the available summary.'); });
+    return () => { cancelled = true; };
+  }, [initialCandidate.id]);
+  const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   const currentUser = useCurrentUser();
   const app = candidate.latestApplication || (candidate.applications && candidate.applications[0]);
   const stageLocked = !!app && !canMove(currentUser, app);
@@ -55,18 +61,13 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
 
-  const atsScore = candidate.atsScore || app?.atsScore || 75;
+  const atsScore = candidate.atsScore ?? app?.atsScore ?? 0;
   const scoreBadge = getScoreBadge(atsScore);
   const statusBadge = getStatusBadge(status);
 
   // Radar data
-  const radarData = candidate.radarDimensions || candidate.evaluation?.radarDimensions || [
-    { subject: 'Teknis', score: app?.skillsScore || 80, fullMark: 100 },
-    { subject: 'Pengalaman', score: app?.expScore || 75, fullMark: 100 },
-    { subject: 'Pendidikan', score: app?.eduScore || 85, fullMark: 100 },
-    { subject: 'Stabilitas', score: 78, fullMark: 100 },
-    { subject: 'Kecocokan Lowongan', score: atsScore, fullMark: 100 }
-  ];
+  const dimensionLabels: Record<string, string> = { 'Keahlian Teknis': 'Technical Skills', 'Durasi Pengalaman': 'Experience', 'Stabilitas Karir': 'Career Stability', Teknis: 'Technical', Pengalaman: 'Experience', Pendidikan: 'Education', Stabilitas: 'Stability', 'Kecocokan Lowongan': 'Role Fit' };
+  const radarData = (candidate.radarDimensions || candidate.evaluation?.radarDimensions || []).map((item: any) => ({ ...item, subject: dimensionLabels[item.subject] || item.subject }));
 
   const matchedKeywords = app?.matchedKeywords || candidate.evaluation?.matchedKeywords || [];
   const missingKeywords = app?.missingKeywords || candidate.evaluation?.missingKeywords || [];
@@ -89,7 +90,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
 
   const handleSaveAction = async () => {
     if (!app?.id) {
-      alert('Aplikasi lowongan tidak terasosiasi untuk kandidat ini.');
+      alert('No job application is linked to this candidate.');
       return;
     }
     setSaving(true);
@@ -99,10 +100,10 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
         recruiterNotes: notes,
         scorecardRating: rating
       });
-      alert('Status dan evaluasi kandidat berhasil disimpan!');
+      alert('Candidate status and evaluation saved.');
       onUpdated();
     } catch (err: any) {
-      alert('Gagal menyimpan: ' + err.message);
+      alert('Unable to save: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -137,7 +138,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
           className="relative w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col z-10 overflow-hidden border-l border-slate-200"
         >
           {/* 1. Executive Slate Header */}
-          <div className="p-6 bg-slate-900 text-white flex items-start justify-between border-b border-slate-800 relative">
+          <div className="p-5 sm:p-7 bg-slate-900 text-white flex items-start justify-between border-b border-slate-800 relative">
             <div className="flex items-start gap-4">
               {/* Monogram Avatar */}
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-slate-800 text-white font-bold text-lg flex items-center justify-center ring-2 ring-blue-500/30 shadow-md shrink-0">
@@ -151,7 +152,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                     ATS {atsScore}% • {scoreBadge.label}
                   </span>
                   <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.class}`}>
-                    {statusBadge.label}
+                    {stageLabel(status)}
                   </span>
                   {candidate.intakeSource === 'EXCEL_TEMPLATE' && (
                     <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">
@@ -163,7 +164,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 <h2 className="text-xl font-bold tracking-tight text-white">{candidate.fullName}</h2>
                 <p className="text-xs text-slate-300 flex items-center gap-1.5 font-medium">
                   <Briefcase className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                  <span>{candidate.headline || 'Kandidat Profesional'}</span>
+                  <span>{candidate.headline || 'Professional Candidate'}</span>
                   {candidate.currentCompany && (
                     <span className="text-slate-400">• {candidate.currentCompany}</span>
                   )}
@@ -174,30 +175,31 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
             <button
               onClick={onClose}
               className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
-              title="Tutup Panel"
+              title="Close profile"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* 2. Scrollable Cockpit Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/60">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-slate-50/60">
+            {profileError && <p role="alert" className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">{profileError}</p>}
             {/* Quick 4-Grid Executive Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium mb-1">
                   <Clock className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Pengalaman</span>
+                  <span>Experience</span>
                 </div>
                 <div className="text-sm font-bold text-slate-900">
-                  {candidate.totalExperienceYrs || 0} Tahun
+                  {candidate.totalExperienceYrs || 0} years
                 </div>
               </div>
 
               <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium mb-1">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Ekspektasi Gaji</span>
+                  <span className="shrink-0 text-[10px] font-bold leading-none text-emerald-600">IDR</span>
+                  <span>Expected Salary</span>
                 </div>
                 <div className="text-sm font-bold text-slate-900 truncate" title={formatRupiah(candidate.expectedSalary)}>
                   {formatRupiah(candidate.expectedSalary)}
@@ -207,17 +209,17 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
               <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium mb-1">
                   <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Ketersediaan</span>
+                  <span>Availability</span>
                 </div>
                 <div className="text-sm font-bold text-slate-900 truncate">
-                  {candidate.availability || 'Segera'}
+                  {candidate.availability || 'Immediate'}
                 </div>
               </div>
 
               <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium mb-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Domisili</span>
+                  <span>Location</span>
                 </div>
                 <div className="text-sm font-bold text-slate-900 truncate">
                   {candidate.location || 'Indonesia'}
@@ -233,7 +235,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 <button
                   onClick={() => handleCopy(candidate.email, 'email')}
                   className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
-                  title="Salin Email"
+                  title="Copy email"
                 >
                   {copiedEmail ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
@@ -246,7 +248,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                   <button
                     onClick={() => handleCopy(candidate.phone, 'phone')}
                     className="p-1 text-slate-400 hover:text-emerald-600 transition-colors"
-                    title="Salin No HP"
+                    title="Copy phone"
                   >
                     {copiedPhone ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
@@ -258,7 +260,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
 
             {/* Candidate DNA & Match Profiling */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-wrap gap-3 items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
                     <Award className="w-4 h-4" />
@@ -268,7 +270,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                       Candidate DNA & Match Profiling
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Evaluasi otomatis 5 pilar kecocokan kompetensi dan kriteria lowongan
+                      ATS assessment across skills, experience, education, and role fit
                     </p>
                   </div>
                 </div>
@@ -285,7 +287,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
 
                 <div className="space-y-3">
                   <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Breakdown Skor 5 Pilar
+                    Assessment breakdown
                   </p>
                   {radarData.map((item: any, idx: number) => (
                     <div key={idx} className="space-y-1">
@@ -307,7 +309,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
 
             {/* Keyword ATS Matching Analysis */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-wrap gap-3 items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
                     <CheckCircle2 className="w-4 h-4" />
@@ -317,12 +319,12 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                       Keyword ATS Matching Analysis
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Perbandingan kata kunci spesifikasi lowongan dengan resume kandidat
+                      Compare job requirements with the candidate resume
                     </p>
                   </div>
                 </div>
                 <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                  {matchedKeywords.length} Teridentifikasi
+                  {matchedKeywords.length} matched
                 </span>
               </div>
 
@@ -330,7 +332,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
               <div className="space-y-2">
                 <p className="text-xs font-bold text-emerald-700 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  Cocok dengan Kriteria Lowongan ({matchedKeywords.length})
+                  Matching job requirements ({matchedKeywords.length})
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {matchedKeywords.length > 0 ? (
@@ -343,7 +345,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                       </span>
                     ))
                   ) : (
-                    <span className="text-xs text-slate-400 italic">Belum ada kata kunci mutlak yang cocok</span>
+                    <span className="text-xs text-slate-400 italic">No required keywords matched yet</span>
                   )}
                 </div>
               </div>
@@ -353,7 +355,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 <div className="space-y-2 pt-3 border-t border-slate-100">
                   <p className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    Kriteria Tambahan Belum Ditemukan di CV ({missingKeywords.length})
+                    Keywords not found in the resume ({missingKeywords.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {missingKeywords.map((kw: string, idx: number) => (
@@ -369,7 +371,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
               )}
             </div>
 
-            {/* Riwayat Pengalaman Kerja */}
+            {/* Work Experience */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                 <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
@@ -377,10 +379,10 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Riwayat Pengalaman Kerja
+                    Work Experience
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Kronologi rekam jejak profesional kandidat
+                    Professional experience and career history
                   </p>
                 </div>
               </div>
@@ -393,7 +395,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                       <div className="flex flex-wrap justify-between items-start gap-1">
                         <h4 className="text-xs font-bold text-slate-900">{exp.roleTitle}</h4>
                         <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                          {formatDate(exp.startDate)} - {exp.isCurrent ? 'Sekarang' : formatDate(exp.endDate)}
+                          {formatDate(exp.startDate)} - {exp.isCurrent ? 'Present' : formatDate(exp.endDate)}
                         </span>
                       </div>
                       <p className="text-xs font-semibold text-blue-700 mt-0.5">
@@ -407,12 +409,12 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic">Tidak ada riwayat terdaftar</p>
+                  <p className="text-xs text-slate-400 italic">No experience records available</p>
                 )}
               </div>
             </div>
 
-            {/* Pendidikan Terakhir (NO PURPLE) */}
+            {/* Education (NO PURPLE) */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
               <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
                 <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
@@ -420,10 +422,10 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Pendidikan Terakhir
+                    Education
                   </h3>
                   <p className="text-xs text-slate-500">
-                    Kualifikasi latar belakang akademik
+                    Academic background and qualifications
                   </p>
                 </div>
               </div>
@@ -443,18 +445,18 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                       </div>
                       <div className="text-right space-y-1">
                         <span className="inline-block font-semibold text-slate-700 bg-slate-200/80 px-2.5 py-0.5 rounded-md text-[11px]">
-                          Lulus {edu.graduationYear || '-'}
+                          Graduated {edu.graduationYear || '-'}
                         </span>
                         {edu.gpa && (
                           <p className="text-emerald-700 font-bold text-[11px]">
-                            IPK: {edu.gpa}
+                            GPA: {edu.gpa}
                           </p>
                         )}
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-slate-400 italic">Pendidikan belum ditambahkan</p>
+                  <p className="text-xs text-slate-400 italic">No education records available</p>
                 )}
               </div>
             </div>
@@ -465,19 +467,19 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
             {/* Lamaran lain & kemungkinan duplikat */}
             <ApplicationHistory candidateId={candidate.id} currentApplicationId={app?.id} />
 
-            {/* Evaluasi & Aksi Recruiter */}
+            {/* Recruiter Evaluation */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex flex-wrap gap-3 items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-amber-50 text-amber-600">
                     <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">
-                      Evaluasi & Aksi Recruiter
+                      Recruiter Evaluation
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Perbarui tahapan rekrutmen dan berikan rating kandidat
+                      Update the selection stage and rate the candidate
                     </p>
                   </div>
                 </div>
@@ -490,7 +492,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                       type="button"
                       onClick={() => setRating(star)}
                       className="p-0.5 hover:scale-115 transition-transform"
-                      title={`Beri rating ${star}`}
+                      title={`Rate ${star}`}
                     >
                       <Star
                         className={`w-4 h-4 ${
@@ -507,11 +509,11 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Ubah Tahapan Seleksi Kandidat:
+                  Selection stage
                 </label>
                 {stageLocked && (
                   <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 mb-1.5">
-                    Tahapan hanya dapat diubah oleh PIC kandidat atau TA Lead. Rating & catatan tetap bisa diisi.
+                    Only the assigned recruiter or TA Lead can change the stage. Ratings and notes can still be updated.
                   </p>
                 )}
                 <select
@@ -520,32 +522,32 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                   onChange={(e) => setStatus(e.target.value)}
                   className="disabled:bg-slate-50 disabled:text-slate-500 w-full text-xs font-semibold bg-white border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                 >
-                  <option value="APPLIED">Baru Masuk (Applied)</option>
-                  <option value="ATS_SCREENED">Lolos ATS Pre-screen</option>
-                  <option value="SHORTLISTED">Shortlisted (Siap Interview)</option>
-                  <option value="INTERVIEW_HR">Jadwal Interview HR</option>
-                  <option value="INTERVIEW_USER">Jadwal Interview User</option>
-                  <option value="OFFERING">Offering Letter Tahap Akhir</option>
-                  <option value="HIRED">Diterima Bekerja (Hired)</option>
-                  <option value="TALENT_POOL">Simpan di Talent Pool</option>
-                  <option value="REJECTED">Tidak Lolos / Ditolak</option>
+                  <option value="APPLIED">Applied</option>
+                  <option value="ATS_SCREENED">ATS Screened</option>
+                  <option value="SHORTLISTED">Shortlisted</option>
+                  <option value="INTERVIEW_HR">HR Interview</option>
+                  <option value="INTERVIEW_USER">Hiring Manager Interview</option>
+                  <option value="OFFERING">Offer</option>
+                  <option value="HIRED">Hired</option>
+                  <option value="TALENT_POOL">Talent Pool</option>
+                  <option value="REJECTED">Rejected</option>
                 </select>
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-slate-700">
-                    Catatan Internal Recruiter / HR:
+                    Internal recruiter notes
                   </label>
-                  <span className="text-[11px] text-slate-400">Klik tag cepat:</span>
+                  <span className="text-[11px] text-slate-400">Quick notes:</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {[
-                    'Gaji Sesuai Budget',
-                    'Komunikasi Baik',
-                    'Portofolio Kuat',
-                    'Rekomendasi Interview User',
-                    'Siap Notice 1 Bulan'
+                    'Salary within budget',
+                    'Strong communication',
+                    'Strong portfolio',
+                    'Recommend hiring manager interview',
+                    'One-month notice period'
                   ].map((tag, idx) => (
                     <button
                       key={idx}
@@ -560,7 +562,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Tuliskan catatan hasil wawancara, kelebihan teknis, atau catatan salary..."
+                  placeholder="Add interview feedback, technical strengths, or salary notes..."
                   rows={3}
                   className="w-full text-xs bg-white border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                 />
@@ -573,7 +575,7 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
-                {saving ? 'Menyimpan...' : 'Simpan Perubahan Tahapan & Catatan'}
+                {saving ? 'Saving...' : 'Save stage & notes'}
               </button>
             </div>
           </div>

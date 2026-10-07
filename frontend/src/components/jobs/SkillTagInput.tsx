@@ -37,7 +37,7 @@ export default function SkillTagInput({ value, onChange, placeholder, tone = 'bl
       {value.map((s) => (
         <span key={s} className={`inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md border text-[11px] font-semibold ${chip}`}>
           {s}
-          <button type="button" onClick={() => onChange(value.filter((v) => v !== s))} className="p-0.5 rounded hover:bg-white/80" aria-label={`Hapus ${s}`}>
+          <button type="button" onClick={() => onChange(value.filter((v) => v !== s))} className="p-0.5 rounded hover:bg-white/80" aria-label={`Remove ${s}`}>
             <X className="w-3 h-3" />
           </button>
         </span>

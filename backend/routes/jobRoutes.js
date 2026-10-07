@@ -12,6 +12,10 @@ const {
 } = require('../controllers/jobController');
 
 router.get('/', listJobs);
+router.get('/manage', requireAuth, requirePermission('jobs.manage'), (req, res) => {
+  req.jobsManagement = true;
+  return listJobs(req, res);
+});
 router.get('/hiring-managers', requireAuth, requirePermission('jobs.manage'), listHiringManagers);
 router.get('/:id/manage', requireAuth, requirePermission('jobs.manage'), getJobForManagement);
 router.get('/:id', getJobById);

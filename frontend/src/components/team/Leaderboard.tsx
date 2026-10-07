@@ -38,13 +38,13 @@ export default function Leaderboard({ members, days, capacity, onSelect }: Props
   const inactive = members.filter((m) => !m.isActive).length;
 
   const exportCsv = () => {
-    const header = ['Recruiter', 'Role', 'Aktif', `Utilisasi (kap. ${capacity})`, 'Tertahan', 'SLA %', `Pindah tahap (${days}h)`, 'Maju tahap %', 'Interview', 'Offering', 'Diterima', 'Ditolak', 'Kecepatan ambil (jam)', 'Terakhir aktif'];
+    const header = ['Recruiter', 'Role', 'Active', `Utilization (capacity ${capacity})`, 'Stalled', 'SLA %', `Stage moves (${days}d)`, 'Advancement %', 'Interview', 'Offering', 'Hired', 'Rejected', 'Claim time (hours)', 'Last active'];
     const body = rows.map((m) => [
       shortName(m.name), m.role, m.activeCount, m.utilization, m.staleCount, m.slaRate,
       m.period.moves, m.period.advanceRate, m.period.interviews, m.period.offerings, m.period.hired, m.period.rejected,
       m.period.avgClaimHours, m.lastActiveAt ? new Date(m.lastActiveAt).toISOString() : ''
     ]);
-    downloadCsv(`kinerja-tim-ta-${days}hari.csv`, toCsv([header, ...body]));
+    downloadCsv(`ta-team-performance-${days}days.csv`, toCsv([header, ...body]));
   };
 
   const Th = ({ k, children, className = '' }: { k?: SortKey; children: React.ReactNode; className?: string }) => (
@@ -66,11 +66,11 @@ export default function Leaderboard({ members, days, capacity, onSelect }: Props
         {inactive > 0 && (
           <label className="flex items-center gap-1.5 text-[11px] text-slate-600 cursor-pointer">
             <input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600" />
-            Tampilkan nonaktif ({inactive})
+            Show inactive ({inactive})
           </label>
         )}
         <button type="button" onClick={exportCsv} className="px-3 py-1.5 rounded-lg border border-slate-300 text-[11px] font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5">
-          <Download className="w-3.5 h-3.5" /> Ekspor CSV
+          <Download className="w-3.5 h-3.5" /> Export CSV
         </button>
       </div>
 
@@ -80,13 +80,13 @@ export default function Leaderboard({ members, days, capacity, onSelect }: Props
             <tr className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 text-left">
               <th className="pl-5 pr-2 py-2.5 font-bold w-8">#</th>
               <Th>Recruiter</Th>
-              <Th k="activeCount">Beban kerja</Th>
+              <Th k="activeCount">Workload</Th>
               <Th k="slaRate" className="text-center">SLA</Th>
-              <Th k="moves">Aktivitas ({days}h)</Th>
-              <Th k="advanceRate" className="text-center">Maju tahap</Th>
+              <Th k="moves">Activity ({days}d)</Th>
+              <Th k="advanceRate" className="text-center">Advancement</Th>
               <Th k="hired" className="text-center">Hired</Th>
-              <Th k="avgClaimHours" className="text-center">Kecepatan ambil</Th>
-              <Th>Terakhir aktif</Th>
+              <Th k="avgClaimHours" className="text-center">Claim time</Th>
+              <Th>Last active</Th>
               <th className="pr-5" />
             </tr>
           </thead>
@@ -104,7 +104,7 @@ export default function Leaderboard({ members, days, capacity, onSelect }: Props
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-slate-900 truncate">{shortName(m.name)}</p>
-                        <p className="text-[10px] text-slate-500">{ROLE_LABELS[m.role] || m.role}{!m.isActive && ' · nonaktif'}</p>
+                        <p className="text-[10px] text-slate-500">{ROLE_LABELS[m.role] || m.role}{!m.isActive && ' · inactive'}</p>
                       </div>
                     </div>
                   </td>
@@ -124,9 +124,9 @@ export default function Leaderboard({ members, days, capacity, onSelect }: Props
                       <span className="inline-flex flex-col items-center">
                         <b className={`tabular-nums ${m.slaRate >= 80 ? 'text-emerald-700' : 'text-amber-700'}`}>{m.slaRate}%</b>
                         {m.staleCount > 0 && (
-                          <span className="text-[10px] text-amber-700 flex items-center gap-0.5" title={`${m.staleCount} tertahan ≥7 hari · ${m.criticalCount} ≥14 hari`}>
+                          <span className="text-[10px] text-amber-700 flex items-center gap-0.5" title={`${m.staleCount} stalled ≥7 days · ${m.criticalCount} ≥14 days`}>
                             <AlertTriangle className="w-3 h-3" />
-                            {m.staleCount} tertahan
+                            {m.staleCount} stalled
                           </span>
                         )}
                       </span>
@@ -135,7 +135,7 @@ export default function Leaderboard({ members, days, capacity, onSelect }: Props
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
                       <b className="tabular-nums text-slate-900 w-6 text-right">{m.period.moves}</b>
-                      <div className="w-24 h-7" aria-hidden title="Perpindahan tahap per periode">
+                      <div className="w-24 h-7" aria-hidden title="Stage moves per period">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={spark} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
                             <Area type="monotone" dataKey="v" stroke={CHART.blue} strokeWidth={1.5} fill="#dbeafe" dot={false} isAnimationActive={false} />

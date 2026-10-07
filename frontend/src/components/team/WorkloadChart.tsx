@@ -12,7 +12,7 @@ function WorkloadTooltip({ active, payload, capacity }: any) {
     <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-[11px] min-w-[180px]">
       <p className="font-bold text-slate-900">{row.fullName}</p>
       <p className="text-slate-500 mb-1">
-        {row.total} aktif · {Math.round((row.total / capacity) * 100)}% kapasitas
+        {row.total} active · {Math.round((row.total / capacity) * 100)}% capacity
       </p>
       {STAGE_COLORS.filter((s) => row[s.key]).map((s) => (
         <p key={s.key} className="flex justify-between gap-4 text-slate-600">
@@ -46,7 +46,7 @@ export default function WorkloadChart({ members, capacity }: { members: any[]; c
         ))}
         <span className="flex items-center gap-1 text-[10px] text-slate-600">
           <span className="w-3 border-t-2 border-dashed border-amber-600" />
-          Kapasitas {capacity}
+          Capacity {capacity}
         </span>
       </div>
       <div className="flex-1" style={{ minHeight: Math.max(160, data.length * 44 + 40) }}>
@@ -73,7 +73,7 @@ export default function WorkloadChart({ members, capacity }: { members: any[]; c
               stroke={CHART.amber}
               strokeDasharray="4 3"
               strokeWidth={2}
-              label={{ value: 'kapasitas', position: 'top', fontSize: 10, fill: CHART.amber }}
+              label={{ value: 'capacity', position: 'top', fontSize: 10, fill: CHART.amber }}
             />
           </BarChart>
         </ResponsiveContainer>

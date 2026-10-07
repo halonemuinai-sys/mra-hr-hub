@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { X, Pencil, MapPin, Clock, GraduationCap, Wallet, Sparkles, KanbanSquare, Power, Trash2, Users, Loader2, UserCheck } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatRupiah, getScoreBadge } from '@/lib/utils';
+import { getScoreBadge } from '@/lib/utils';
+import { internalSalaryLabel } from '@/lib/jobSalary';
 import { ACTIVE_STAGES, CLOSED_STAGES } from '@/components/pipeline/stages';
 import { STAGE_NAME } from '@/components/dashboard/chartTheme';
 
@@ -18,7 +19,7 @@ interface Props {
   onError: (message: string) => void;
 }
 
-const STAGE_LABEL: Record<string, string> = { ...STAGE_NAME, REJECTED: 'Ditolak', TALENT_POOL: 'Talent Pool' };
+const STAGE_LABEL: Record<string, string> = { ...STAGE_NAME, REJECTED: 'Rejected', TALENT_POOL: 'Talent Pool' };
 
 export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onError }: Props) {
   const [data, setData] = useState<any | null>(null);
@@ -42,7 +43,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
     try {
       await api.updateJob(job.id, { isActive: !job.isActive });
       await load();
-      onChanged(job.isActive ? 'Lowongan ditutup dari portal karier.' : 'Lowongan dibuka kembali di portal karier.');
+      onChanged(job.isActive ? 'Job closed on the career portal.' : 'Job reopened on the career portal.');
     } catch (err: any) {
       onError(err.message);
     } finally {
@@ -51,7 +52,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
   };
 
   const remove = async () => {
-    if (!confirm(`Hapus lowongan "${job.title}" secara permanen?`)) return;
+    if (!confirm(`Delete job "${job.title}" permanently?`)) return;
     setBusy('delete');
     try {
       const res = await api.deleteJob(job.id);
@@ -82,55 +83,55 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
         ) : (
           <>
             {/* Header */}
-            <div className="bg-slate-900 text-white p-5">
+            <div className="bg-slate-900 text-white p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-1.5">
                     <span className="px-2 py-0.5 rounded-md bg-white/10 text-[10px] font-bold">{job.department}</span>
                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${job.isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-slate-300'}`}>
-                      {job.isActive ? 'Aktif di portal' : 'Ditutup'}
+                      {job.isActive ? 'Live on portal' : 'Closed'}
                     </span>
                   </div>
-                  <h2 className="text-base font-bold leading-snug">{job.title}</h2>
+                  <h2 className="text-xl font-semibold leading-snug">{job.title}</h2>
                   <p className="text-[11px] text-slate-400 mt-0.5">{job.division}</p>
                 </div>
-                <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+                <button type="button" onClick={onClose} aria-label="Close job details" className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
                 <span className="flex items-center gap-1.5 text-slate-300"><MapPin className="w-3.5 h-3.5 text-blue-400" />{job.location}</span>
-                <span className="flex items-center gap-1.5 text-slate-300"><Clock className="w-3.5 h-3.5 text-blue-400" />{job.employmentType} · min. {job.minExperience} th</span>
+                <span className="flex items-center gap-1.5 text-slate-300"><Clock className="w-3.5 h-3.5 text-blue-400" />{job.employmentType} · min. {job.minExperience} years</span>
                 <span className="flex items-center gap-1.5 text-slate-300"><GraduationCap className="w-3.5 h-3.5 text-blue-400" />Min. {job.minEducation}</span>
                 <span className="flex items-center gap-1.5 text-slate-300 col-span-2">
                   <UserCheck className="w-3.5 h-3.5 text-blue-400" />
-                  Hiring Manager: {job.hiringManager ? job.hiringManager.name : <span className="text-amber-300">belum ditentukan (semua HM)</span>}
+                  Hiring Manager: {job.hiringManager ? job.hiringManager.name : <span className="text-amber-300">not assigned (all hiring managers)</span>}
                 </span>
                 <span className="flex items-center gap-1.5 text-slate-300">
                   <Wallet className="w-3.5 h-3.5 text-blue-400" />
-                  {job.salaryMin || job.salaryMax ? `${formatRupiah(job.salaryMin)} – ${formatRupiah(job.salaryMax)}` : 'Gaji belum diisi'}
+                  {internalSalaryLabel(job)}
                 </span>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+            <div className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-6 space-y-4">
               {/* Applicant summary */}
-              <section>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                    <Users className="w-3.5 h-3.5" /> Pelamar ({s.total})
+                    <Users className="w-3.5 h-3.5" /> Applicants ({s.total})
                   </h3>
                   {s.total > 0 && (
                     <Link href={`/admin/pipeline?jobId=${job.id}`} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                      <KanbanSquare className="w-3.5 h-3.5" /> Lihat di Pipeline
+                      <KanbanSquare className="w-3.5 h-3.5" /> View Pipeline
                     </Link>
                   )}
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   {[
-                    { label: 'Masih aktif', value: s.active },
-                    { label: 'Diterima', value: s.hired },
-                    { label: 'Rata-rata ATS', value: s.avgAts != null ? `${s.avgAts}%` : '—' }
+                    { label: 'Active', value: s.active },
+                    { label: 'Hired', value: s.hired },
+                    { label: 'Average ATS', value: s.avgAts != null ? `${s.avgAts}%` : '—' }
                   ].map((t) => (
                     <div key={t.label} className="rounded-xl border border-slate-200 p-2.5">
                       <p className="text-lg font-black text-slate-900 tabular-nums">{t.value}</p>
@@ -155,13 +156,13 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                     })}
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-400">Belum ada pelamar untuk lowongan ini.</p>
+                  <p className="text-xs text-slate-400">No applicants for this job yet.</p>
                 )}
               </section>
 
               {data.topCandidates.length > 0 && (
-                <section>
-                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Kandidat dengan skor tertinggi</h3>
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Top-scoring candidates</h3>
                   <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl">
                     {data.topCandidates.map((a: any) => {
                       const badge = getScoreBadge(Math.round(a.atsScore));
@@ -171,7 +172,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                             <p className="text-xs font-bold text-slate-900 truncate">{a.candidate.fullName}</p>
                             <p className="text-[10px] text-slate-500 truncate">
                               {STAGE_LABEL[a.status]}
-                              {a.assignedRecruiter ? ` · PIC ${a.assignedRecruiter.name.replace(/\s*\(.*\)\s*$/, '')}` : ' · belum diambil'}
+                              {a.assignedRecruiter ? ` · PIC ${a.assignedRecruiter.name.replace(/\s*\(.*\)\s*$/, '')}` : ' · unassigned'}
                             </p>
                           </div>
                           <span className={`px-1.5 py-0.5 rounded-md border text-[10px] font-bold tabular-nums ${badge.class}`}>{Math.round(a.atsScore)}%</span>
@@ -183,9 +184,9 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
               )}
 
               {/* ATS criteria */}
-              <section>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
                 <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600" /> Kriteria ATS
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" /> ATS criteria
                 </h3>
                 <p className="text-[11px] font-bold text-slate-700 mb-1">Must-have</p>
                 <div className="flex flex-wrap gap-1 mb-3">
@@ -194,7 +195,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                       <span key={`${k}-${i}`} className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[11px] font-semibold">{k}</span>
                     ))
                   ) : (
-                    <span className="text-[11px] text-amber-700">Belum ada — skor ATS tidak akurat.</span>
+                    <span className="text-[11px] text-amber-700">No keywords configured for ATS scoring.</span>
                   )}
                 </div>
                 <p className="text-[11px] font-bold text-slate-700 mb-1">Nice-to-have</p>
@@ -209,12 +210,12 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                 </div>
               </section>
 
-              <section>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Deskripsi</h3>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Description</h3>
                 <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">{job.description || '—'}</p>
               </section>
-              <section>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Persyaratan</h3>
+              <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Requirements</h3>
                 <p className="text-xs text-slate-700 whitespace-pre-line leading-relaxed">{job.requirements || '—'}</p>
               </section>
             </div>
@@ -222,7 +223,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
             {/* Actions */}
             <div className="p-4 border-t border-slate-100 flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => onEdit(job)} className="flex-1 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5">
-                <Pencil className="w-3.5 h-3.5" /> Edit Lowongan
+                <Pencil className="w-3.5 h-3.5" /> Edit Job
               </button>
               <button
                 type="button"
@@ -231,7 +232,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                 className="px-4 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 disabled:opacity-60"
               >
                 {busy === 'toggle' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5" />}
-                {job.isActive ? 'Tutup' : 'Buka kembali'}
+                {job.isActive ? 'Close' : 'Reopen'}
               </button>
               {s.total === 0 && (
                 <button
@@ -239,7 +240,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                   onClick={remove}
                   disabled={!!busy}
                   className="p-2 rounded-xl border border-slate-300 text-slate-500 hover:text-amber-700 hover:border-amber-300 hover:bg-amber-50 disabled:opacity-60"
-                  title="Hapus permanen (hanya untuk lowongan tanpa pelamar)"
+                  title="Delete permanently (only jobs without applicants)"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>

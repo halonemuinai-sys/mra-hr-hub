@@ -37,8 +37,8 @@ export default function StageHistory({ applicationId, currentStatus }: { applica
           <History className="w-4 h-4" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Riwayat Tahapan & Data Seleksi</h3>
-          <p className="text-[11px] text-slate-500">Jadwal, penawaran, feedback, dan alasan dari setiap perpindahan tahap</p>
+          <h3 className="text-sm font-bold text-slate-900">Selection History</h3>
+          <p className="text-[11px] text-slate-500">Schedules, offers, feedback, and reasons for stage changes</p>
         </div>
       </div>
 
@@ -57,7 +57,7 @@ export default function StageHistory({ applicationId, currentStatus }: { applica
       {loading ? (
         <div className="space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-xl bg-slate-100 animate-pulse" />)}</div>
       ) : rows.length === 0 ? (
-        <p className="text-xs text-slate-400 italic">Belum ada riwayat tahapan untuk lamaran ini.</p>
+        <p className="text-xs text-slate-400 italic">No stage history for this application yet.</p>
       ) : (
         <ol className="relative border-l-2 border-slate-100 ml-3 space-y-4">
           {rows.map((a) => {
@@ -70,7 +70,7 @@ export default function StageHistory({ applicationId, currentStatus }: { applica
                 </span>
                 <p className="text-xs text-slate-800">{d.title}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  {d.who} · {new Date(a.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {d.who} · {new Date(a.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </p>
                 {a.note && <p className="mt-1 text-[11px] text-slate-600 italic">“{a.note}”</p>}
                 {fields.length > 0 && (

@@ -69,6 +69,9 @@ test('permissions are enforced per role', async () => {
   assert.equal((await call('POST', '/candidates/applications/claim', { token: tokens.HIRING_MANAGER, body: { applicationIds: ['x'] } })).status, 403);
   assert.equal((await call('GET', '/users', { token: tokens.SUPERADMIN })).status, 200);
   assert.equal((await call('GET', '/jobs/hiring-managers', { token: tokens.RECRUITER })).status, 403);
+  assert.equal((await call('GET', '/jobs/manage')).status, 401);
+  assert.equal((await call('GET', '/jobs/manage', { token: tokens.RECRUITER })).status, 403);
+  assert.equal((await call('GET', '/jobs/manage', { token: tokens.SUPERADMIN })).status, 200);
   assert.equal((await call('GET', '/jobs/hiring-managers', { token: tokens.SUPERADMIN })).status, 200);
   // Reports contain candidate contacts
   assert.equal((await fetch(BASE + '/reports/recruitment.xlsx', { headers: { Authorization: `Bearer ${tokens.RECRUITER}` } })).status, 403);

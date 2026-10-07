@@ -6,8 +6,8 @@ import { AlertOctagon, AlertTriangle, Info, ChevronRight, CheckCircle2 } from 'l
 import { Reminder } from './useReminders';
 
 const STYLE = {
-  critical: { Icon: AlertOctagon, chip: 'bg-amber-600 text-white', ring: 'border-amber-200 bg-amber-50/60', label: 'Mendesak' },
-  warning: { Icon: AlertTriangle, chip: 'bg-amber-100 text-amber-800', ring: 'border-amber-100 bg-white', label: 'Perlu perhatian' },
+  critical: { Icon: AlertOctagon, chip: 'bg-amber-600 text-white', ring: 'border-amber-200 bg-amber-50/60', label: 'Urgent' },
+  warning: { Icon: AlertTriangle, chip: 'bg-amber-100 text-amber-800', ring: 'border-amber-100 bg-white', label: 'Needs attention' },
   info: { Icon: Info, chip: 'bg-blue-50 text-blue-700', ring: 'border-slate-200 bg-white', label: 'Info' }
 } as const;
 
@@ -35,8 +35,8 @@ export default function ReminderList({ items, loading, isUnseen, onNavigate, com
     return (
       <div className="py-8 text-center">
         <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-        <p className="text-xs font-bold text-slate-800 mt-2">Semua beres</p>
-        <p className="text-[11px] text-slate-500">Tidak ada tindakan yang menunggu Anda.</p>
+        <p className="text-xs font-bold text-slate-800 mt-2">All caught up</p>
+        <p className="text-[11px] text-slate-500">You have no pending actions.</p>
       </div>
     );
   }

@@ -24,14 +24,14 @@ export const SCORE_BAND = {
 } as const;
 
 export const STAGE_NAME: Record<string, string> = {
-  APPLIED: 'Baru Masuk',
-  ATS_SCREENED: 'Lolos ATS',
+  APPLIED: 'Applied',
+  ATS_SCREENED: 'ATS Screened',
   SHORTLISTED: 'Shortlisted',
-  INTERVIEW_HR: 'Interview HR',
-  INTERVIEW_USER: 'Interview User',
-  OFFERING: 'Offering',
-  HIRED: 'Diterima'
+  INTERVIEW_HR: 'HR Interview',
+  INTERVIEW_USER: 'Hiring Manager Interview',
+  OFFERING: 'Offer',
+  HIRED: 'Hired'
 };
 
 export const fmtWeek = (iso: string) =>
-  new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });

@@ -14,7 +14,7 @@ export default function ActionCenter({ userId }: { userId?: string }) {
   return (
     <DashboardCard
       title="Action Center"
-      subtitle={items.length ? `${items.length} hal perlu ditindaklanjuti${critical ? ` · ${critical} mendesak` : ''}` : 'Pengingat tindakan Anda'}
+      subtitle={items.length ? `${items.length} items need follow-up${critical ? ` · ${critical} urgent` : ''}` : 'Your action reminders'}
       icon={BellRing}
       className="h-full"
     >

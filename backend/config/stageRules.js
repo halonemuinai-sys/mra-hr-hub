@@ -86,7 +86,7 @@ const STAGE_RULES = {
         return [{
           type: 'approval',
           permission: 'approval.offer',
-          message: `Offer of Rp ${salary.toLocaleString('id-ID')} exceeds the job budget (max Rp ${budget.toLocaleString('id-ID')}). A TA Lead must approve it.`
+          message: `Offer of IDR ${salary.toLocaleString('id-ID')} exceeds the job budget (max IDR ${budget.toLocaleString('id-ID')}). A TA Lead must approve it.`
         }];
       }
       return [];

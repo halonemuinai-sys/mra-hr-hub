@@ -25,7 +25,7 @@ interface Props {
 }
 
 const fmtBucket = (iso: string, bucket: 'day' | 'week') =>
-  new Date(iso).toLocaleDateString('id-ID', bucket === 'day' ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' });
+  new Date(iso).toLocaleDateString('en-GB', bucket === 'day' ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short' });
 
 export default function MemberDetailDrawer({ member, members, days, bucket, capacity, onClose }: Props) {
   const [activity, setActivity] = useState<any[]>([]);
@@ -48,11 +48,11 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
   };
 
   const compare = [
-    { label: 'Pindah tahap', me: p.moves, avg: teamAvg((m) => m.period.moves), better: 'high' },
-    { label: 'Maju tahap %', me: p.advanceRate, avg: teamAvg((m) => m.period.advanceRate), better: 'high', suffix: '%' },
-    { label: 'Diterima', me: p.hired, avg: teamAvg((m) => m.period.hired), better: 'high' },
-    { label: 'SLA (tidak tertahan)', me: member.slaRate, avg: teamAvg((m) => m.slaRate), better: 'high', suffix: '%' },
-    { label: 'Kecepatan ambil (jam)', me: p.avgClaimHours, avg: teamAvg((m) => m.period.avgClaimHours), better: 'low' }
+    { label: 'Stage moves', me: p.moves, avg: teamAvg((m) => m.period.moves), better: 'high' },
+    { label: 'Advancement %', me: p.advanceRate, avg: teamAvg((m) => m.period.advanceRate), better: 'high', suffix: '%' },
+    { label: 'Hired', me: p.hired, avg: teamAvg((m) => m.period.hired), better: 'high' },
+    { label: 'SLA (not stalled)', me: member.slaRate, avg: teamAvg((m) => m.slaRate), better: 'high', suffix: '%' },
+    { label: 'Claim time (hours)', me: p.avgClaimHours, avg: teamAvg((m) => m.period.avgClaimHours), better: 'low' }
   ];
   const maxStage = Math.max(1, ...STAGE_COLORS.map((s) => member.byStage[s.key] || 0));
 
@@ -75,7 +75,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
               <div className="min-w-0">
                 <h2 className="text-sm font-bold truncate">{shortName(member.name)}</h2>
                 <p className="text-[11px] text-slate-400 truncate">{ROLE_LABELS[member.role] || member.role} · {member.email}</p>
-                <p className="text-[11px] text-blue-300 mt-0.5">Aktif terakhir: {formatRelative(member.lastActiveAt)}</p>
+                <p className="text-[11px] text-blue-300 mt-0.5">Last active: {formatRelative(member.lastActiveAt)}</p>
               </div>
             </div>
             <button type="button" onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
@@ -84,7 +84,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
           </div>
           <div className="mt-4">
             <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-slate-300">Beban kerja: <b className="text-white">{member.activeCount}</b> / {capacity}</span>
+              <span className="text-slate-300">Workload: <b className="text-white">{member.activeCount}</b> / {capacity}</span>
               <span className="text-slate-300">{member.utilization ?? 0}% · {tone.label}</span>
             </div>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -96,7 +96,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Comparison with team average */}
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">{days} hari terakhir vs rata-rata tim</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">{days} days vs. team average</h3>
             <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl">
               {compare.map((c) => {
                 const ahead =
@@ -105,7 +105,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
                   <div key={c.label} className="flex items-center justify-between px-3 py-2 text-xs">
                     <span className="text-slate-600">{c.label}</span>
                     <span className="flex items-center gap-3 tabular-nums">
-                      <span className="text-[10px] text-slate-400">tim {c.avg ?? '—'}{c.avg != null && c.suffix ? c.suffix : ''}</span>
+                      <span className="text-[10px] text-slate-400">team {c.avg ?? '—'}{c.avg != null && c.suffix ? c.suffix : ''}</span>
                       <b className={ahead == null ? 'text-slate-900' : ahead ? 'text-emerald-700' : 'text-amber-700'}>
                         {c.me ?? '—'}{c.me != null && c.suffix ? c.suffix : ''}
                       </b>
@@ -119,7 +119,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
           {/* Trend */}
           <section>
             <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Perpindahan tahap per {bucket === 'day' ? 'hari' : 'minggu'}
+              Stage moves per {bucket === 'day' ? 'day' : 'week'}
             </h3>
             <div className="h-36">
               <ResponsiveContainer width="100%" height="100%">
@@ -131,7 +131,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
                     cursor={{ fill: '#f1f5f9' }}
                     contentStyle={{ fontSize: 11, borderRadius: 10 }}
                     labelFormatter={(t) => fmtBucket(String(t), bucket)}
-                    formatter={(v: number, n: string) => [v, n === 'moves' ? 'Pindah tahap' : 'Diterima']}
+                    formatter={(v: number, n: string) => [v, n === 'moves' ? 'Stage moves' : 'Hired']}
                   />
                   <Bar dataKey="moves" fill={CHART.blue} radius={[3, 3, 0, 0]} isAnimationActive={false} />
                   <Bar dataKey="hired" fill={CHART.emerald} radius={[3, 3, 0, 0]} isAnimationActive={false} />
@@ -139,14 +139,14 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
               </ResponsiveContainer>
             </div>
             <p className="mt-1 flex gap-4 text-[10px] text-slate-500">
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-600" />Pindah tahap ({p.moves})</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-600" />Diterima ({p.hired})</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-600" />Stage moves ({p.moves})</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-600" />Hired ({p.hired})</span>
             </p>
           </section>
 
           {/* Holdings by stage */}
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Kandidat aktif per tahap ({member.activeCount})</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Active candidates by stage ({member.activeCount})</h3>
             <div className="space-y-1.5">
               {STAGE_COLORS.map((s) => {
                 const n = member.byStage[s.key] || 0;
@@ -162,7 +162,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
               })}
             </div>
             <p className="text-[11px] text-slate-500 mt-2">
-              Rata-rata {member.avgDaysInStage ?? '—'} hari di tahap saat ini · rata-rata ATS {member.avgAtsScore ?? '—'}% · kecepatan ambil {formatHours(p.avgClaimHours)}
+              Average {member.avgDaysInStage ?? '—'} days in the current stage · average ATS {member.avgAtsScore ?? '—'}% · claim time {formatHours(p.avgClaimHours)}
             </p>
           </section>
 
@@ -171,10 +171,10 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
             <section>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[10px] font-bold uppercase tracking-wider text-amber-700 flex items-center gap-1">
-                  <AlertTriangle className="w-3.5 h-3.5" /> Tertahan ≥7 hari ({member.staleCount})
+                  <AlertTriangle className="w-3.5 h-3.5" /> Stalled ≥7 days ({member.staleCount})
                 </h3>
                 <Link href="/admin/pipeline?filter=stale" className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-0.5">
-                  Buka Pipeline <ArrowUpRight className="w-3 h-3" />
+                  Open Pipeline <ArrowUpRight className="w-3 h-3" />
                 </Link>
               </div>
               <ul className="divide-y divide-slate-100 border border-amber-200 rounded-xl">
@@ -185,7 +185,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
                       <span className="block text-[10px] text-slate-500 truncate">{stageLabel(c.status)} · {c.job}</span>
                     </span>
                     <span className={`shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-bold tabular-nums ${c.days >= 14 ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-700'}`}>
-                      {c.days} hari
+                      {c.days} days
                     </span>
                   </li>
                 ))}
@@ -194,7 +194,7 @@ export default function MemberDetailDrawer({ member, members, days, bucket, capa
           )}
 
           <section>
-            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Riwayat aktivitas</h3>
+            <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Activity history</h3>
             <ActivityFeed items={activity} loading={loading} compact />
           </section>
         </div>

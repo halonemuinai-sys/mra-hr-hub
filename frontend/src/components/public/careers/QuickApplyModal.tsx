@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Briefcase,
   Building2,
-  DollarSign,
   UploadCloud,
   FileSpreadsheet,
   CheckCircle2,
@@ -480,8 +479,8 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                             {/* Ekspektasi Gaji */}
                             <div>
                               <label className="block font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-                                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-                                Ekspektasi Gaji (Rp)
+                                <span className="shrink-0 text-[10px] font-bold leading-none text-emerald-600">IDR</span>
+                                Ekspektasi Gaji (IDR)
                               </label>
                               <input
                                 type="number"

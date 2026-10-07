@@ -12,12 +12,12 @@ function presets() {
   const firstLast = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastLast = new Date(now.getFullYear(), now.getMonth(), 0);
   const daysAgo = (n: number) => new Date(now.getTime() - n * 86400000);
-  const monthName = (d: Date) => d.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  const monthName = (d: Date) => d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   return [
-    { label: `Bulan ini (${monthName(now)})`, from: iso(firstThis), to: iso(now) },
-    { label: `Bulan lalu (${monthName(firstLast)})`, from: iso(firstLast), to: iso(lastLast) },
-    { label: '30 hari terakhir', from: iso(daysAgo(30)), to: iso(now) },
-    { label: '90 hari terakhir', from: iso(daysAgo(90)), to: iso(now) }
+    { label: `This month (${monthName(now)})`, from: iso(firstThis), to: iso(now) },
+    { label: `Last month (${monthName(firstLast)})`, from: iso(firstLast), to: iso(lastLast) },
+    { label: 'Last 30 days', from: iso(daysAgo(30)), to: iso(now) },
+    { label: 'Last 90 days', from: iso(daysAgo(90)), to: iso(now) }
   ];
 }
 
@@ -41,12 +41,12 @@ export default function ReportDownload({ onError }: { onError?: (m: string) => v
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `laporan-rekrutmen_${p.from}_${p.to}.xlsx`;
+      a.download = `recruitment-report_${p.from}_${p.to}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
       setOpen(false);
     } catch (err: any) {
-      (onError || alert)('Gagal mengunduh laporan: ' + err.message);
+      (onError || alert)('Failed to download report: ' + err.message);
     } finally {
       setBusy(null);
     }
@@ -61,12 +61,12 @@ export default function ReportDownload({ onError }: { onError?: (m: string) => v
         aria-expanded={open}
       >
         <Download className="w-3.5 h-3.5 text-emerald-600" />
-        Unduh Laporan
+        Download Report
         <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-40 p-1.5">
-          <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Laporan rekrutmen (.xlsx)</p>
+          <p className="px-2.5 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Recruitment report (.xlsx)</p>
           {presets().map((p) => (
             <button
               key={p.label}
@@ -79,7 +79,7 @@ export default function ReportDownload({ onError }: { onError?: (m: string) => v
               {busy === p.label && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />}
             </button>
           ))}
-          <p className="px-2.5 pt-1 pb-1.5 text-[10px] text-slate-400">Ringkasan, per lowongan, per recruiter, daftar diterima & pelamar.</p>
+          <p className="px-2.5 pt-1 pb-1.5 text-[10px] text-slate-400">Summary, jobs, recruiters, hires, and applicants.</p>
         </div>
       )}
     </div>

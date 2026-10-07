@@ -41,15 +41,15 @@ export default function ApplicationHistory({ candidateId, currentApplicationId }
           <Layers className="w-4 h-4" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Riwayat Lamaran ({apps.length})</h3>
-          <p className="text-[11px] text-slate-500">Semua lowongan yang dilamar kandidat ini</p>
+          <h3 className="text-sm font-bold text-slate-900">Application History ({apps.length})</h3>
+          <p className="text-[11px] text-slate-500">All jobs this candidate has applied for</p>
         </div>
       </div>
 
       {dupes.length > 0 && (
         <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs">
           <p className="font-bold text-amber-800 flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5" /> Kemungkinan profil duplikat ({dupes.length})
+            <AlertTriangle className="w-3.5 h-3.5" /> Possible duplicate profiles ({dupes.length})
           </p>
           <ul className="mt-2 space-y-1.5">
             {dupes.map((d) => (
@@ -60,12 +60,12 @@ export default function ApplicationHistory({ candidateId, currentApplicationId }
                 </span>
                 <span className="shrink-0 text-right">
                   <span className="block font-semibold text-amber-800">{d.reasons.join(' · ')}</span>
-                  <span className="block text-slate-500">{d.applications} lamaran</span>
+                  <span className="block text-slate-500">{d.applications} applications</span>
                 </span>
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[10px] text-amber-700">Cek apakah orang yang sama melamar dengan email berbeda sebelum melanjutkan proses.</p>
+          <p className="mt-2 text-[10px] text-amber-700">Check whether the same person applied using a different email before proceeding.</p>
         </div>
       )}
 
@@ -82,16 +82,16 @@ export default function ApplicationHistory({ candidateId, currentApplicationId }
                   <p className="text-xs font-bold text-slate-900 truncate flex items-center gap-1.5">
                     <Briefcase className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                     {a.job?.title}
-                    {current && <span className="text-[10px] font-bold text-blue-600">· ditampilkan</span>}
+                    {current && <span className="text-[10px] font-bold text-blue-600">· current</span>}
                   </p>
                   <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1.5">
                     <span className="font-semibold text-slate-700">{stageLabel(a.status)}</span>
                     <span>·</span>
-                    {new Date(a.appliedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(a.appliedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     <span>·</span>
                     <UserRound className="w-3 h-3" />
-                    {a.assignedRecruiter ? shortName(a.assignedRecruiter.name) : 'belum diambil'}
-                    {a.job && !a.job.isActive && ' · lowongan ditutup'}
+                    {a.assignedRecruiter ? shortName(a.assignedRecruiter.name) : 'unassigned'}
+                    {a.job && !a.job.isActive && ' · job closed'}
                   </p>
                 </div>
                 <span className={`shrink-0 px-1.5 py-0.5 rounded-md border text-[10px] font-bold tabular-nums ${badge.class}`}>

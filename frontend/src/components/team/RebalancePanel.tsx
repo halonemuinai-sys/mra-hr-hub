@@ -49,7 +49,7 @@ export default function RebalancePanel({ canAssign, onApplied, onError }: Props)
       const byTarget = new Map<string, string[]>();
       chosen.forEach((s: any) => byTarget.set(s.to.id, [...(byTarget.get(s.to.id) || []), s.applicationId]));
       for (const [to, ids] of byTarget) await api.assignApplications(ids, to);
-      onApplied(`${chosen.length} kandidat ditugaskan ulang.`);
+      onApplied(`${chosen.length} candidates reassigned.`);
       await load();
     } catch (err: any) {
       onError(err.message);
@@ -74,8 +74,8 @@ export default function RebalancePanel({ canAssign, onApplied, onError }: Props)
       ) : !suggestions.length ? (
         <div className="py-8 text-center">
           <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
-          <p className="text-xs font-bold text-slate-800 mt-2">Beban tim sudah seimbang</p>
-          <p className="text-[11px] text-slate-500">Tidak ada kandidat tertahan yang perlu dipindah.</p>
+          <p className="text-xs font-bold text-slate-800 mt-2">Team workload is balanced</p>
+          <p className="text-[11px] text-slate-500">No stalled candidates need reassignment.</p>
         </div>
       ) : (
         <>
@@ -99,7 +99,7 @@ export default function RebalancePanel({ canAssign, onApplied, onError }: Props)
                     <span className="block font-bold text-slate-900 truncate">{s.candidate}</span>
                     <span className="block text-slate-500 truncate">{stageLabel(s.status)} · {s.reason}</span>
                     <span className="flex items-center gap-1 text-slate-700 mt-0.5">
-                      {s.from ? firstName(s.from.name) : 'Antrean'}
+                      {s.from ? firstName(s.from.name) : 'Queue'}
                       <ArrowRight className="w-3 h-3 text-slate-400" />
                       <b>{firstName(s.to.name)}</b>
                     </span>
@@ -112,7 +112,7 @@ export default function RebalancePanel({ canAssign, onApplied, onError }: Props)
       )}
 
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-        <button type="button" onClick={load} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Hitung ulang">
+        <button type="button" onClick={load} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Recalculate">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
         </button>
         {canAssign ? (
@@ -123,10 +123,10 @@ export default function RebalancePanel({ canAssign, onApplied, onError }: Props)
             className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-[11px] font-bold flex items-center gap-1.5"
           >
             {applying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Scale className="w-3.5 h-3.5" />}
-            Terapkan {picked.size || ''} penugasan
+            Apply {picked.size || ''} assignments
           </button>
         ) : (
-          <span className="text-[10px] text-slate-500">Hanya TA Lead yang dapat menerapkan.</span>
+          <span className="text-[10px] text-slate-500">Only TA Leads can apply assignments.</span>
         )}
       </div>
     </div>

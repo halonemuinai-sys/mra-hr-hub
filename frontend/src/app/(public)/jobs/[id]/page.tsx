@@ -9,7 +9,6 @@ import {
   Building2,
   MapPin,
   Clock,
-  DollarSign,
   ArrowLeft,
   CheckCircle2,
   Sparkles,
@@ -23,7 +22,7 @@ import {
   Award
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { formatRupiah } from '@/lib/utils';
+import { publicSalaryLabel } from '@/lib/jobSalary';
 
 export default function JobDetailPage() {
   const params = useParams();
@@ -139,10 +138,10 @@ export default function JobDetailPage() {
               {job.employmentType}
             </span>
           </div>
-          {job.salaryMin && (
+          {(
             <div className="text-sm font-black text-emerald-700 flex items-center gap-1 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-200">
-              <DollarSign className="w-4 h-4" />
-              {formatRupiah(job.salaryMin)} - {formatRupiah(job.salaryMax)}
+              <span className="shrink-0 text-[10px] font-bold leading-none">IDR</span>
+              {publicSalaryLabel(job)}
             </div>
           )}
         </div>
@@ -298,12 +297,12 @@ export default function JobDetailPage() {
                   </div>
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1 flex items-center gap-1">
-                      <DollarSign className="w-3 h-3 text-emerald-600" />
+                      <span className="shrink-0 text-[10px] font-bold leading-none text-emerald-600">IDR</span>
                       Gaji Ekspektasi
                     </label>
                     <input
                       type="number"
-                      placeholder="Rp"
+                      placeholder="IDR"
                       value={expectedSalary}
                       onChange={(e) => setExpectedSalary(e.target.value)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder-slate-400"

@@ -29,28 +29,28 @@ export default function ConversionFunnel({ steps, archived }: { steps: Step[]; a
                 className={`text-[10px] font-bold tabular-nums ${
                   weakest && weakest.stage === s.stage ? 'text-amber-700' : 'text-slate-500'
                 }`}
-                title={`Konversi dari ${STAGE_NAME[steps[i - 1].stage]} ke ${STAGE_NAME[s.stage]}`}
+                title={`Conversion from ${STAGE_NAME[steps[i - 1].stage]} to ${STAGE_NAME[s.stage]}`}
               >
-                {s.conversion ?? '–'}% lanjut
-                {weakest && weakest.stage === s.stage && ' · titik lemah'}
+                {s.conversion ?? '–'}% progressed
+                {weakest && weakest.stage === s.stage && ' · weakest conversion'}
               </span>
             </div>
           )}
-          <div className="grid grid-cols-[110px_1fr_64px] items-center gap-2 text-xs group" title={`${s.reached} pernah mencapai tahap ini · ${s.current} saat ini`}>
-            <span className="font-semibold text-slate-700 truncate">{STAGE_NAME[s.stage]}</span>
+          <div className="grid grid-cols-[110px_1fr_64px] items-center gap-2 text-xs group" title={`${s.reached} reached this stage · ${s.current} currently here`}>
+            <span className="font-semibold text-slate-700 break-words">{STAGE_NAME[s.stage]}</span>
             <div className="h-6 bg-slate-100 rounded-md overflow-hidden relative">
               <div className={`h-full ${BAR[i]} rounded-md transition-all duration-500 group-hover:opacity-85`} style={{ width: `${Math.max(2, (s.reached / max) * 100)}%` }} />
             </div>
             <span className="text-right tabular-nums">
               <b className="text-slate-900">{s.reached}</b>
-              <span className="text-slate-400 text-[10px]"> ({s.current} kini)</span>
+              <span className="text-slate-400 text-[10px]"> ({s.current} now)</span>
             </span>
           </div>
         </React.Fragment>
       ))}
-      <div className="pt-3 mt-2 border-t border-slate-100 flex justify-between text-[11px] text-slate-500">
-        <span>Arsip: {archived.rejected} ditolak · {archived.talentPool} talent pool</span>
-        <span>Bar = jumlah yang pernah mencapai tahap</span>
+      <div className="pt-3 mt-2 border-t border-slate-100 flex flex-wrap gap-2 justify-between text-[11px] text-slate-500">
+        <span>Archived: {archived.rejected} rejected · {archived.talentPool} talent pool</span>
+        <span>Bars show candidates who reached each stage</span>
       </div>
     </div>
   );

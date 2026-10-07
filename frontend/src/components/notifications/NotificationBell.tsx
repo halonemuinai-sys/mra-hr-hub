@@ -36,7 +36,7 @@ export default function NotificationBell({ userId, pathname }: { userId?: string
       <button
         type="button"
         onClick={toggle}
-        aria-label={`Pengingat${unseenCount ? ` (${unseenCount} baru)` : ''}`}
+        aria-label={`Reminders${unseenCount ? ` (${unseenCount} new)` : ''}`}
         aria-expanded={open}
         className={`relative p-2 rounded-lg border transition-colors ${
           open ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -65,12 +65,12 @@ export default function NotificationBell({ userId, pathname }: { userId?: string
           >
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <p className="text-sm font-bold text-slate-900">Pengingat Tindakan</p>
+                <p className="text-sm font-bold text-slate-900">Action Reminders</p>
                 <p className="text-[11px] text-slate-500">
-                  {items.length ? `${items.length} hal perlu ditindaklanjuti` : 'Diperbarui otomatis tiap menit'}
+                  {items.length ? `${items.length} items need follow-up` : 'Updated automatically every minute'}
                 </p>
               </div>
-              <button type="button" onClick={reload} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Muat ulang">
+              <button type="button" onClick={reload} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100" title="Refresh">
                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>

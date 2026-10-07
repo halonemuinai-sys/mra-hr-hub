@@ -109,7 +109,7 @@ export default function StageField({ field, value, onChange, suggestions }: Prop
         <label className="block space-y-1">
           {label}
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rp</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">IDR</span>
             <input
               inputMode="numeric"
               value={value ? Number(value).toLocaleString('id-ID') : ''}
@@ -117,7 +117,7 @@ export default function StageField({ field, value, onChange, suggestions }: Prop
                 const digits = e.target.value.replace(/\D/g, '');
                 onChange(digits ? Number(digits) : '');
               }}
-              className={`${inputCls} pl-9 tabular-nums`}
+              className={`${inputCls} pl-12 tabular-nums`}
               placeholder="0"
             />
           </div>

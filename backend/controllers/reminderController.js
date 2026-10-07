@@ -15,7 +15,7 @@ const STALE_DAYS = 7;
 const CRITICAL_DAYS = 14;
 const SEVERITY_ORDER = { critical: 0, warning: 1, info: 2 };
 
-const plural = (n, word) => `${n} ${word}`;
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 async function getReminders(req, res) {
   try {
@@ -41,8 +41,8 @@ async function getReminders(req, res) {
         items.push({
           id: 'approvals-to-decide',
           severity: 'critical',
-          title: `${plural(pending.length, 'approval')} menunggu keputusan Anda`,
-          detail: `Offering / konfirmasi Hired. Tertua ${Math.max(1, Math.round(oldest / DAY))} hari.`,
+          title: `${plural(pending.length, 'approval')} awaiting your decision`,
+          detail: `Offer / hire confirmation. Oldest: ${Math.max(1, Math.round(oldest / DAY))} days.`,
           count: pending.length,
           href: '/admin/pipeline?view=approvals'
         });
@@ -65,9 +65,9 @@ async function getReminders(req, res) {
           id: isLead ? 'stale-team' : 'stale-mine',
           severity: critical ? 'critical' : 'warning',
           title: isLead
-            ? `${plural(stale.length, 'kandidat')} tim tertahan ≥${STALE_DAYS} hari`
-            : `${plural(stale.length, 'kandidat')} Anda tertahan ≥${STALE_DAYS} hari`,
-          detail: critical ? `${critical} di antaranya sudah ≥${CRITICAL_DAYS} hari tanpa pergerakan.` : 'Tindak lanjuti atau pindahkan tahapnya.',
+            ? `${plural(stale.length, 'candidate')} on the team stalled ≥${STALE_DAYS} days`
+            : `${plural(stale.length, 'candidate')} assigned to you stalled ≥${STALE_DAYS} days`,
+          detail: critical ? `${critical} have had no progress for ≥${CRITICAL_DAYS} days.` : 'Follow up or move them to the next stage.',
           count: stale.length,
           href: '/admin/pipeline?filter=stale'
         });
@@ -85,8 +85,8 @@ async function getReminders(req, res) {
         items.push({
           id: 'unassigned-queue',
           severity: waitingLong ? 'warning' : 'info',
-          title: `${plural(queue.length, 'pelamar')} belum diambil`,
-          detail: waitingLong ? `${waitingLong} sudah menunggu lebih dari 2 hari.` : 'Ambil dari antrean untuk mulai memproses.',
+          title: `${plural(queue.length, 'applicant')} unassigned`,
+          detail: waitingLong ? `${waitingLong} have been waiting for more than 2 days.` : 'Claim applicants from the queue to start processing.',
           count: queue.length,
           href: '/admin/pipeline?scope=unassigned'
         });
@@ -122,8 +122,8 @@ async function getReminders(req, res) {
       items.push({
         id: 'interviews-48h',
         severity: 'info',
-        title: `${plural(upcoming.length, 'interview')} dalam 48 jam`,
-        detail: `Berikutnya ${next.toLocaleString('id-ID', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`,
+        title: `${plural(upcoming.length, 'interview')} in the next 48 hours`,
+        detail: `Next: ${next.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`,
         count: upcoming.length,
         href: '/admin/pipeline'
       });
@@ -139,8 +139,8 @@ async function getReminders(req, res) {
       items.push({
         id: 'my-requests-decided',
         severity: rejected ? 'warning' : 'info',
-        title: `${plural(decided.length, 'permintaan approval')} Anda sudah diputuskan`,
-        detail: rejected ? `${rejected} ditolak — cek catatan approver.` : 'Semua disetujui.',
+        title: `${plural(decided.length, 'approval request')} from you have been reviewed`,
+        detail: rejected ? `${rejected} rejected — check the approver's notes.` : 'All approved.',
         count: decided.length,
         href: '/admin/pipeline?view=approvals'
       });
@@ -153,8 +153,8 @@ async function getReminders(req, res) {
         items.push({
           id: 'new-applicants-24h',
           severity: 'info',
-          title: `${plural(fresh, 'lamaran')} baru dalam 24 jam`,
-          detail: 'Pastikan sudah dibagikan ke tim TA.',
+          title: `${plural(fresh, 'application')} received in the last 24 hours`,
+          detail: 'Make sure they are assigned to the TA team.',
           count: fresh,
           href: '/admin/pipeline?scope=unassigned'
         });
@@ -172,8 +172,8 @@ async function getReminders(req, res) {
         items.push({
           id: 'hires-to-register',
           severity: oldest >= STALE_DAYS * DAY ? 'warning' : 'info',
-          title: `${plural(unregistered.length, 'kandidat Hired')} belum didaftarkan sebagai karyawan`,
-          detail: 'Lengkapi NIK & data penempatan, lalu umumkan.',
+          title: `${plural(unregistered.length, 'hired candidate')} not yet registered as employees`,
+          detail: 'Complete employee IDs and placement details, then announce the new hires.',
           count: unregistered.length,
           href: '/admin/employees'
         });
@@ -191,8 +191,8 @@ async function getReminders(req, res) {
       items.push({
         id: 'new-colleagues',
         severity: 'info',
-        title: `Selamat bergabung: ${names}${announced.length > 2 ? ` +${announced.length - 2}` : ''}`,
-        detail: `${plural(announced.length, 'karyawan baru')} diumumkan minggu ini.`,
+        title: `Welcome aboard: ${names}${announced.length > 2 ? ` +${announced.length - 2}` : ''}`,
+        detail: `${plural(announced.length, 'new employee')} announced this week.`,
         count: announced.length,
         href: '/admin/announcements'
       });

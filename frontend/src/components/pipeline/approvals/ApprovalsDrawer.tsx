@@ -29,7 +29,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 function formatValue(key: string, v: any) {
-  if (key === 'offerSalary') return `Rp ${Number(v).toLocaleString('id-ID')}`;
+  if (key === 'offerSalary') return `IDR ${Number(v).toLocaleString('id-ID')}`;
   if (typeof v === 'boolean') return v ? 'Yes' : 'No';
   return String(v);
 }
@@ -61,7 +61,7 @@ function RequestSummary({ r }: { r: any }) {
         {budget && r.toStatus === 'OFFERING' && (
           <div>
             <dt className="text-slate-400">Job budget (max)</dt>
-            <dd className="font-semibold text-slate-800">Rp {Number(budget).toLocaleString('id-ID')}</dd>
+            <dd className="font-semibold text-slate-800">IDR {Number(budget).toLocaleString('id-ID')}</dd>
           </div>
         )}
       </dl>

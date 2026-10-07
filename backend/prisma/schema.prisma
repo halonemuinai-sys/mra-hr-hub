@@ -76,6 +76,7 @@ model JobPosting {
   minEducation     String           // SMA/SMK, Diploma, Bachelor, Master
   salaryMin        Decimal?
   salaryMax        Decimal?
+  salaryVisibility String           @default("PUBLIC") // PUBLIC, CONFIDENTIAL, UNSPECIFIED
   description      String           @db.Text
   requirements     String           @db.Text
   mustHaveSkills   String[]         // Required skills keywords

@@ -11,9 +11,9 @@ const FAMILIES = [
 ];
 
 const SOURCES = [
-  { key: 'ATS_RESUME_UPLOAD', label: 'Upload CV', icon: UploadCloud, color: 'bg-blue-600' },
-  { key: 'EXCEL_TEMPLATE', label: 'Template Excel', icon: FileSpreadsheet, color: 'bg-emerald-600' },
-  { key: 'MANUAL_INPUT', label: 'Input manual', icon: PenLine, color: 'bg-amber-600' }
+  { key: 'ATS_RESUME_UPLOAD', label: 'Resume Upload', icon: UploadCloud, color: 'bg-blue-600' },
+  { key: 'EXCEL_TEMPLATE', label: 'Excel Template', icon: FileSpreadsheet, color: 'bg-emerald-600' },
+  { key: 'MANUAL_INPUT', label: 'Manual Entry', icon: PenLine, color: 'bg-amber-600' }
 ];
 
 export default function TalentMix({ jobFamily, intakeSource }: { jobFamily: Record<string, number>; intakeSource: Record<string, number> }) {
@@ -38,7 +38,7 @@ export default function TalentMix({ jobFamily, intakeSource }: { jobFamily: Reco
       </div>
 
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Saluran masuk</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Application sources</p>
         {/* Part-to-whole: one stacked bar with 2px surface gaps, labelled below */}
         <div className="flex h-3 rounded-full overflow-hidden gap-[2px] bg-white">
           {SOURCES.map((s) => {

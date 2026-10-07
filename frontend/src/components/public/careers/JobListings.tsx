@@ -6,14 +6,13 @@ import {
   Briefcase,
   MapPin,
   Building2,
-  DollarSign,
   ArrowRight,
   Clock,
   RotateCcw,
   Eye,
   GraduationCap
 } from 'lucide-react';
-import { formatRupiah } from '@/lib/utils';
+import { publicSalaryLabel } from '@/lib/jobSalary';
 import { CATEGORY_TABS, getJobPillarBadge } from './careersData';
 
 interface Props {
@@ -154,11 +153,11 @@ export default function JobListings({ loading, jobs, pillarCounts, selectedPilla
                         </span>
                       </div>
 
-                      {job.salaryMin && (
+                      {(
                         <div className="mt-3 text-xs font-bold text-emerald-700 bg-emerald-50/80 border border-emerald-200/60 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5">
-                          <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="shrink-0 text-[10px] font-bold leading-none text-emerald-600">IDR</span>
                           <span>
-                            {formatRupiah(job.salaryMin)} - {formatRupiah(job.salaryMax)} / bln
+                            {publicSalaryLabel(job)}
                           </span>
                         </div>
                       )}

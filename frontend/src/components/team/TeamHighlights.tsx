@@ -23,23 +23,23 @@ export default function TeamHighlights({ members, onSelect }: { members: any[]; 
     topHire && {
       icon: Trophy,
       tone: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      label: 'Paling produktif',
+      label: 'Most productive',
       member: topHire,
-      value: `${topHire.period.hired} hired · ${topHire.period.advanced} maju tahap`
+      value: `${topHire.period.hired} hired · ${topHire.period.advanced} advanced`
     },
     fastest && {
       icon: Zap,
       tone: 'bg-blue-50 text-blue-700 border-blue-200',
-      label: 'Tercepat ambil pelamar',
+      label: 'Fastest to claim',
       member: fastest,
-      value: `rata-rata ${formatHours(fastest.period.avgClaimHours)}`
+      value: `average ${formatHours(fastest.period.avgClaimHours)}`
     },
     needsHelp && {
       icon: LifeBuoy,
       tone: 'bg-amber-50 text-amber-700 border-amber-200',
-      label: 'Butuh bantuan',
+      label: 'Needs support',
       member: needsHelp,
-      value: `${needsHelp.staleCount} tertahan${needsHelp.criticalCount ? ` · ${needsHelp.criticalCount} ≥14 hari` : ''}`
+      value: `${needsHelp.staleCount} stalled${needsHelp.criticalCount ? ` · ${needsHelp.criticalCount} ≥14 days` : ''}`
     }
   ].filter(Boolean) as any[];
 

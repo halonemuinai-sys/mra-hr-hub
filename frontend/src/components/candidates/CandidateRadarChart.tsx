@@ -24,7 +24,7 @@ export default function CandidateRadarChart({ data }: Props) {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-48 bg-slate-50 rounded-xl text-xs text-slate-400">
-        Data profil radar belum tersedia
+        Profile assessment is not available yet
       </div>
     );
   }
@@ -40,7 +40,7 @@ export default function CandidateRadarChart({ data }: Props) {
           />
           <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 9 }} stroke="#cbd5e1" />
           <Radar
-            name="Kesesuaian Profil"
+            name="Profile Match"
             dataKey="score"
             stroke="#2563eb"
             strokeWidth={2.5}

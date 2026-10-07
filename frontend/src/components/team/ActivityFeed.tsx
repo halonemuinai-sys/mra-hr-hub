@@ -4,6 +4,9 @@ import React from 'react';
 import { Hand, LogOut, UserPlus, ArrowRightLeft, XCircle, CheckCircle2, ShieldCheck, BadgeCheck, Megaphone, ArchiveX, CloudUpload } from 'lucide-react';
 import { describeActivity, formatRelative } from './teamFormat';
 
+/** Actions whose note is already part of the sentence (describeActivity) */
+const NOTE_IN_TEXT = new Set(['EMPLOYEE_REGISTERED', 'TALENTA_SYNCED', 'TALENTA_SYNC_FAILED']);
+
 function iconFor(a: any) {
   if (a.action === 'CLAIM') return { Icon: Hand, cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
   if (a.action === 'RELEASE') return { Icon: LogOut, cls: 'bg-slate-100 text-slate-500 border-slate-200' };
@@ -22,7 +25,18 @@ function iconFor(a: any) {
   return { Icon: ArrowRightLeft, cls: 'bg-blue-50 text-blue-600 border-blue-200' };
 }
 
-export default function ActivityFeed({ items, loading, compact }: { items: any[]; loading: boolean; compact?: boolean }) {
+export default function ActivityFeed({
+  items,
+  loading,
+  compact,
+  clock
+}: {
+  items: any[];
+  loading: boolean;
+  compact?: boolean;
+  /** Show the time of day (for lists already grouped by date) instead of "3 days ago" */
+  clock?: boolean;
+}) {
   if (loading && items.length === 0) {
     return (
       <div className="space-y-2">
@@ -33,7 +47,7 @@ export default function ActivityFeed({ items, loading, compact }: { items: any[]
     );
   }
   if (items.length === 0) {
-    return <p className="text-xs text-slate-400 py-6 text-center">Belum ada aktivitas tercatat.</p>;
+    return <p className="text-xs text-slate-400 py-6 text-center">No activity recorded yet.</p>;
   }
 
   return (
@@ -51,9 +65,9 @@ export default function ActivityFeed({ items, loading, compact }: { items: any[]
                 {!compact && <b className="text-slate-900">{who} </b>}
                 {text}
               </p>
-              {a.note && <p className="text-[11px] text-slate-500 italic truncate" title={a.note}>“{a.note}”</p>}
+              {a.note && !NOTE_IN_TEXT.has(a.action) && <p className="text-[11px] text-slate-500 italic truncate" title={a.note}>“{a.note}”</p>}
               <p className="text-[10px] text-slate-400 mt-0.5">
-                {formatRelative(a.createdAt)}
+                {clock ? new Date(a.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : formatRelative(a.createdAt)}
                 {a.application?.job?.title ? ` • ${a.application.job.title}` : ''}
               </p>
             </div>

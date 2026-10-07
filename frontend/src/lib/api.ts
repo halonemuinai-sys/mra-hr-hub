@@ -98,9 +98,10 @@ export const api = {
   // Jobs
   getJobs: (params: Record<string, any> = {}) => {
     const q = new URLSearchParams(params).toString();
-    return fetchApi(`/jobs${q ? `?${q}` : ''}`);
+    return fetchApi(`/jobs${q ? `?${q}` : ''}`, { cache: 'no-store' });
   },
   getJobById: (id: string) => fetchApi(`/jobs/${id}`),
+  getJobsForManagement: () => fetchApi('/jobs/manage?activeOnly=false', { cache: 'no-store' }),
   getJobForManagement: (id: string) => fetchApi(`/jobs/${id}/manage`),
   getHiringManagers: () => fetchApi('/jobs/hiring-managers'),
   createJob: (data: any) => fetchApi('/jobs', {

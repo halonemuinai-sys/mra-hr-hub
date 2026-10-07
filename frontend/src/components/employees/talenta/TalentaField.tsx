@@ -94,7 +94,7 @@ export default function TalentaField({ field: f, value, values, masters, disable
       {control}
       {f.type === 'number' && !empty && Number.isFinite(Number(String(value).replace(/[^\d.]/g, ''))) && (
         <span className="block text-[10px] text-slate-500 tabular-nums">
-          Rp {Number(String(value).replace(/[^\d.]/g, '')).toLocaleString('id-ID')}
+          IDR {Number(String(value).replace(/[^\d.]/g, '')).toLocaleString('id-ID')}
         </span>
       )}
     </label>

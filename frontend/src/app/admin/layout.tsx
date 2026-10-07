@@ -11,20 +11,21 @@ import {
   ShieldCheck,
   ExternalLink,
   ChevronRight,
-  Sparkles,
+  PanelLeftClose,
+  PanelLeftOpen,
   Menu,
   X,
   LogOut,
-  User as UserIcon,
   RefreshCw,
   KanbanSquare,
   UserCog,
   Lock,
   Activity,
   BadgeCheck,
-  Megaphone
+  Megaphone,
+  History
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { api } from '@/lib/api';
 import { can, CurrentUserProvider, Permission, ROLE_LABELS } from '@/lib/permissions';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -38,11 +39,43 @@ export default function DashboardLayout({
   const router = useRouter();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
 
   // If this is the login page, render children directly without dashboard sidebar
   const isLoginPage = pathname === '/admin/login';
+
+  useEffect(() => {
+    try {
+      setSidebarHidden(localStorage.getItem('hr_hub_sidebar_hidden') === 'true');
+    } catch {
+      // Navigation remains available when browser storage is disabled.
+    }
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const closeMobileSidebar = () => {
+      if (desktop.matches) setSidebarOpen(false);
+    };
+    desktop.addEventListener('change', closeMobileSidebar);
+    return () => desktop.removeEventListener('change', closeMobileSidebar);
+  }, []);
+
+  const toggleDesktopSidebar = () => {
+    const hidden = !sidebarHidden;
+    setSidebarHidden(hidden);
+    try {
+      localStorage.setItem('hr_hub_sidebar_hidden', String(hidden));
+    } catch {
+      // Saving the preference is optional.
+    }
+  };
 
   useEffect(() => {
     if (isLoginPage) {
@@ -84,10 +117,10 @@ export default function DashboardLayout({
           setAuthChecking(false);
         });
     }
-  }, [pathname, isLoginPage, router]);
+  }, [isLoginPage, router]);
 
   const handleLogout = () => {
-    if (confirm('Keluar dari CMS MRA HR HUB?')) {
+    if (confirm('Log out of MRA HR HUB CMS?')) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('hr_hub_token');
         localStorage.removeItem('hr_hub_user');
@@ -109,21 +142,22 @@ export default function DashboardLayout({
         <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-pulse">
           <ShieldCheck className="w-7 h-7" />
         </div>
-        <p className="text-xs text-slate-400 font-medium">Memverifikasi otentikasi CMS...</p>
+        <p className="text-xs text-slate-400 font-medium">Verifying CMS authentication...</p>
       </div>
     );
   }
 
   const allNavigation: { name: string; href: string; icon: React.ElementType; permission: Permission }[] = [
-    { name: 'Dashboard Eksekutif', href: '/admin', icon: LayoutDashboard, permission: 'dashboard.view' },
+    { name: 'Recruitment Dashboard', href: '/admin', icon: LayoutDashboard, permission: 'dashboard.view' },
     { name: 'Applicant Pipeline', href: '/admin/pipeline', icon: KanbanSquare, permission: 'pipeline.view' },
-    { name: 'Database & Profiling', href: '/admin/candidates', icon: Users, permission: 'candidate.view' },
-    { name: 'Template & Bulk Ingest', href: '/admin/templates', icon: FileSpreadsheet, permission: 'candidate.import' },
-    { name: 'Kelola Lowongan ATS', href: '/admin/jobs', icon: Briefcase, permission: 'jobs.manage' },
-    { name: 'Karyawan Baru', href: '/admin/employees', icon: BadgeCheck, permission: 'employee.view' },
-    { name: 'Pengumuman', href: '/admin/announcements', icon: Megaphone, permission: 'dashboard.view' },
-    { name: 'Kinerja Tim TA', href: '/admin/team', icon: Activity, permission: 'team.monitor' },
-    { name: 'User & Hak Akses', href: '/admin/users', icon: UserCog, permission: 'users.manage' }
+    { name: 'Database & Profiles', href: '/admin/candidates', icon: Users, permission: 'candidate.view' },
+    { name: 'Templates & Bulk Import', href: '/admin/templates', icon: FileSpreadsheet, permission: 'candidate.import' },
+    { name: 'Manage ATS Jobs', href: '/admin/jobs', icon: Briefcase, permission: 'jobs.manage' },
+    { name: 'New Employees', href: '/admin/employees', icon: BadgeCheck, permission: 'employee.view' },
+    { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, permission: 'dashboard.view' },
+    { name: 'TA Team Performance', href: '/admin/team', icon: Activity, permission: 'team.monitor' },
+    { name: 'Team Activity Log', href: '/admin/activity', icon: History, permission: 'team.monitor' },
+    { name: 'Users & Access', href: '/admin/users', icon: UserCog, permission: 'users.manage' }
   ];
   const navigation = allNavigation.filter((item) => can(currentUser, item.permission));
 
@@ -143,93 +177,87 @@ export default function DashboardLayout({
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const SidebarContent = () => (
-    <div className="flex flex-col justify-between h-full">
-      <div>
-        {/* Logo */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-blue-800 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight text-white">HR HUB</h1>
-              <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider block">
-                Recruiter Cockpit
-              </span>
-            </div>
-          </div>
-          {/* Close button on mobile */}
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const navigationGroups = [
+    { label: 'Recruitment', paths: ['/admin', '/admin/pipeline', '/admin/candidates', '/admin/jobs'] },
+    { label: 'People', paths: ['/admin/employees', '/admin/announcements', '/admin/team', '/admin/activity'] },
+    { label: 'Administration', paths: ['/admin/templates', '/admin/users'] }
+  ];
 
-        {/* Navigation Links */}
-        <nav className="p-3 space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                  <span>{item.name}</span>
-                </div>
-                {isActive && <ChevronRight className="w-4 h-4 text-blue-200" />}
-              </Link>
-            );
-          })}
-        </nav>
+  const renderSidebar = (mobile = false) => (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex h-20 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-5">
+        <Link href="/admin" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-400" aria-label="HR Hub home">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-400/25 bg-blue-500/15 text-blue-300">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block text-base font-bold tracking-tight text-white">HR HUB</span>
+            <span className="mt-0.5 block text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400">MRA Group</span>
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={mobile ? () => setSidebarOpen(false) : toggleDesktopSidebar}
+          aria-label={mobile ? 'Close navigation' : 'Hide sidebar'}
+          title={mobile ? 'Close navigation' : 'Hide sidebar'}
+          className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-blue-400"
+        >
+          {mobile ? <X className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+        </button>
       </div>
 
-      {/* Footer Sidebar with User Monogram & Logout */}
-      <div className="p-4 border-t border-slate-800 space-y-3">
-        <Link
-          href="/"
-          target="_blank"
-          className="flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-        >
-          <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
-          Buka Portal Publik
+      <nav aria-label="Main navigation" className="min-h-0 flex-1 space-y-6 overflow-y-auto px-3 py-6">
+        {navigationGroups.map((group) => {
+          const items = navigation.filter((item) => group.paths.includes(item.href));
+          if (!items.length) return null;
+          return (
+            <div key={group.label}>
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{group.label}</p>
+              <ul className="space-y-1">
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = routeItem?.href === item.href;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`group relative flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-blue-400 ${
+                          isActive
+                            ? 'bg-blue-500/15 text-blue-100 ring-1 ring-inset ring-blue-400/20'
+                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+                        }`}
+                      >
+                        {isActive && <span className="absolute left-0 h-5 w-0.5 rounded-full bg-blue-400" />}
+                        <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                        <span className="flex-1 leading-relaxed">{item.name}</span>
+                        {isActive && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-blue-400" />}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="shrink-0 space-y-4 border-t border-white/10 p-4">
+        <Link href="/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2.5 text-xs font-medium text-slate-300 transition-colors hover:border-white/20 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-blue-400">
+          Open Public Portal
+          <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
         </Link>
-
-        {/* User Card */}
-        <div className="p-2.5 rounded-xl bg-slate-800/60 border border-slate-800 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-xs">
-              {getInitials(currentUser?.name)}
-            </div>
-            <div className="text-[11px] min-w-0 truncate">
-              <p className="font-bold text-white truncate" title={currentUser?.name}>
-                {currentUser?.name || 'HR Administrator'}
-              </p>
-              <p className="text-[10px] text-blue-400 font-semibold truncate">
-                {ROLE_LABELS[currentUser?.role] || currentUser?.role}
-              </p>
-            </div>
+        <div className="flex items-center gap-3 px-1">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-600 bg-slate-800 text-xs font-semibold text-slate-200">
+            {getInitials(currentUser?.name)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-slate-100" title={currentUser?.name}>{currentUser?.name || 'HR Administrator'}</p>
+            <p className="mt-0.5 truncate text-[10px] text-slate-400" title={ROLE_LABELS[currentUser?.role] || currentUser?.role}>{ROLE_LABELS[currentUser?.role] || currentUser?.role}</p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors shrink-0"
-            title="Keluar dari CMS"
-          >
-            <LogOut className="w-4 h-4" />
+          <button type="button" onClick={handleLogout} aria-label="Log out of CMS" title="Log out of CMS" className="shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-200 focus-visible:outline-2 focus-visible:outline-blue-400">
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -237,40 +265,30 @@ export default function DashboardLayout({
   );
 
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden">
-      {/* Desktop Sidebar (hidden on mobile) */}
-      <aside className="hidden md:flex w-64 bg-slate-900 text-white flex-col justify-between border-r border-slate-800 shrink-0">
-        <SidebarContent />
+    <div className="flex h-dvh bg-slate-100 overflow-hidden">
+      {/* Desktop navigation is fully removed from the tab order when hidden. */}
+      <aside id="desktop-sidebar" aria-label="Sidebar" className={`${sidebarHidden ? 'hidden' : 'hidden md:flex'} w-72 shrink-0 flex-col border-r border-slate-800 bg-slate-900 text-white`}>
+        {renderSidebar()}
       </aside>
 
-      {/* Mobile Off-Canvas Drawer Overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <div className="fixed inset-0 z-50 md:hidden flex">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs"
-            />
-            <motion.aside
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-              className="relative w-72 max-w-[82vw] bg-slate-900 text-white flex flex-col justify-between border-r border-slate-800 z-10 h-full shadow-2xl"
-            >
-              <SidebarContent />
-            </motion.aside>
-          </div>
-        )}
-      </AnimatePresence>
+      <Dialog open={sidebarOpen} onClose={setSidebarOpen} className="relative z-50 md:hidden">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" aria-hidden="true" />
+        <div className="fixed inset-0 flex">
+          <DialogPanel
+            transition
+            id="mobile-sidebar"
+            className="h-full w-80 max-w-[88vw] bg-slate-900 text-white shadow-2xl transition duration-200 ease-out data-[closed]:-translate-x-full motion-reduce:transition-none"
+          >
+            <DialogTitle className="sr-only">Main navigation</DialogTitle>
+            {renderSidebar(true)}
+          </DialogPanel>
+        </div>
+      </Dialog>
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Navbar */}
-        <header className="h-14 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between shrink-0">
+        <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             {/* Hamburger Button on Mobile */}
             <button
@@ -278,17 +296,26 @@ export default function DashboardLayout({
               onClick={() => setSidebarOpen(true)}
               className="md:hidden p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors"
               aria-label="Open sidebar menu"
+              aria-expanded={sidebarOpen}
+              aria-controls="mobile-sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-              <span className="hidden sm:inline">MRA Group HR CMS</span>
-              <span className="hidden sm:inline">•</span>
-              <span className="text-blue-600 font-bold flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">ATS Cockpit</span> Active
-              </span>
+            <button
+              type="button"
+              onClick={toggleDesktopSidebar}
+              aria-label={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
+              title={sidebarHidden ? 'Show sidebar' : 'Hide sidebar'}
+              aria-expanded={!sidebarHidden}
+              aria-controls="desktop-sidebar"
+              className="hidden rounded-lg border border-slate-200 p-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-blue-500 md:inline-flex"
+            >
+              {sidebarHidden ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </button>
+            <div className="hidden sm:block">
+              <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Workspace</p>
+              <p className="text-xs font-semibold text-slate-800">{routeItem?.name || 'HR Hub'}</p>
             </div>
           </div>
 
@@ -309,10 +336,10 @@ export default function DashboardLayout({
               type="button"
               onClick={handleLogout}
               className="p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Keluar dari CMS"
+              title="Log out of CMS"
             >
               <LogOut className="w-4 h-4 text-slate-400 group-hover:text-amber-500" />
-              <span className="hidden md:inline">Keluar</span>
+              <span className="hidden md:inline">Log out</span>
             </button>
           </div>
         </header>
@@ -325,9 +352,9 @@ export default function DashboardLayout({
                 <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center mx-auto">
                   <RefreshCw className="w-6 h-6" />
                 </div>
-                <h2 className="text-base font-bold text-slate-900 mt-4">Sesi Perlu Diperbarui</h2>
+                <h2 className="text-base font-bold text-slate-900 mt-4">Session Refresh Required</h2>
                 <p className="text-xs text-slate-500 mt-1.5">
-                  Data hak akses akun Anda belum termuat. Pastikan server backend sudah versi terbaru, lalu login ulang.
+                  Your account permissions have not loaded. Make sure the backend server is up to date, then log in again.
                 </p>
                 <button
                   type="button"
@@ -338,7 +365,7 @@ export default function DashboardLayout({
                   }}
                   className="inline-flex mt-5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
                 >
-                  Login Ulang
+                  Log In Again
                 </button>
               </div>
             ) : accessDenied ? (
@@ -346,17 +373,17 @@ export default function DashboardLayout({
                 <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
                   <Lock className="w-6 h-6" />
                 </div>
-                <h2 className="text-base font-bold text-slate-900 mt-4">Akses Dibatasi</h2>
+                <h2 className="text-base font-bold text-slate-900 mt-4">Access Restricted</h2>
                 <p className="text-xs text-slate-500 mt-1.5">
-                  Role <b>{ROLE_LABELS[currentUser?.role] || currentUser?.role}</b> tidak memiliki izin untuk membuka{' '}
-                  <b>{routeItem?.name}</b>. Hubungi Super Admin bila Anda memerlukan akses.
+                  Role <b>{ROLE_LABELS[currentUser?.role] || currentUser?.role}</b> does not have permission to access{' '}
+                  <b>{routeItem?.name}</b>. Contact a Super Admin if you need access.
                 </p>
                 {navigation[0] && (
                   <Link
                     href={navigation[0].href}
                     className="inline-flex mt-5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold"
                   >
-                    Kembali ke {navigation[0].name}
+                    Back to {navigation[0].name}
                   </Link>
                 )}
               </div>

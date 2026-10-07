@@ -43,7 +43,7 @@ export default function KpiTile({ label, value, hint, icon: Icon, delta, invertD
             className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
               good === null ? 'bg-slate-100 text-slate-500' : good ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
             }`}
-            title="Dibanding 30 hari sebelumnya"
+            title="Compared with the previous 30 days"
           >
             <DeltaIcon className="w-3 h-3" />
             {delta == null ? 'n/a' : `${Math.abs(delta)}%`}
@@ -57,8 +57,8 @@ export default function KpiTile({ label, value, hint, icon: Icon, delta, invertD
               <Tooltip
                 cursor={false}
                 contentStyle={{ fontSize: 11, borderRadius: 8, padding: '4px 8px' }}
-                formatter={(v: number) => [v, 'Lamaran']}
-                labelFormatter={(_, p) => (p && p[0] ? `Minggu ${p[0].payload.label}` : '')}
+                formatter={(v: number) => [v, 'Applications']}
+                labelFormatter={(_, p) => (p && p[0] ? `Week ${p[0].payload.label}` : '')}
               />
               <Area type="monotone" dataKey="value" stroke={CHART.blue} strokeWidth={2} fill={CHART.blueSoft} dot={false} isAnimationActive={false} />
             </AreaChart>

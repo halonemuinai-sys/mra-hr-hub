@@ -67,7 +67,7 @@ async function getTeamPerformance(req, res) {
     const since = new Date(now - days * DAY);
     const prevSince = new Date(now - 2 * days * DAY);
 
-    const [users, holdings, activities, unassigned] = await Promise.all([
+    const [users, holdings, activities, unassigned, lastActivity] = await Promise.all([
       prisma.user.findMany({
         where: { role: { in: PIC_ROLES } },
         select: { id: true, name: true, email: true, role: true, isActive: true },
@@ -99,14 +99,13 @@ async function getTeamPerformance(req, res) {
       prisma.jobApplication.findMany({
         where: { assignedRecruiterId: null, status: { notIn: CLOSED } },
         select: { appliedAt: true }
+      }),
+      prisma.applicationActivity.groupBy({
+        by: ['actorId'],
+        where: { actor: { role: { in: PIC_ROLES } } },
+        _max: { createdAt: true }
       })
     ]);
-
-    const lastActivity = await prisma.applicationActivity.groupBy({
-      by: ['actorId'],
-      where: { actorId: { in: users.map((u) => u.id) } },
-      _max: { createdAt: true }
-    });
 
     const current = activities.filter((a) => new Date(a.createdAt) >= since);
     const previous = activities.filter((a) => new Date(a.createdAt) < since);
@@ -251,7 +250,7 @@ async function getRebalanceSuggestions(req, res) {
         job: a.job.title,
         status: a.status,
         days: Math.floor(a.days),
-        reason: from ? `Tertahan ${Math.floor(a.days)} hari` : `Belum diambil ${Math.floor(a.days)} hari`,
+        reason: from ? `Stalled for ${Math.floor(a.days)} days` : `Unassigned for ${Math.floor(a.days)} days`,
         from: from ? { id: from, name: name(from) } : null,
         to: { id: to[0], name: name(to[0]) }
       });
@@ -274,26 +273,57 @@ async function getRebalanceSuggestions(req, res) {
   }
 }
 
+const ACTION_GROUPS = {
+  moves: ['STAGE_CHANGE'],
+  ownership: ['CLAIM', 'RELEASE', 'ASSIGN'],
+  approvals: ['APPROVAL_REQUESTED', 'APPROVAL_APPROVED', 'APPROVAL_REJECTED', 'APPROVAL_CANCELLED'],
+  hires: ['EMPLOYEE_REGISTERED', 'EMPLOYEE_ANNOUNCED', 'HIRE_RELEASED', 'HIRE_RESTORED', 'TALENTA_SYNCED', 'TALENTA_SYNC_FAILED']
+};
+
+/** Filters shared by the feed and its group counts (everything except the action group) */
+function activityBaseWhere(q) {
+  const where = {};
+  if (q.recruiterId) where.actorId = String(q.recruiterId);
+  const from = q.from ? new Date(q.from) : null;
+  const to = q.to ? new Date(q.to) : null;
+  if ((from && !Number.isNaN(from.getTime())) || (to && !Number.isNaN(to.getTime()))) {
+    where.createdAt = {};
+    if (from && !Number.isNaN(from.getTime())) where.createdAt.gte = from;
+    if (to && !Number.isNaN(to.getTime())) where.createdAt.lte = to;
+  }
+  const app = {};
+  if (q.jobId) app.jobId = String(q.jobId);
+  if (q.search && String(q.search).trim()) app.candidate = { fullName: { contains: String(q.search).trim(), mode: 'insensitive' } };
+  if (Object.keys(app).length) where.application = app;
+  return where;
+}
+
 /**
- * GET /api/team/activity?recruiterId=&action=&limit=50
- * Recent activity feed (whole team, or one recruiter as actor)
+ * GET /api/team/activity?recruiterId=&action=&from=&to=&jobId=&search=&before=&limit=50&counts=1
+ * Activity feed (whole team, or one recruiter as actor), newest first.
+ * Paging: pass the returned `nextCursor` as `before` (createdAt|id of the last row).
+ * counts=1 also returns the number of rows per action group for the same filters.
  */
 async function getTeamActivity(req, res) {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
-    const ACTION_GROUPS = {
-      moves: ['STAGE_CHANGE'],
-      ownership: ['CLAIM', 'RELEASE', 'ASSIGN'],
-      approvals: ['APPROVAL_REQUESTED', 'APPROVAL_APPROVED', 'APPROVAL_REJECTED', 'APPROVAL_CANCELLED']
-    };
-    const where = {};
-    if (req.query.recruiterId) where.actorId = req.query.recruiterId;
+    const base = activityBaseWhere(req.query);
+    const where = { ...base };
     if (ACTION_GROUPS[req.query.action]) where.action = { in: ACTION_GROUPS[req.query.action] };
+
+    // Keyset cursor: rows strictly older than (createdAt, id) of the previous page's last row
+    if (req.query.before) {
+      const [at, id] = String(req.query.before).split('|');
+      const atDate = new Date(at);
+      if (!Number.isNaN(atDate.getTime())) {
+        where.AND = [{ OR: [{ createdAt: { lt: atDate } }, { createdAt: atDate, id: { lt: id || '' } }] }];
+      }
+    }
 
     const rows = await prisma.applicationActivity.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
       include: {
         actor: { select: { id: true, name: true } },
         application: {
@@ -307,18 +337,32 @@ async function getTeamActivity(req, res) {
       }
     });
 
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
     // Resolve assignee names for ASSIGN / CLAIM rows
-    const targetIds = [...new Set(rows.map((r) => r.toRecruiterId).filter(Boolean))];
+    const targetIds = [...new Set(page.map((r) => r.toRecruiterId).filter(Boolean))];
     const targets = targetIds.length
       ? await prisma.user.findMany({ where: { id: { in: targetIds } }, select: { id: true, name: true } })
       : [];
 
+    let counts;
+    if (req.query.counts === '1') {
+      const grouped = await prisma.applicationActivity.groupBy({ by: ['action'], where: base, _count: { _all: true } });
+      const n = (actions) => grouped.filter((g) => actions.includes(g.action)).reduce((s, g) => s + g._count._all, 0);
+      counts = { all: grouped.reduce((s, g) => s + g._count._all, 0) };
+      Object.entries(ACTION_GROUPS).forEach(([k, actions]) => (counts[k] = n(actions)));
+    }
+
+    const last = page[page.length - 1];
     return res.json({
       success: true,
-      data: rows.map((r) => ({
+      data: page.map((r) => ({
         ...r,
         toRecruiter: targets.find((t) => t.id === r.toRecruiterId) || null
-      }))
+      })),
+      nextCursor: hasMore && last ? `${last.createdAt.toISOString()}|${last.id}` : null,
+      ...(counts ? { counts } : {})
     });
   } catch (error) {
     console.error('Error listing team activity:', error);

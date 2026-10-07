@@ -8,7 +8,6 @@ import {
   Building2,
   MapPin,
   Clock,
-  DollarSign,
   GraduationCap,
   CheckCircle2,
   Sparkles,
@@ -21,7 +20,7 @@ import {
   Layers,
   HeartHandshake
 } from 'lucide-react';
-import { formatRupiah } from '@/lib/utils';
+import { publicSalaryLabel, hasPublicSalary } from '@/lib/jobSalary';
 import Link from 'next/link';
 
 interface JobDetailModalProps {
@@ -175,26 +174,26 @@ export default function JobDetailModal({
 
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-xs">
                 <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-semibold mb-1">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="shrink-0 text-[10px] font-bold leading-none text-emerald-600">IDR</span>
                   <span>Kisaran Gaji</span>
                 </div>
                 <div className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                  {job.salaryMin ? formatRupiah(job.salaryMin) : 'Kompetitif'}
+                  {publicSalaryLabel(job)}
                 </div>
               </div>
             </div>
 
             {/* Salary Banner if available */}
-            {job.salaryMin && (
+            {hasPublicSalary(job) && (
               <div className="bg-emerald-50 border border-emerald-200/80 p-4 rounded-2xl flex items-center justify-between text-xs text-emerald-900">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                    <DollarSign className="w-4 h-4" />
+                    <span className="shrink-0 text-[10px] font-bold leading-none">IDR</span>
                   </div>
                   <div>
                     <p className="font-bold">Remunerasi & Penawaran Gaji Pokok</p>
                     <p className="text-emerald-700 text-[11px]">
-                      {formatRupiah(job.salaryMin)} s/d {formatRupiah(job.salaryMax)} per bulan
+                      {publicSalaryLabel(job)}{' '}
                       (berdasarkan evaluasi kualifikasi & pengalaman)
                     </p>
                   </div>

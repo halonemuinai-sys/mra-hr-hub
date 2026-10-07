@@ -25,7 +25,7 @@ export default function AnnouncementCard({ item, compact = false }: { item: any;
             {item.position} · {item.division}
           </p>
         </div>
-        <span className="text-[10px] font-semibold text-slate-500 tabular-nums shrink-0">{fmtDate(item.joinDate)}</span>
+        <span className="text-[10px] font-semibold text-slate-500 tabular-nums shrink-0">{fmtDate(item.joinDate, false, 'en-GB')}</span>
       </div>
     );
   }

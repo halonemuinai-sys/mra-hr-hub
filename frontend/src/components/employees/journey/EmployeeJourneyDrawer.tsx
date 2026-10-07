@@ -275,7 +275,7 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
                   <h4 className="text-xs font-bold text-slate-900">Detail perjalanan</h4>
                   {m.offerSalary && (
                     <span className="text-[10px] text-slate-500 flex items-center gap-1">
-                      <Wallet className="w-3 h-3" /> Offering Rp {m.offerSalary.toLocaleString('id-ID')}
+                      <Wallet className="w-3 h-3" /> Offering IDR {m.offerSalary.toLocaleString('id-ID')}
                     </span>
                   )}
                 </div>

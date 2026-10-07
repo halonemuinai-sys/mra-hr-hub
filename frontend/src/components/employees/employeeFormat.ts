@@ -14,11 +14,11 @@ export const statusMeta = (key?: string) =>
  * Date-only values (join date, stored as UTC midnight) are shown in UTC so they never shift a day;
  * real timestamps (applied, hired, announced) in the viewer's local time.
  */
-export const fmtDate = (d?: string | Date | null, long = false) => {
+export const fmtDate = (d?: string | Date | null, long = false, locale = 'id-ID') => {
   if (!d) return '-';
   const date = new Date(d);
   const dateOnly = date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0;
-  return date.toLocaleDateString('id-ID', { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric', ...(dateOnly ? { timeZone: 'UTC' } : {}) });
+  return date.toLocaleDateString(locale, { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric', ...(dateOnly ? { timeZone: 'UTC' } : {}) });
 };
 
 /** Default "Selamat Bergabung" text built from the form values */

@@ -21,9 +21,9 @@ export default function StageAgingChart({ rows }: { rows: Row[] }) {
           <div
             key={r.stage}
             className="grid grid-cols-[110px_1fr_92px] items-center gap-2 text-xs"
-            title={`${r.count} kandidat · rata-rata ${r.avgDays ?? 0} hari · ${r.stale} tertahan ≥${STALE_DAYS} hari`}
+            title={`${r.count} candidates · average ${r.avgDays ?? 0} days · ${r.stale} stalled ≥${STALE_DAYS} days`}
           >
-            <span className="font-semibold text-slate-700 truncate">{STAGE_NAME[r.stage]}</span>
+            <span className="font-semibold text-slate-700 break-words">{STAGE_NAME[r.stage]}</span>
             <div className="relative h-4 bg-slate-100 rounded">
               <div
                 className={`h-full rounded ${over ? 'bg-amber-600' : 'bg-blue-600'}`}
@@ -33,7 +33,7 @@ export default function StageAgingChart({ rows }: { rows: Row[] }) {
               <div className="absolute -top-1 -bottom-1 border-l-2 border-dashed border-slate-400" style={{ left: `${thresholdPct}%` }} />
             </div>
             <span className="text-right tabular-nums text-[11px]">
-              <b className={over ? 'text-amber-700' : 'text-slate-900'}>{r.count ? `${r.avgDays} hari` : '—'}</b>
+              <b className={over ? 'text-amber-700' : 'text-slate-900'}>{r.count ? `${r.avgDays} days` : '—'}</b>
               {r.stale > 0 && (
                 <span className="ml-1 inline-flex items-center gap-0.5 text-amber-700 font-semibold">
                   <AlertTriangle className="w-3 h-3" />
@@ -46,9 +46,9 @@ export default function StageAgingChart({ rows }: { rows: Row[] }) {
       })}
       <div className="pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-500">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-600" />Normal</span>
-        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-600" />Rata-rata ≥{STALE_DAYS} hari</span>
-        <span className="flex items-center gap-1"><span className="w-3 border-t-2 border-dashed border-slate-400" />Batas {STALE_DAYS} hari</span>
-        <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-amber-700" />Jumlah tertahan</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-600" />Average ≥{STALE_DAYS} days</span>
+        <span className="flex items-center gap-1"><span className="w-3 border-t-2 border-dashed border-slate-400" />Threshold: {STALE_DAYS} days</span>
+        <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-amber-700" />Stalled candidates</span>
       </div>
     </div>
   );

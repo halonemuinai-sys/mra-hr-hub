@@ -30,8 +30,8 @@ export default function ScoreHistogram({ data }: { data: Bucket[] }) {
             <Tooltip
               cursor={{ fill: '#f1f5f9' }}
               contentStyle={{ fontSize: 11, borderRadius: 10 }}
-              formatter={(v: number, _n, p: any) => [`${v} lamaran (${Math.round((v / total) * 100)}%)`, SCORE_BAND[p.payload.band as Bucket['band']].label]}
-              labelFormatter={(l) => `Skor ATS ${l}`}
+              formatter={(v: number, _n, p: any) => [`${v} applications (${Math.round((v / total) * 100)}%)`, SCORE_BAND[p.payload.band as Bucket['band']].label]}
+              labelFormatter={(l) => `ATS score ${l}`}
             />
             <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
               {data.map((b) => (

@@ -6,8 +6,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatRupiah(amount?: number | null): string {
-  if (amount === undefined || amount === null || isNaN(amount)) return 'Rp 0';
-  return 'Rp ' + Number(amount).toLocaleString('id-ID');
+  if (amount === undefined || amount === null || isNaN(amount)) return 'IDR 0';
+  return 'IDR ' + Number(amount).toLocaleString('id-ID');
 }
 
 export function formatDate(dateStr?: string | Date | null): string {

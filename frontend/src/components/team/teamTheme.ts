@@ -2,8 +2,8 @@ import { shortName } from '@/components/pipeline/ownership';
 
 /** Ordered funnel stages as one blue ramp (amber = new, emerald = offer) — matches the pipeline columns */
 export const STAGE_COLORS: { key: string; label: string; color: string }[] = [
-  { key: 'APPLIED', label: 'Baru', color: '#f59e0b' },
-  { key: 'ATS_SCREENED', label: 'Lolos ATS', color: '#93c5fd' },
+  { key: 'APPLIED', label: 'Applied', color: '#f59e0b' },
+  { key: 'ATS_SCREENED', label: 'ATS Screened', color: '#93c5fd' },
   { key: 'SHORTLISTED', label: 'Shortlisted', color: '#60a5fa' },
   { key: 'INTERVIEW_HR', label: 'Interview HR', color: '#2563eb' },
   { key: 'INTERVIEW_USER', label: 'Interview User', color: '#1e40af' },
@@ -15,9 +15,9 @@ export const firstName = (name?: string) => shortName(name).split(' ')[0];
 /** Utilization tone: <70% comfortable, 70–100% busy, >100% over capacity */
 export function loadTone(utilization: number | null) {
   if (utilization == null) return { bar: 'bg-slate-300', text: 'text-slate-500', label: '—' };
-  if (utilization > 100) return { bar: 'bg-amber-600', text: 'text-amber-700', label: 'Kelebihan beban' };
-  if (utilization >= 70) return { bar: 'bg-blue-600', text: 'text-blue-700', label: 'Sibuk' };
-  return { bar: 'bg-emerald-600', text: 'text-emerald-700', label: 'Longgar' };
+  if (utilization > 100) return { bar: 'bg-amber-600', text: 'text-amber-700', label: 'Over capacity' };
+  if (utilization >= 70) return { bar: 'bg-blue-600', text: 'text-blue-700', label: 'Busy' };
+  return { bar: 'bg-emerald-600', text: 'text-emerald-700', label: 'Available' };
 }
 
 export function toCsv(rows: (string | number | null)[][]) {

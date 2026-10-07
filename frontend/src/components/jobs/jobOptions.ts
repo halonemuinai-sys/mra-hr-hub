@@ -23,6 +23,7 @@ export type JobForm = {
   minEducation: string;
   salaryMin: string;
   salaryMax: string;
+  salaryVisibility: 'PUBLIC' | 'CONFIDENTIAL' | 'UNSPECIFIED';
   description: string;
   requirements: string;
   mustHaveSkills: string[];
@@ -41,6 +42,7 @@ export const EMPTY_JOB: JobForm = {
   minEducation: 'S1',
   salaryMin: '',
   salaryMax: '',
+  salaryVisibility: 'UNSPECIFIED',
   description: '',
   requirements: '',
   mustHaveSkills: [],
@@ -61,6 +63,7 @@ export function toForm(job: any): JobForm {
     minEducation: job.minEducation || 'S1',
     salaryMin: job.salaryMin != null ? String(Number(job.salaryMin)) : '',
     salaryMax: job.salaryMax != null ? String(Number(job.salaryMax)) : '',
+    salaryVisibility: job.salaryVisibility || (job.salaryMin != null || job.salaryMax != null ? 'PUBLIC' : 'UNSPECIFIED'),
     description: job.description || '',
     requirements: job.requirements || '',
     mustHaveSkills: job.mustHaveSkills || [],

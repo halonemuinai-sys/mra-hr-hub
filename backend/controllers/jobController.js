@@ -1,4 +1,5 @@
 const prisma = require('../api/db');
+const { SALARY_MODES, normalizeSalary, publicJob } = require('../services/jobSalary');
 
 const CLOSED = ['HIRED', 'REJECTED', 'TALENT_POOL'];
 
@@ -23,15 +24,19 @@ function sanitizeJobInput(body, { partial }) {
   if (body.minExperience !== undefined) data.minExperience = Math.max(0, parseInt(body.minExperience, 10) || 0);
   if (body.salaryMin !== undefined) data.salaryMin = money(body.salaryMin);
   if (body.salaryMax !== undefined) data.salaryMax = money(body.salaryMax);
+  if (body.salaryVisibility !== undefined) {
+    if (!SALARY_MODES.includes(body.salaryVisibility)) return { error: 'Invalid salary visibility.' };
+    data.salaryVisibility = body.salaryVisibility;
+  }
   if (body.mustHaveSkills !== undefined) data.mustHaveSkills = list(body.mustHaveSkills);
   if (body.niceToHaveSkills !== undefined) data.niceToHaveSkills = list(body.niceToHaveSkills);
   if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
   if (body.hiringManagerId !== undefined) data.hiringManagerId = body.hiringManagerId ? String(body.hiringManagerId) : null;
 
-  if (!partial && (!data.title || !data.department)) return { error: 'Judul dan Departemen wajib diisi.' };
-  if (partial && (data.title === '' || data.department === '')) return { error: 'Judul dan Departemen tidak boleh kosong.' };
+  if (!partial && (!data.title || !data.department)) return { error: 'Title and department are required.' };
+  if (partial && (data.title === '' || data.department === '')) return { error: 'Title and department cannot be empty.' };
   for (const k of ['salaryMin', 'salaryMax']) {
-    if (data[k] != null && (!Number.isFinite(data[k]) || data[k] < 0)) return { error: 'Gaji harus berupa angka positif.' };
+    if (data[k] != null && (!Number.isFinite(data[k]) || data[k] < 0)) return { error: 'Salary must be a non-negative number.' };
   }
   return { data };
 }
@@ -40,7 +45,7 @@ function sanitizeJobInput(body, { partial }) {
 async function hiringManagerError(hiringManagerId) {
   if (!hiringManagerId) return null;
   const u = await prisma.user.findUnique({ where: { id: hiringManagerId }, select: { role: true, isActive: true } });
-  return u && u.role === 'HIRING_MANAGER' && u.isActive ? null : 'Hiring Manager tidak valid atau tidak aktif.';
+  return u && u.role === 'HIRING_MANAGER' && u.isActive ? null : 'Hiring manager is invalid or inactive.';
 }
 
 /** GET /api/jobs/hiring-managers (jobs.manage) — options for the job form */
@@ -60,7 +65,7 @@ async function listHiringManagers(req, res) {
 
 /** salaryMin must not exceed salaryMax (checked against stored values on partial updates) */
 function salaryRangeError(min, max) {
-  return min != null && max != null && Number(min) > Number(max) ? 'Gaji minimum tidak boleh melebihi gaji maksimum.' : null;
+  return min != null && max != null && Number(min) > Number(max) ? 'Minimum salary cannot exceed maximum salary.' : null;
 }
 
 async function listJobs(req, res) {
@@ -83,11 +88,11 @@ async function listJobs(req, res) {
 
     return res.json({
       success: true,
-      data: jobs
+      data: req.jobsManagement ? jobs : jobs.map(publicJob)
     });
   } catch (error) {
     console.error('Error listing jobs:', error);
-    return res.status(500).json({ success: false, message: 'Gagal mengambil daftar lowongan.' });
+    return res.status(500).json({ success: false, message: 'Failed to load jobs.' });
   }
 }
 
@@ -102,10 +107,10 @@ async function getJobById(req, res) {
     });
 
     if (!job) {
-      return res.status(404).json({ success: false, message: 'Lowongan tidak ditemukan.' });
+      return res.status(404).json({ success: false, message: 'Job not found.' });
     }
 
-    return res.json({ success: true, data: job });
+    return res.json({ success: true, data: publicJob(job) });
   } catch (error) {
     console.error('Error fetching job detail:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -121,7 +126,7 @@ async function getJobForManagement(req, res) {
       where: { id: req.params.id },
       include: { hiringManager: { select: { id: true, name: true, email: true } } }
     });
-    if (!job) return res.status(404).json({ success: false, message: 'Lowongan tidak ditemukan.' });
+    if (!job) return res.status(404).json({ success: false, message: 'Job not found.' });
 
     const apps = await prisma.jobApplication.findMany({
       where: { jobId: job.id },
@@ -167,6 +172,7 @@ async function createJob(req, res) {
   try {
     const { data, error } = sanitizeJobInput(req.body, { partial: false });
     if (error) return res.status(400).json({ success: false, message: error });
+    normalizeSalary(data);
     const rangeError = salaryRangeError(data.salaryMin, data.salaryMax) || (await hiringManagerError(data.hiringManagerId));
     if (rangeError) return res.status(400).json({ success: false, message: rangeError });
 
@@ -190,7 +196,7 @@ async function createJob(req, res) {
 
     return res.status(201).json({
       success: true,
-      message: 'Lowongan pekerjaan berhasil diterbitkan.',
+      message: 'Job published successfully.',
       data: newJob
     });
   } catch (error) {
@@ -206,9 +212,10 @@ async function updateJob(req, res) {
 
     const current = await prisma.jobPosting.findUnique({
       where: { id: req.params.id },
-      select: { salaryMin: true, salaryMax: true }
+      select: { salaryMin: true, salaryMax: true, salaryVisibility: true }
     });
-    if (!current) return res.status(404).json({ success: false, message: 'Lowongan tidak ditemukan.' });
+    if (!current) return res.status(404).json({ success: false, message: 'Job not found.' });
+    normalizeSalary(data, current);
 
     const rangeError = salaryRangeError(
       data.salaryMin !== undefined ? data.salaryMin : current.salaryMin,
@@ -222,7 +229,7 @@ async function updateJob(req, res) {
 
     return res.json({
       success: true,
-      message: 'Lowongan pekerjaan berhasil diperbarui.',
+      message: 'Job updated successfully.',
       data: updatedJob
     });
   } catch (error) {
@@ -242,13 +249,13 @@ async function deleteJob(req, res) {
     if (applicants > 0) {
       return res.status(409).json({
         success: false,
-        message: `Lowongan ini sudah memiliki ${applicants} pelamar. Tutup lowongan (nonaktifkan) agar riwayat lamaran tetap tersimpan.`
+        message: `This job has ${applicants} applicants. Close it to preserve application history.`
       });
     }
     await prisma.jobPosting.delete({ where: { id } });
-    return res.json({ success: true, message: 'Lowongan berhasil dihapus.' });
+    return res.json({ success: true, message: 'Job deleted successfully.' });
   } catch (error) {
-    if (error.code === 'P2025') return res.status(404).json({ success: false, message: 'Lowongan tidak ditemukan.' });
+    if (error.code === 'P2025') return res.status(404).json({ success: false, message: 'Job not found.' });
     console.error('Error deleting job:', error);
     return res.status(500).json({ success: false, message: error.message });
   }

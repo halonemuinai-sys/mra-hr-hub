@@ -10,8 +10,8 @@ export default function ResumeButton({ candidateId, available, candidateName }: 
 
   if (!available) {
     return (
-      <span className="flex items-center gap-1.5 text-[11px] text-slate-400" title="Kandidat ini masuk tanpa file CV (template/manual) atau sebelum fitur ini aktif">
-        <FileText className="w-4 h-4" /> CV asli tidak tersedia
+      <span className="flex items-center gap-1.5 text-[11px] text-slate-400" title="No original resume was uploaded for this candidate">
+        <FileText className="w-4 h-4" /> Original resume unavailable
       </span>
     );
   }
@@ -32,7 +32,7 @@ export default function ResumeButton({ candidateId, available, candidateName }: 
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (err: any) {
       tab?.close();
-      alert('Gagal membuka CV: ' + err.message);
+      alert('Unable to open resume: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -46,7 +46,7 @@ export default function ResumeButton({ candidateId, available, candidateName }: 
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-[11px] font-bold"
     >
       {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-      Lihat CV asli
+      View original resume
     </button>
   );
 }
