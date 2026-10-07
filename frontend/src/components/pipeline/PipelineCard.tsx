@@ -117,6 +117,14 @@ export default function PipelineCard({
       <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-600">
         <Briefcase className="w-3 h-3 text-blue-600 shrink-0" />
         <span className="truncate">{app.job?.title || '-'}</span>
+        {app.otherApplications > 0 && (
+          <span
+            className="shrink-0 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold"
+            title={`Also applied to ${app.otherApplications} other job(s)`}
+          >
+            +{app.otherApplications} job
+          </span>
+        )}
       </div>
       {c.location && (
         <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500">

@@ -94,6 +94,8 @@ export const api = {
     return fetchApi(`/candidates${q ? `?${q}` : ''}`);
   },
   getCandidateById: (id: string) => fetchApi(`/candidates/${id}`),
+  getCandidateApplications: (id: string) => fetchApi(`/candidates/${id}/applications`),
+  getCandidateDuplicates: (id: string) => fetchApi(`/candidates/${id}/duplicates`),
   getPipeline: (params: Record<string, any> = {}) => {
     const q = new URLSearchParams(params).toString();
     return fetchApi(`/candidates/pipeline${q ? `?${q}` : ''}`);

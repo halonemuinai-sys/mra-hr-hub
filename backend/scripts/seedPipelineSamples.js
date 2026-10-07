@@ -211,6 +211,50 @@ async function main() {
     process.stdout.write('.');
   }
 
+  // A few people applied to a second job (shows "+1 job" on cards and the drawer's application history)
+  const multi = await prisma.jobApplication.findMany({
+    where: { candidate: { email: { endsWith: SAMPLE_DOMAIN } }, status: { in: ['SHORTLISTED', 'INTERVIEW_HR', 'ATS_SCREENED'] } },
+    select: { candidateId: true, jobId: true, atsScore: true },
+    take: 5
+  });
+  for (const [i, a] of multi.entries()) {
+    const other = jobs[(jobs.findIndex((j) => j.id === a.jobId) + 3 + i) % jobs.length];
+    if (other.id === a.jobId) continue;
+    await prisma.jobApplication.create({
+      data: {
+        id: `${other.id}_${a.candidateId}`,
+        jobId: other.id,
+        candidateId: a.candidateId,
+        status: 'APPLIED',
+        atsScore: Math.max(40, Math.round(a.atsScore - between(5, 20))),
+        appliedAt: new Date(now - between(1, 10) * DAY),
+        stageChangedAt: new Date(now - between(1, 10) * DAY)
+      }
+    });
+  }
+
+  // One person who applied twice with different emails (same phone) — a duplicate profile to flag
+  const original = await prisma.candidate.findFirst({ where: { email: { endsWith: SAMPLE_DOMAIN } }, orderBy: { createdAt: 'asc' } });
+  if (original) {
+    const twin = await prisma.candidate.create({
+      data: {
+        fullName: original.fullName,
+        email: `${original.fullName.toLowerCase().replace(/\s+/g, '.')}.alt${SAMPLE_DOMAIN}`,
+        phone: original.phone,
+        headline: original.headline,
+        location: original.location,
+        totalExperienceYrs: original.totalExperienceYrs,
+        profileSummary: 'Data contoh: profil duplikat (email lain, nomor telepon sama).',
+        jobFamily: original.jobFamily,
+        seniorityLevel: original.seniorityLevel,
+        tags: ['#SampleData']
+      }
+    });
+    await prisma.jobApplication.create({
+      data: { id: `${jobs[0].id}_${twin.id}`, jobId: jobs[0].id, candidateId: twin.id, status: 'APPLIED', atsScore: 61 }
+    });
+  }
+
   // Two pending approvals so the Approvals panel has something to show
   const samples = await prisma.jobApplication.findMany({
     where: { candidate: { email: { endsWith: SAMPLE_DOMAIN } }, assignedRecruiterId: { not: null } },

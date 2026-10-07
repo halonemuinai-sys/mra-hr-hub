@@ -67,7 +67,12 @@ async function listPipeline(req, res) {
         }
       }
     });
-    const all = rows.map(({ stageRequests, ...a }) => ({ ...a, pendingRequest: stageRequests[0] || null }));
+    const perCandidate = rows.reduce((m, a) => m.set(a.candidateId, (m.get(a.candidateId) || 0) + 1), new Map());
+    const all = rows.map(({ stageRequests, ...a }) => ({
+      ...a,
+      pendingRequest: stageRequests[0] || null,
+      otherApplications: perCandidate.get(a.candidateId) - 1
+    }));
 
     const me = req.user.id;
     const ownerCounts = {

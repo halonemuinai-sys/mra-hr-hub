@@ -26,6 +26,7 @@ import {
 import { formatRupiah, formatDate, getScoreBadge, getStatusBadge } from '@/lib/utils';
 import CandidateRadarChart from './CandidateRadarChart';
 import StageHistory from './StageHistory';
+import ApplicationHistory from './ApplicationHistory';
 import { api } from '@/lib/api';
 import { useCurrentUser } from '@/lib/permissions';
 import { canMove } from '@/components/pipeline/ownership';
@@ -457,6 +458,9 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
 
             {/* Riwayat tahapan + data stage gate (jadwal, offer, feedback, alasan) */}
             <StageHistory applicationId={app?.id} currentStatus={app?.status} />
+
+            {/* Lamaran lain & kemungkinan duplikat */}
+            <ApplicationHistory candidateId={candidate.id} currentApplicationId={app?.id} />
 
             {/* Evaluasi & Aksi Recruiter */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">

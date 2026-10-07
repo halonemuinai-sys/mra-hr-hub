@@ -10,6 +10,7 @@ const {
   deleteCandidate
 } = require('../controllers/candidateController');
 const { listPipeline, bulkUpdateApplicationStatus } = require('../controllers/pipelineController');
+const { listCandidateApplications, findDuplicates } = require('../controllers/candidateInsightController');
 const { previewTransition, executeTransition } = require('../controllers/transitionController');
 const { listApprovals, decideApproval, cancelApproval } = require('../controllers/approvalController');
 const {
@@ -48,6 +49,9 @@ router.post('/approvals/:requestId/cancel', cancelApproval);
 
 router.patch('/applications/:applicationId/status', updateApplicationStatus);
 router.get('/applications/:applicationId/activity', requirePermission('candidate.view'), listApplicationActivity);
+router.get('/:id/applications', requirePermission('candidate.view'), listCandidateApplications);
+// Shows other people's names/contacts — TA only (not Hiring Managers)
+router.get('/:id/duplicates', requirePermission('pipeline.claim'), findDuplicates);
 router.get('/:id', requirePermission('candidate.view'), getCandidateById);
 router.delete('/:id', requirePermission('candidate.delete'), deleteCandidate);
 

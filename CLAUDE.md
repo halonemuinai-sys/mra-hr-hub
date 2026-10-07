@@ -25,7 +25,7 @@ npm run dev
 ```powershell
 cd "d:\MRA Project\HR HUB\backend"
 node scripts/seedUsers.js
-node scripts/seedPipelineSamples.js          # 50 demo candidates across the pipeline (@sample.hrhub.test)
+node scripts/seedPipelineSamples.js          # 50 demo candidates across the pipeline (@sample.hrhub.test), incl. 5 multi-job applicants, 1 duplicate profile, 2 pending approvals
 node scripts/seedPipelineSamples.js --clean  # remove only the demo candidates
 node scripts/seedJobSamples.js               # top up to 25 jobs with sample postings (slug prefix `sample-`)
 node scripts/seedJobSamples.js --clean       # remove only the sample jobs (cascades to their applications)
@@ -141,6 +141,7 @@ The user requires **strict color consistency (4–5 colors maximum)** across all
 ### C. Recruiter Candidate Cockpit (`/admin/candidates`)
 - `CandidateDetailDrawer.tsx`: Executive slide-over drawer with candidate monogram avatar, 4-grid summary, radar chart with vertex dots and **5-pillar score progress bars**, ATS keyword match analysis, connected work experience timeline, and recruiter scorecard action panel with quick tags.
 - `StageHistory.tsx` (inside the drawer): timeline of the application's activity log (`GET /api/candidates/applications/:id/activity`) with stage-gate form data (interview schedule, interviewer, offer salary, start/join date, HM feedback, reasons, approvals, re-submissions) and an upcoming-interview banner. The drawer is a wrapper + content component so hooks never run after an early return.
+- `ApplicationHistory.tsx` (inside the drawer): every application of the person (`GET /api/candidates/:id/applications`, scoped for Hiring Managers) and possible duplicate profiles (`GET /api/candidates/:id/duplicates`, TA only — same phone on the last 9 digits or same name without titles; `controllers/candidateInsightController.js`). Pipeline cards show "+n job" when the candidate also applied elsewhere (`otherApplications` on `/pipeline`).
 
 ### D. Pipeline Pelamar (`/admin/pipeline`) — TA Ownership
 - Kanban of `JobApplication`s (`GET /api/candidates/pipeline`). UI split into `frontend/src/components/pipeline/*`.
