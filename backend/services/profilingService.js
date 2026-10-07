@@ -1,3 +1,5 @@
+const { createMatcher } = require('./keywordMatcher');
+
 /**
  * Calculate ATS Match Score between Candidate and JobPosting
  */
@@ -20,53 +22,42 @@ function calculateAtsMatchScore(candidate, jobPosting) {
     };
   }
 
-  // 1. SKILLS MATCH
-  const mustHave = (jobPosting.mustHaveSkills || []).map(s => s.toLowerCase().trim());
-  const niceToHave = (jobPosting.niceToHaveSkills || []).map(s => s.toLowerCase().trim());
-  const allJobKeywords = [...mustHave, ...niceToHave];
+  // 1. SKILLS MATCH — whole-word / synonym-aware (services/keywordMatcher.js)
+  const mustHave = (jobPosting.mustHaveSkills || []).map(s => s.trim()).filter(Boolean);
+  const niceToHave = (jobPosting.niceToHaveSkills || []).map(s => s.trim()).filter(Boolean);
 
-  // Collect candidate skill names & keywords from experiences/summary
-  const candidateSkills = (candidate.skills || []).map(s => {
-    const name = typeof s === 'string' ? s : (s && s.skillName ? s.skillName : '');
-    return name.toLowerCase().trim();
-  }).filter(Boolean);
-  const combinedCandidateText = [
+  const candidateSkills = (candidate.skills || [])
+    .map(s => (typeof s === 'string' ? s : (s && s.skillName ? s.skillName : '')))
+    .filter(Boolean);
+  const candidateText = [
     candidate.headline || '',
     candidate.profileSummary || '',
-    ...(candidate.experiences || []).map(e => `${e.roleTitle || ''} ${e.description || ''}`)
-  ].join(' ').toLowerCase();
+    ...(candidate.experiences || []).map(e => `${e.roleTitle || ''}. ${e.description || ''}`)
+  ].join('\n');
+  const strength = createMatcher(candidateSkills, candidateText);
 
   const matchedKeywords = [];
   const missingKeywords = [];
+  const score = (list, { trackMissing }) =>
+    list.reduce((sum, kw) => {
+      const s = strength(kw);
+      if (s > 0) matchedKeywords.push(kw.toLowerCase());
+      else if (trackMissing) missingKeywords.push(kw.toLowerCase());
+      return sum + s;
+    }, 0);
+  const mustRatio = mustHave.length ? score(mustHave, { trackMissing: true }) / mustHave.length : null;
+  const niceRatio = niceToHave.length ? score(niceToHave, { trackMissing: false }) / niceToHave.length : null;
 
-  mustHave.forEach(kw => {
-    const isDirectSkill = candidateSkills.some(cs => cs.includes(kw) || kw.includes(cs));
-    const isInText = combinedCandidateText.includes(kw);
-    if (isDirectSkill || isInText) {
-      matchedKeywords.push(kw);
-    } else {
-      missingKeywords.push(kw);
-    }
-  });
-
-  niceToHave.forEach(kw => {
-    const isDirectSkill = candidateSkills.some(cs => cs.includes(kw) || kw.includes(cs));
-    const isInText = combinedCandidateText.includes(kw);
-    if (isDirectSkill || isInText) {
-      matchedKeywords.push(kw);
-    }
-  });
-
-  // Calculate Skills Score
-  let skillsScore = 60; // Baseline
-  if (mustHave.length > 0) {
-    const mustMatched = mustHave.filter(k => matchedKeywords.includes(k)).length;
-    const mustRatio = mustMatched / mustHave.length;
-    skillsScore = Math.round(mustRatio * 85 + (niceToHave.length > 0 ? (matchedKeywords.length - mustMatched) / niceToHave.length * 15 : 15));
-  } else if (candidateSkills.length > 0) {
+  // Must-haves carry 80% of the skills score, nice-to-haves 20% (or the must ratio when none are defined)
+  let skillsScore;
+  if (mustRatio !== null) {
+    skillsScore = Math.round(100 * (0.8 * mustRatio + 0.2 * (niceRatio ?? mustRatio)));
+  } else if (niceRatio !== null) {
+    skillsScore = Math.round(60 + 40 * niceRatio);
+  } else {
     skillsScore = Math.min(95, 60 + candidateSkills.length * 4);
   }
-  skillsScore = Math.min(100, Math.max(20, skillsScore));
+  skillsScore = Math.min(100, Math.max(10, skillsScore));
 
   // 2. EXPERIENCE MATCH
   const reqExp = jobPosting.minExperience || 0;
@@ -99,7 +90,8 @@ function calculateAtsMatchScore(candidate, jobPosting) {
   }
 
   // 4. OVERALL ATS SCORE
-  const atsScore = Math.round((0.45 * skillsScore) + (0.35 * expScore) + (0.20 * eduScore));
+  // Keyword fit is the strongest signal of job fit; experience and education refine it
+  const atsScore = Math.round((0.55 * skillsScore) + (0.30 * expScore) + (0.15 * eduScore));
 
   // 5. RADAR DIMENSIONS
   const stabilityScore = Math.min(95, Math.max(50, Math.round(65 + Math.min(6, (candidate.experiences || []).length) * 5)));

@@ -180,7 +180,9 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - UI: `frontend/src/components/jobs/*`.
 
 ### I. Dual-Intake ATS & Template Ingestion
-- `backend/services/atsParserService.js`: Multi-format PDF/DOCX/TXT resume heuristic parsing engine (`POST /api/ats/parse-cv`).
+- `backend/services/atsParserService.js`: PDF/DOCX/TXT resume parser (`POST /api/ats/parse-cv`). Splits the CV into sections (summary / skills / experience / education); skills = taxonomy hits **plus** the CV's own skills section; the real experience text is kept on `experiences[0].description`; education year ranges are not counted as work experience. Always passes pdf.js a standalone `Uint8Array` (small Node Buffers share a pool and broke parsing at random).
+- ATS score (`services/profilingService.js`): `0.55 × skills + 0.30 × experience + 0.15 × education`. Skills = 80% must-have ratio + 20% nice-to-have ratio. Matching lives in `services/keywordMatcher.js`: whole-word/phrase matching after normalization (no substring hits such as "sql" in "postgresql"), a synonym table (F&B ↔ food and beverage, Excel ↔ Microsoft Excel, manajemen ↔ management, …) and a 0.75 partial match when the keyword's core is present without generic words ("Team Leadership" ≈ "Leadership"). Extend `SYNONYMS` / `GENERIC` there.
+- `tests/unit/atsScoring.test.js` guards the separation on the batch-2 sample CVs (strong ≥ 80, weak < 65). Stored scores are computed at intake, so existing applications keep their old score until re-applied/imported.
 - `backend/services/excelTemplateService.js`: Single-sheet standardized Excel template (*Data Pelamar*) with bulk ingestion and preview mode.
 
 ---
@@ -222,6 +224,7 @@ d:\MRA Project\HR HUB
 │   │   ├── teamRoutes.js     # /api/team (performance, rebalance, activity)
 │   │   └── userRoutes.js     # /api/users (+ access-matrix)
 │   ├── services/
+│   │   ├── keywordMatcher.js # ATS keyword matching (normalize, synonyms, partial cores)
 │   │   ├── candidateIntakeService.js # Apply / template intake (no overwrite of existing profiles)
 │   │   ├── stageGateService.js # Evaluate a stage move (pure)
 │   │   └── stageMoveService.js # applyStageChange — the single write path for stage changes

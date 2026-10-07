@@ -79,12 +79,45 @@ async function extractTextFromFile(fileBuffer, mimeType = '', originalName = '')
   }
 }
 
+const SECTION_HEADINGS = {
+  summary: /^(professional summary|summary|profile|career objective|ringkasan|profil|tentang saya)\b/i,
+  skills: /^(core competencies|competencies|skills|technical skills|keahlian|kompetensi|kemampuan)\b/i,
+  experience: /^(professional work experience|work experience|professional experience|experience|pengalaman kerja|pengalaman|riwayat pekerjaan)\b/i,
+  education: /^(education|pendidikan|riwayat pendidikan)\b/i,
+  other: /^(certifications?|sertifikasi|projects?|proyek|languages?|bahasa|organi[sz]ations?|organisasi|references?|referensi)\b/i
+};
+
+/** Group CV lines under the section heading they follow ("header" = lines before the first heading) */
+function splitSections(lines) {
+  const sections = { header: [], summary: [], skills: [], experience: [], education: [], other: [] };
+  let current = 'header';
+  for (const line of lines) {
+    const heading = line.length < 60 && Object.keys(SECTION_HEADINGS).find((k) => SECTION_HEADINGS[k].test(line));
+    if (heading) {
+      current = heading;
+      continue;
+    }
+    sections[current].push(line);
+  }
+  return sections;
+}
+
+/** Skill items listed in the CV's own skills section ("React, Next.js • HACCP | Food Costing") */
+function skillsFromSection(skillLines) {
+  return skillLines
+    .join('\n')
+    .split(/[,•·;|\n]|\s{2,}/)
+    .map((s) => s.replace(/^[-–*\s]+|[.\s]+$/g, '').trim())
+    .filter((s) => s.length >= 2 && s.length <= 40 && !/\d{4}/.test(s) && s.split(' ').length <= 5);
+}
+
 /**
  * Heuristic parsing of unstructured CV text
  */
 function parseResumeHeuristics(rawText) {
   const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
   const cleanText = rawText.toLowerCase();
+  const sections = splitSections(lines);
 
   // 1. Email extraction
   const emailRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
@@ -129,6 +162,13 @@ function parseResumeHeuristics(rawText) {
         });
       }
     });
+  });
+
+  // 4b. Skills the candidate lists themselves (catches keywords outside the taxonomy, e.g. HACCP)
+  skillsFromSection(sections.skills).forEach((name) => {
+    if (foundSkillsSet.has(name.toLowerCase())) return;
+    foundSkillsSet.add(name.toLowerCase());
+    detectedSkills.push({ skillName: name, category: 'TECHNICAL', proficiency: 'INTERMEDIATE' });
   });
 
   // 5. Total experience estimation (Looking for year ranges e.g. 2020 - 2023 or numbers)
@@ -184,7 +224,9 @@ function parseResumeHeuristics(rawText) {
       break;
     }
   }
-  const profileSummary = lines.slice(0, 10).join(' ').slice(0, 500);
+  const profileSummary = (sections.summary.length ? sections.summary.join(' ') : lines.slice(0, 10).join(' ')).slice(0, 1500);
+  // Keep the real experience text — it is what ATS keyword matching reads
+  const experienceText = sections.experience.join('\n').slice(0, 6000);
 
   return {
     fullName: candidateName || 'Kandidat ATS',
@@ -201,7 +243,7 @@ function parseResumeHeuristics(rawText) {
         roleTitle: headline,
         startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000 * Math.max(1, totalExperienceYrs)),
         isCurrent: true,
-        description: 'Terekstrak otomatis dari dokumen riwayat karir pelamar.'
+        description: experienceText || 'Terekstrak otomatis dari dokumen riwayat karir pelamar.'
       }
     ]
   };
