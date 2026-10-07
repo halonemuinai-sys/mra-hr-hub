@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import PipelineColumn from './PipelineColumn';
 import PipelineCard from './PipelineCard';
 import { Stage } from './stages';
@@ -25,6 +25,9 @@ interface Props {
   onDragEnd: () => void;
 }
 
+/** Cards rendered per column before "Show more"; counts and selection still cover the whole column */
+const PAGE_SIZE = 20;
+
 /** Kanban columns and cards; all state and actions come from the page */
 export default function PipelineBoard({
   stages,
@@ -44,11 +47,14 @@ export default function PipelineBoard({
   onDragEnd
 }: Props) {
   const selectionMode = selected.size > 0;
+  const [limits, setLimits] = useState<Record<string, number>>({});
 
   return (
     <div className={`flex gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${selectionMode ? 'pb-24' : 'pb-4'}`}>
       {stages.map((stage) => {
         const items = grouped[stage.key] || [];
+        const limit = limits[stage.key] || PAGE_SIZE;
+        const hidden = items.length - limit;
         return (
           <PipelineColumn
             key={stage.key}
@@ -59,7 +65,7 @@ export default function PipelineBoard({
             onToggleSelectAll={() => onToggleSelectColumn(items.map((a) => a.id))}
             onDropIds={(ids) => onMove(ids, stage.key)}
           >
-            {items.map((app) => (
+            {items.slice(0, limit).map((app) => (
               <PipelineCard
                 key={app.id}
                 app={app}
@@ -84,6 +90,15 @@ export default function PipelineBoard({
                 onMove={(status) => onMove([app.id], status)}
               />
             ))}
+            {hidden > 0 && (
+              <button
+                type="button"
+                onClick={() => setLimits((l) => ({ ...l, [stage.key]: limit + PAGE_SIZE }))}
+                className="w-full py-2 rounded-xl border border-dashed border-slate-300 bg-white/70 text-[11px] font-bold text-blue-700 hover:bg-white hover:border-blue-300 transition-colors"
+              >
+                Show {Math.min(hidden, PAGE_SIZE)} more · {hidden} hidden
+              </button>
+            )}
           </PipelineColumn>
         );
       })}
