@@ -227,6 +227,9 @@ async function deleteJob(req, res) {
 }
 
 module.exports = {
+  // exported for unit tests
+  sanitizeJobInput,
+  salaryRangeError,
   listJobs,
   getJobById,
   getJobForManagement,

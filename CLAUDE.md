@@ -32,6 +32,14 @@ node scripts/seedJobSamples.js --clean       # remove only the sample jobs (casc
 node scripts/generate_sample_cvs.js --batch 2 # 12 sample resumes (.pdf + .txt) → sample_cv_ats/batch_02 (not in DB; for upload tests)
 ```
 
+### Tests (Node built-in runner, no extra deps)
+```powershell
+cd "d:\MRA Project\HR HUBackend"
+npm test           # unit: stage gate, permissions, job input, intake normalization, CV parser (no DB)
+npm run test:api   # API: auth, RBAC, data-leak and validation checks against the real DB — read-only by design
+```
+- API tests boot `api/app.js` on a random port (`api/index.js` only calls `listen`). Keep them read-only: assert refusals/validation errors or read data; never create or move real records. Write-path flows (stage gate, approvals) were verified manually on `@sample.hrhub.test` data — re-seed after such runs.
+
 ### Database Schema Changes (⚠️ never `prisma db push`)
 The DB URL has no `schema` param and the Supabase instance is shared with other apps (e.g. `helpdesk` schema), so `db push` is unsafe. Generate additive SQL and apply it explicitly:
 ```powershell
