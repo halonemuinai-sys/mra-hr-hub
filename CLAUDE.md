@@ -139,6 +139,7 @@ The user requires **strict color consistency (4–5 colors maximum)** across all
 
 ### C. Recruiter Candidate Cockpit (`/admin/candidates`)
 - `CandidateDetailDrawer.tsx`: Executive slide-over drawer with candidate monogram avatar, 4-grid summary, radar chart with vertex dots and **5-pillar score progress bars**, ATS keyword match analysis, connected work experience timeline, and recruiter scorecard action panel with quick tags.
+- `StageHistory.tsx` (inside the drawer): timeline of the application's activity log (`GET /api/candidates/applications/:id/activity`) with stage-gate form data (interview schedule, interviewer, offer salary, start/join date, HM feedback, reasons, approvals, re-submissions) and an upcoming-interview banner. The drawer is a wrapper + content component so hooks never run after an early return.
 
 ### D. Pipeline Pelamar (`/admin/pipeline`) — TA Ownership
 - Kanban of `JobApplication`s (`GET /api/candidates/pipeline`). UI split into `frontend/src/components/pipeline/*`.

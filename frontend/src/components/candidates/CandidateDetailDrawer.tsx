@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { formatRupiah, formatDate, getScoreBadge, getStatusBadge } from '@/lib/utils';
 import CandidateRadarChart from './CandidateRadarChart';
+import StageHistory from './StageHistory';
 import { api } from '@/lib/api';
 import { useCurrentUser } from '@/lib/permissions';
 import { canMove } from '@/components/pipeline/ownership';
@@ -453,6 +454,9 @@ function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
                 )}
               </div>
             </div>
+
+            {/* Riwayat tahapan + data stage gate (jadwal, offer, feedback, alasan) */}
+            <StageHistory applicationId={app?.id} currentStatus={app?.status} />
 
             {/* Evaluasi & Aksi Recruiter */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
