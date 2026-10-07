@@ -64,7 +64,7 @@ export default function BrandLogoCarousel({
   return (
     <section className="py-10 sm:py-16 bg-white border-y border-slate-200/80 relative overflow-hidden">
       {/* Decorative gradient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-gradient-to-r from-blue-50 via-indigo-50/50 to-cyan-50 rounded-full blur-3xl pointer-events-none opacity-60" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-gradient-to-r from-blue-50 via-blue-50/50 to-blue-50 rounded-full blur-3xl pointer-events-none opacity-60" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3 sm:space-y-4 mb-8 sm:mb-10 relative z-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] sm:text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
@@ -133,7 +133,7 @@ export default function BrandLogoCarousel({
           {[...BRANDS_ROW_2, ...BRANDS_ROW_2].map((brand, idx) => (
             <div
               key={idx}
-              className="group flex items-center gap-3 sm:gap-4 bg-white hover:bg-indigo-50/40 border border-slate-200/90 hover:border-indigo-300 rounded-xl sm:rounded-2xl px-4 py-2 sm:px-6 sm:py-3.5 shadow-xs hover:shadow-md transition-all duration-300 shrink-0 cursor-default"
+              className="group flex items-center gap-3 sm:gap-4 bg-white hover:bg-blue-50/40 border border-slate-200/90 hover:border-blue-300 rounded-xl sm:rounded-2xl px-4 py-2 sm:px-6 sm:py-3.5 shadow-xs hover:shadow-md transition-all duration-300 shrink-0 cursor-default"
             >
               <div className="relative w-22 sm:w-28 h-8 sm:h-11 flex items-center justify-center">
                 <Image
@@ -145,7 +145,7 @@ export default function BrandLogoCarousel({
                 />
               </div>
               <div className="text-left border-l border-slate-200 pl-3 hidden md:block">
-                <p className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                <p className="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition-colors">
                   {brand.name}
                 </p>
                 <p className="text-[10px] text-slate-400 font-semibold whitespace-nowrap">

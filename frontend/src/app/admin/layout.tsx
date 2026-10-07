@@ -222,7 +222,7 @@ export default function DashboardLayout({
           <button
             type="button"
             onClick={handleLogout}
-            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors shrink-0"
+            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition-colors shrink-0"
             title="Keluar dari CMS"
           >
             <LogOut className="w-4 h-4" />
@@ -304,10 +304,10 @@ export default function DashboardLayout({
             <button
               type="button"
               onClick={handleLogout}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-lg text-xs font-semibold text-slate-500 hover:text-amber-600 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Keluar dari CMS"
             >
-              <LogOut className="w-4 h-4 text-slate-400 group-hover:text-rose-500" />
+              <LogOut className="w-4 h-4 text-slate-400 group-hover:text-amber-500" />
               <span className="hidden md:inline">Keluar</span>
             </button>
           </div>

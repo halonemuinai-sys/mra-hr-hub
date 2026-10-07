@@ -179,7 +179,7 @@ export default function JobDetailPage() {
             </p>
 
             <h2 className="text-base font-bold text-slate-900 pt-5 border-t border-slate-100 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-indigo-600" />
+              <Clock className="w-4 h-4 text-blue-700" />
               Kualifikasi & Persyaratan
             </h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed whitespace-pre-line">
@@ -189,7 +189,7 @@ export default function JobDetailPage() {
             {/* Must-have skills */}
             <div className="pt-5 border-t border-slate-100">
               <h3 className="text-xs font-bold text-blue-900 flex items-center gap-1.5 mb-2.5">
-                <Sparkles className="w-4 h-4 text-cyan-600" />
+                <Sparkles className="w-4 h-4 text-blue-600" />
                 Keahlian Kunci yang Dicari (ATS Criteria):
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -344,7 +344,7 @@ export default function JobDetailPage() {
                   whileTap={{ scale: 0.98 }}
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                  className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-700 hover:from-blue-500 hover:to-blue-700 text-white font-bold rounded-xl text-xs shadow-md shadow-blue-500/25 flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                 >
                   {submitting ? (
                     <>

@@ -221,7 +221,7 @@ export default function TemplatesManagementPage() {
             <h4 className="font-bold text-sm text-emerald-900">Bulk Ingestion Berhasil Dilakukan!</h4>
             <p className="mt-0.5">{importResult.message}</p>
             {importResult.errors && importResult.errors.length > 0 && (
-              <div className="mt-2 text-rose-700 bg-white p-3 rounded-lg border border-rose-200">
+              <div className="mt-2 text-amber-700 bg-white p-3 rounded-lg border border-amber-200">
                 <p className="font-bold">Peringatan baris bermasalah ({importResult.errors.length}):</p>
                 <ul className="list-disc pl-4 mt-1 space-y-0.5">
                   {importResult.errors.map((e: string, i: number) => (

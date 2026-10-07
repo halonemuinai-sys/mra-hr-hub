@@ -342,7 +342,7 @@ export default function CandidatesManagementPage() {
                             <button
                               type="button"
                               onClick={() => handleDelete(cand.id, cand.fullName)}
-                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                              className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors"
                               title="Hapus Data"
                             >
                               <Trash2 className="w-4 h-4" />

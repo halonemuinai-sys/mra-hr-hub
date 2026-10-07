@@ -214,8 +214,8 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                 <div className="p-4 sm:p-6 bg-gradient-to-r from-slate-950 via-slate-900 to-blue-950 text-white flex items-start justify-between border-b border-slate-800/80 shrink-0">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-cyan-300 border border-cyan-400/30 flex items-center gap-1">
-                        <Zap className="w-3 h-3 text-cyan-400" />
+                      <span className="px-3 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-blue-400" />
                         Portal Lamaran ATS
                       </span>
                       <span className="text-[11px] text-slate-400">
@@ -258,7 +258,7 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                     </div>
 
                     {submitSuccess.atsScore && (
-                      <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-xs font-bold text-blue-900 shadow-xs">
+                      <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-50 to-blue-50 border border-blue-200 text-xs font-bold text-blue-900 shadow-xs">
                         <Award className="w-4 h-4 text-blue-600" />
                         Skor Kecocokan ATS: <span className="text-sm font-black text-blue-700">{submitSuccess.atsScore}%</span>
                       </div>
@@ -314,14 +314,14 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                     {applyMode === 'ATS' ? (
                       <form onSubmit={handleAtsSubmit} className="p-4 sm:p-6 space-y-5">
                         {/* High-Tech CV Scanner Dropzone */}
-                        <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-blue-50/60 to-indigo-50/30 p-5 text-center transition-all hover:border-blue-500 hover:bg-blue-50/80 group">
+                        <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-blue-50/60 to-blue-50/30 p-5 text-center transition-all hover:border-blue-500 hover:bg-blue-50/80 group">
                           {/* Laser Scan Beam Animation */}
                           {parsingCv && (
                             <motion.div
                               initial={{ top: '0%' }}
                               animate={{ top: ['0%', '100%', '0%'] }}
                               transition={{ repeat: Infinity, duration: 1.8, ease: 'easeInOut' }}
-                              className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#38bdf8] z-20 pointer-events-none"
+                              className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_12px_#38bdf8] z-20 pointer-events-none"
                             />
                           )}
 
@@ -335,7 +335,7 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                           <label htmlFor="cv-upload" className="cursor-pointer block relative z-10">
                             <div className="w-12 h-12 rounded-2xl bg-white text-blue-600 flex items-center justify-center mx-auto mb-2 shadow-sm border border-blue-100 group-hover:scale-105 transition-transform">
                               {parsingCv ? (
-                                <RefreshCw className="w-6 h-6 animate-spin text-cyan-600" />
+                                <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
                               ) : (
                                 <UploadCloud className="w-6 h-6 text-blue-600" />
                               )}
@@ -352,9 +352,9 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                               <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="mt-3 py-1.5 px-3 bg-white/90 backdrop-blur-xs rounded-xl border border-cyan-200 text-xs font-bold text-cyan-700 inline-flex items-center gap-2 shadow-xs"
+                                className="mt-3 py-1.5 px-3 bg-white/90 backdrop-blur-xs rounded-xl border border-blue-200 text-xs font-bold text-blue-700 inline-flex items-center gap-2 shadow-xs"
                               >
-                                <Sparkles className="w-3.5 h-3.5 text-cyan-500 animate-spin" />
+                                <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-spin" />
                                 {scanStep}
                               </motion.div>
                             )}
@@ -580,7 +580,7 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                             whileTap={{ scale: 0.98 }}
                             type="submit"
                             disabled={submitting}
-                            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-2 transition-all disabled:opacity-50"
+                            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 via-blue-700 to-blue-700 hover:from-blue-500 hover:to-blue-700 text-white text-xs font-bold shadow-lg shadow-blue-500/25 flex items-center gap-2 transition-all disabled:opacity-50"
                           >
                             {submitting ? (
                               <>
@@ -599,7 +599,7 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                     ) : (
                       /* Mode Template Upload */
                       <form onSubmit={handleTemplateSubmit} className="p-4 sm:p-6 space-y-5">
-                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
+                        <div className="bg-gradient-to-r from-emerald-50 to-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
                           <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                             <FileSpreadsheet className="w-5 h-5" />
                           </div>
@@ -654,7 +654,7 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                             whileTap={{ scale: 0.98 }}
                             type="submit"
                             disabled={submitting || !templateFile}
-                            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all disabled:opacity-50"
+                            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-600 hover:from-emerald-500 hover:to-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all disabled:opacity-50"
                           >
                             <Send className="w-4 h-4" />
                             {submitting ? 'Memvalidasi & Mengimpor...' : 'Unggah & Kirim Template'}
