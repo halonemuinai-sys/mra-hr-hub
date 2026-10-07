@@ -145,7 +145,7 @@ The user requires **strict color consistency (4–5 colors maximum)** across all
 - `ApplicationHistory.tsx` (inside the drawer): every application of the person (`GET /api/candidates/:id/applications`, scoped for Hiring Managers) and possible duplicate profiles (`GET /api/candidates/:id/duplicates`, TA only — same phone on the last 9 digits or same name without titles; `controllers/candidateInsightController.js`). Pipeline cards show "+n job" when the candidate also applied elsewhere (`otherApplications` on `/pipeline`).
 
 ### D. Pipeline Pelamar (`/admin/pipeline`) — TA Ownership
-- Kanban of `JobApplication`s (`GET /api/candidates/pipeline`). UI split into `frontend/src/components/pipeline/*`.
+- Kanban of `JobApplication`s (`GET /api/candidates/pipeline`). The page orchestrates data, moves and ownership actions; UI lives in `frontend/src/components/pipeline/*` (`PipelineHeader`, `FunnelStrip`, `PipelineBoard` → `PipelineColumn` / `PipelineCard`, toolbar, bulk bar, `usePipelineSelection`).
 - **PIC ownership**: each application has `assignedRecruiterId`. Tabs *Milik Saya / Belum Diambil / Semua Tim*. Recruiters **claim** from the queue (atomic, race-safe) and move only their own cards (moving an unassigned card auto-claims). TA Lead assigns/releases anyone and sees a team workload strip.
 - Bulk select + bulk move, reject-reason modal (appended to `recruiterNotes`), toast with undo, stale indicators (≥7d / ≥14d since `stageChangedAt`).
 - Every claim/release/assign/stage change is logged to `ApplicationActivity` (`GET /api/candidates/applications/:id/activity`).

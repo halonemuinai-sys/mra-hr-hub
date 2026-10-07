@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { KanbanSquare, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import CandidateDetailDrawer from '@/components/candidates/CandidateDetailDrawer';
-import PipelineCard from '@/components/pipeline/PipelineCard';
-import PipelineColumn from '@/components/pipeline/PipelineColumn';
+import PipelineHeader from '@/components/pipeline/PipelineHeader';
+import FunnelStrip from '@/components/pipeline/FunnelStrip';
+import PipelineBoard from '@/components/pipeline/PipelineBoard';
+import { usePipelineSelection } from '@/components/pipeline/usePipelineSelection';
 import PipelineToolbar, { PipelineFilters, EMPTY_FILTERS } from '@/components/pipeline/PipelineToolbar';
 import OwnerScopeBar from '@/components/pipeline/OwnerScopeBar';
 import BulkActionBar from '@/components/pipeline/BulkActionBar';
@@ -58,8 +59,7 @@ export default function PipelinePage() {
   const [focusRecruiterId, setFocusRecruiterId] = useState('');
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const lastClicked = useRef<string | null>(null);
+  const { selected, setSelected, toggleSelect, toggleSelectColumn } = usePipelineSelection();
   const [draggingIds, setDraggingIds] = useState<string[]>([]);
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set());
 
@@ -152,7 +152,7 @@ export default function PipelinePage() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [pendingReject, selectedCandidate]);
+  }, [pendingReject, selectedCandidate, setSelected]);
 
   // ---- Derived ----
   const ownerCounts = useMemo(
@@ -180,7 +180,7 @@ export default function PipelinePage() {
       const next = new Set([...prev].filter((id) => ids.has(id)));
       return next.size === prev.size ? prev : next;
     });
-  }, [visibleApps]);
+  }, [visibleApps, setSelected]);
 
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -332,37 +332,6 @@ export default function PipelinePage() {
   const assign = (ids: string[], recruiterId: string) =>
     runOwnership(ids, () => api.assignApplications(ids, recruiterId));
 
-  // ---- Selection ----
-  const toggleSelect = (app: any, shiftKey: boolean) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      const anchor = lastClicked.current;
-      const column = grouped[app.status] || [];
-      const anchorIdx = anchor ? column.findIndex((a) => a.id === anchor) : -1;
-      if (shiftKey && anchorIdx >= 0) {
-        const idx = column.findIndex((a) => a.id === app.id);
-        const [from, to] = anchorIdx < idx ? [anchorIdx, idx] : [idx, anchorIdx];
-        column.slice(from, to + 1).forEach((a) => next.add(a.id));
-      } else if (next.has(app.id)) {
-        next.delete(app.id);
-      } else {
-        next.add(app.id);
-      }
-      return next;
-    });
-    lastClicked.current = app.id;
-  };
-
-  const toggleSelectColumn = (stageKey: string) => {
-    const ids = grouped[stageKey].map((a) => a.id);
-    setSelected((prev) => {
-      const next = new Set(prev);
-      const all = ids.every((id) => next.has(id));
-      ids.forEach((id) => (all ? next.delete(id) : next.add(id)));
-      return next;
-    });
-  };
-
   // ---- Detail drawer ----
   const openDetail = async (app: any) => {
     setBusyIds(new Set([app.id]));
@@ -381,58 +350,19 @@ export default function PipelinePage() {
   };
 
   const visibleStages = showClosed ? ALL_STAGES : ACTIVE_STAGES;
-  const selectionMode = selected.size > 0;
   const emptyMine = !loading && scope === 'me' && ownerCounts.me === 0;
 
   return (
     <div className="space-y-4 max-w-full">
-      {/* Header + summary */}
-      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <KanbanSquare className="w-6 h-6 text-blue-600" />
-            Applicant Pipeline
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Claim candidates from the queue, then drag cards to change stage • click an avatar to multi-select (Shift for a range)
-          </p>
-        </div>
-        <div className="flex items-stretch gap-2">
-        <button
-          type="button"
-          onClick={() => {
-            setShowApprovals(true);
-            approvals.load();
-          }}
-          className={`relative px-4 rounded-xl border shadow-xs text-xs font-bold flex items-center gap-2 transition-colors ${
-            approvals.toDecideCount
-              ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
-              : 'bg-white border-slate-200/80 text-slate-700 hover:bg-slate-50'
-          }`}
-        >
-          <ShieldCheck className="w-4 h-4" />
-          Approvals
-          {approvals.toDecideCount > 0 && (
-            <span className="min-w-5 h-5 px-1 rounded-md bg-white text-blue-700 text-[11px] flex items-center justify-center tabular-nums">
-              {approvals.toDecideCount}
-            </span>
-          )}
-        </button>
-        <div className="grid grid-cols-4 gap-2 text-center">
-          {[
-            { label: 'Active', value: activeCount, cls: 'text-slate-900' },
-            { label: 'Stalled', value: staleCount, cls: 'text-amber-600' },
-            { label: 'Offering', value: grouped.OFFERING.length, cls: 'text-emerald-600' },
-            { label: 'Hired', value: grouped.HIRED.length, cls: 'text-emerald-700' }
-          ].map((s) => (
-            <div key={s.label} className="bg-white border border-slate-200/80 rounded-xl px-4 py-2 shadow-xs">
-              <p className={`text-lg font-black tabular-nums ${s.cls}`}>{loading && !applications.length ? '…' : s.value}</p>
-              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{s.label}</p>
-            </div>
-          ))}
-        </div>
-        </div>
-      </div>
+      <PipelineHeader
+        approvalsCount={approvals.toDecideCount}
+        onOpenApprovals={() => {
+          setShowApprovals(true);
+          approvals.load();
+        }}
+        stats={{ active: activeCount, stale: staleCount, offering: grouped.OFFERING.length, hired: grouped.HIRED.length }}
+        loading={loading && !applications.length}
+      />
 
       <OwnerScopeBar
         scope={scope}
@@ -481,68 +411,28 @@ export default function PipelinePage() {
         </div>
       )}
 
-      {/* Funnel distribution strip */}
-      <div className="flex h-2 rounded-full overflow-hidden bg-slate-200/70">
-        {ACTIVE_STAGES.map((s) => {
-          const n = grouped[s.key].length;
-          if (!n || !activeCount) return null;
-          return (
-            <div
-              key={s.key}
-              className={`${s.dot} h-full`}
-              style={{ width: `${(n / activeCount) * 100}%` }}
-              title={`${s.label}: ${n}`}
-            />
-          );
-        })}
-      </div>
+      <FunnelStrip grouped={grouped} activeCount={activeCount} />
 
-      {/* Kanban board */}
-      <div className={`flex gap-3 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 ${selectionMode ? 'pb-24' : 'pb-4'}`}>
-        {visibleStages.map((stage) => {
-          const items = grouped[stage.key] || [];
-          return (
-            <PipelineColumn
-              key={stage.key}
-              stage={stage}
-              items={items}
-              loading={loading}
-              selectedCount={items.filter((a) => selected.has(a.id)).length}
-              onToggleSelectAll={() => toggleSelectColumn(stage.key)}
-              onDropIds={(ids) => requestMove(ids, stage.key)}
-            >
-              {items.map((app) => (
-                <PipelineCard
-                  key={app.id}
-                  app={app}
-                  selected={selected.has(app.id)}
-                  selectionMode={selectionMode}
-                  dragging={draggingIds.includes(app.id)}
-                  busy={busyIds.has(app.id)}
-                  movable={canMove(user, app)}
-                  claimable={canClaim(user, app)}
-                  currentUserId={user?.id}
-                  onClaim={() => claim([app.id])}
-                  onToggleSelect={(shift) => toggleSelect(app, shift)}
-                  onDragStart={(e) => {
-                    // Dragging a selected card carries the whole (movable) selection
-                    const ids = selected.has(app.id) ? movableSelected.map((a) => a.id) : [app.id];
-                    e.dataTransfer.setData('application/x-hrhub-ids', JSON.stringify(ids));
-                    e.dataTransfer.effectAllowed = 'move';
-                    setDraggingIds(ids);
-                  }}
-                  onDragEnd={() => setDraggingIds([])}
-                  onOpen={() => openDetail(app)}
-                  onMove={(status) => requestMove([app.id], status)}
-                />
-              ))}
-            </PipelineColumn>
-          );
-        })}
-      </div>
+      <PipelineBoard
+        stages={visibleStages}
+        grouped={grouped}
+        loading={loading}
+        user={user}
+        selected={selected}
+        draggingIds={draggingIds}
+        busyIds={busyIds}
+        movableSelectedIds={movableSelected.map((a) => a.id)}
+        onToggleSelect={toggleSelect}
+        onToggleSelectColumn={toggleSelectColumn}
+        onMove={requestMove}
+        onClaim={(id) => claim([id])}
+        onOpen={openDetail}
+        onDragStart={setDraggingIds}
+        onDragEnd={() => setDraggingIds([])}
+      />
 
       <AnimatePresence>
-        {selectionMode && (
+        {selected.size > 0 && (
           <BulkActionBar
             count={selected.size}
             claimableCount={claimableSelected.length}
