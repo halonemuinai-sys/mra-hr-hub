@@ -160,7 +160,7 @@ export default function ApplicationStatusPage() {
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
-              Tidak ditemukan data lamaran dengan email <strong>"{emailInput}"</strong>. Silakan periksa kembali email Anda.
+              Tidak ditemukan data lamaran dengan email <strong>&ldquo;{emailInput}&rdquo;</strong>. Silakan periksa kembali email Anda.
             </div>
           )}
         </div>

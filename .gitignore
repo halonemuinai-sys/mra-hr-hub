@@ -34,3 +34,6 @@ Thumbs.db
 # Uploads
 uploads/
 *.tmp
+
+# Isolated production build output (NEXT_DIST_DIR)
+.next-build/

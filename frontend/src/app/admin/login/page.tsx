@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -377,15 +378,15 @@ export default function AdminLoginPage() {
             {/* Footer helper */}
             <div className="space-y-2 pt-2 text-center text-sm text-gray-400">
               <p>
-                Don't have access?{' '}
+                Don&apos;t have access?{' '}
                 <span className="font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
                   Contact Administrator
                 </span>
               </p>
               <div>
-                <a href="/" className="text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors">
+                <Link href="/" className="text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors">
                   ← Kembali ke Portal Karir Publik
-                </a>
+                </Link>
               </div>
             </div>
           </div>

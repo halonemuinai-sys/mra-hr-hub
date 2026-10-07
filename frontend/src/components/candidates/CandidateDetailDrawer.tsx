@@ -35,9 +35,13 @@ interface Props {
   onUpdated: () => void;
 }
 
-export default function CandidateDetailDrawer({ candidate, onClose, onUpdated }: Props) {
-  if (!candidate) return null;
+// Wrapper keeps the early return out of the component that calls hooks (rules of hooks)
+export default function CandidateDetailDrawer(props: Props) {
+  if (!props.candidate) return null;
+  return <CandidateDrawerContent {...props} />;
+}
 
+function CandidateDrawerContent({ candidate, onClose, onUpdated }: Props) {
   const currentUser = useCurrentUser();
   const app = candidate.latestApplication || (candidate.applications && candidate.applications[0]);
   const stageLocked = !!app && !canMove(currentUser, app);

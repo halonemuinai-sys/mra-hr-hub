@@ -40,6 +40,15 @@ npm run test:api   # API: auth, RBAC, data-leak and validation checks against th
 ```
 - API tests boot `api/app.js` on a random port (`api/index.js` only calls `listen`). Keep them read-only: assert refusals/validation errors or read data; never create or move real records. Write-path flows (stage gate, approvals) were verified manually on `@sample.hrhub.test` data — re-seed after such runs.
 
+### Lint & Production Build
+```powershell
+cd "d:\MRA Project\HR HUB\frontend"
+npm run lint                                   # ESLint (next/core-web-vitals + next/typescript), must be 0 errors
+$env:NEXT_DIST_DIR=".next-build"; npx next build  # production build next to a running `npm run dev`
+```
+- `next.config.ts` no longer ignores type or lint errors — they fail `next build`. Restore `next-env.d.ts` (`git checkout frontend/next-env.d.ts`) after an isolated build; Next rewrites it to the build folder.
+- CI (`.github/workflows/ci.yml`) runs backend unit tests and frontend lint + build on every push / PR to `main`. API tests need the real DB and stay local.
+
 ### Database Schema Changes (⚠️ never `prisma db push`)
 The DB URL has no `schema` param and the Supabase instance is shared with other apps (e.g. `helpdesk` schema), so `db push` is unsafe. Generate additive SQL and apply it explicitly:
 ```powershell

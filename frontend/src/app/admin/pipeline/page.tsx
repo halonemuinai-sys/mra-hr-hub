@@ -467,7 +467,7 @@ export default function PipelinePage() {
       {emptyMine && (
         <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="text-blue-900">
-            You don't own any candidates yet. <b>{ownerCounts.unassigned}</b> candidates are waiting in the queue.
+            You don&apos;t own any candidates yet. <b>{ownerCounts.unassigned}</b> candidates are waiting in the queue.
           </span>
           {ownerCounts.unassigned > 0 && (
             <button
