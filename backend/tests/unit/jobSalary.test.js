@@ -61,6 +61,10 @@ test('create without range saves null amounts; editing visibility preserves or c
   stubJobMethod(t, 'create', async ({ data }) => { saved = data; return data; });
   stubJobMethod(t, 'findUnique', async () => confidential);
   stubJobMethod(t, 'update', async ({ data }) => { saved = data; return { ...confidential, ...data }; });
+  // No active companies → the "choose a PT" rule does not apply (that rule has its own tests)
+  const originalCount = prisma.company.count;
+  prisma.company.count = async () => 0;
+  t.after(() => { prisma.company.count = originalCount; });
   const created = response();
   await createJob({ body: { title: 'Developer', department: 'IT', salaryVisibility: 'UNSPECIFIED', salaryMin: 500, salaryMax: 100 } }, created);
   assert.equal(created.code, 201);

@@ -20,11 +20,13 @@ node api/index.js
 cd "d:\MRA Project\HR HUB\frontend"
 npm run dev
 ```
+- `npm run dev` uses **Turbopack** (`next dev --turbopack`): a page compiles in ~1–2 s on first visit instead of 8–14 s with webpack. The very first request after starting the server compiles the shared admin layout once (can take ~40 s). `next build` is unchanged.
 
 ### Seed Database Users & Master Data
 ```powershell
 cd "d:\MRA Project\HR HUB\backend"
 node scripts/seedUsers.js
+node scripts/seedCompanies.js               # 21 PTs of MRA Group (idempotent, matched by name; codes editable in the Companies menu)
 node scripts/seedPipelineSamples.js          # 50 demo candidates across the pipeline (@sample.hrhub.test), incl. 5 multi-job applicants, 1 duplicate profile, 2 pending approvals
 node scripts/seedPipelineSamples.js --clean  # remove only the demo candidates
 node scripts/seedJobSamples.js               # top up to 25 jobs with sample postings (slug prefix `sample-`)
@@ -64,6 +66,7 @@ SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - `2026-10-07_job_hiring_manager.sql` — `JobPosting.hiringManagerId`
 - `2026-10-07_employees.sql` — `Employee` + `EmploymentStatus` enum, `JobApplication.releasedAt`
 - `2026-10-07_employee_talenta.sql` — `Employee.talentaData/Status/Mode/UserId/EmployeeId/SyncedAt/Error`
+- `2026-10-07_companies.sql` — `Company` (PT) + `JobPosting.companyId` / `Employee.companyId`, seeds PT Mugi Rekso Abadi (`MRA`). Tables are schema-qualified (`public.`) because the shared DB also has a `helpdesk."Company"` table.
 
 ### Health Check Endpoints
 - **Backend Health**: `curl http://localhost:5006/api/health`
@@ -104,7 +107,7 @@ Fixed roles (Prisma enum `Role`); permissions are defined in **one file**: `back
 | `employee.view` | ✓ | ✓ | ✓ | ✓ |
 | `employee.sync` (payroll data + send to Talenta) | ✓ | ✓ | – | – |
 | `approval.hire` | ✓ | – | – | ✓ |
-| `users.manage` | ✓ | – | – | – |
+| `users.manage`, `company.manage` | ✓ | – | – | – |
 
 - Backend guard: `requirePermission('perm')` (`middlewares/authMiddleware.js`). Sidebar items and the admin route guard in `admin/layout.tsx` are keyed by permission.
 - To change who can do what, edit `ROLE_PERMISSIONS` in `permissions.js` — nothing else.
@@ -195,10 +198,19 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 ### J. Karyawan Baru & Pengumuman (after the hire)
 - **Hired cards** show *Register employee* and *Release* (`canHandleHire`: `employee.manage` + own card, or `pipeline.move.any`). Registering creates an `Employee` (own copy of name/contact/placement — survives deleting the candidate/job; `employeeNo` unique, suggested `MRA-<year>-0001`) and sets `JobApplication.releasedAt`. Release only sets `releasedAt` (undo / restore while not registered).
 - Released applications are hidden from the board (`listPipeline` filters `releasedAt: null`) and the stage gate blocks any further move. They still count as HIRED in dashboard, team and report metrics.
-- `/admin/employees` (`employee.view`; Hiring Managers scoped to their jobs): tabs *Menunggu Registrasi* (HIRED without employee) / *Terdaftar*, edit, announce, Excel export for HRIS. `/admin/announcements` (`dashboard.view`): "Selamat Bergabung" board without contact details; also a dashboard widget and reminders (`hires-to-register`, `new-colleagues`).
+- `/admin/employees` (`employee.view`; Hiring Managers scoped to their jobs): tabs *Awaiting Registration* (HIRED without employee) / *Registered*, edit, announce, Excel export for HRIS. `/admin/announcements` (`dashboard.view`): "Welcome Aboard" board without contact details; also a dashboard widget and reminders (`hires-to-register`, `new-colleagues`).
 - Activity actions: `EMPLOYEE_REGISTERED`, `EMPLOYEE_ANNOUNCED`, `HIRE_RELEASED`, `HIRE_RESTORED`.
-- **Recruitment Journey** (Journey button / employee name on the *Terdaftar* tab): `GET /api/employees/:id/journey` (`employee.view`, Hiring Manager scope) → `services/journeyService.js` `buildJourney` (pure, unit-tested) turns the activity log + stage requests into stage visits with durations and the events of each visit, after-hire actions, approvals and metrics (applied → hired, time to claim / first interview, offer → hire, hire → join, back moves, people involved, slowest stage). UI: `components/employees/journey/*`; activity labels shared with `StageHistory` via `components/candidates/activityFormat.tsx`.
+- **Recruitment Journey** (Journey button / employee name on the *Registered* tab): `GET /api/employees/:id/journey` (`employee.view`, Hiring Manager scope) → `services/journeyService.js` `buildJourney` (pure, unit-tested) turns the activity log + stage requests into stage visits with durations and the events of each visit, after-hire actions, approvals and metrics (applied → hired, time to claim / first interview, offer → hire, hire → join, back moves, people involved, slowest stage). UI: `components/employees/journey/*`; activity labels shared with `StageHistory` via `components/candidates/activityFormat.tsx`.
 - Backend: `controllers/employeeController.js`, `routes/employeeRoutes.js` (`/api/employees`), `routes/announcementRoutes.js` (`/api/announcements`), validation in `services/employeeInput.js` (unit-tested). UI: `components/employees/*`, `components/announcements/AnnouncementCard.tsx`, `components/dashboard/NewColleagues.tsx`.
+
+### L. Companies (PT) of MRA Group
+- `Company` master (`/admin/companies`, `company.manage` = Super Admin): code, legal name, NPWP, address, default Talenta branch, active flag. Never deleted — deactivate instead (existing jobs/employees keep it). `GET /api/companies` is open to every CMS user (form options / filters); `controllers/companyController.js`, validation `services/companyInput.js`.
+- Every **job** has a PT (`JobPosting.companyId`; required on create once an active company exists, shown as a code chip on job cards; not shown on the public portal). **Employees** inherit the job's PT at registration and can change it (form, table chip, filter, Excel export column, Journey header). The PT's `talentaBranch` is the first default for the Talenta *Branch* field (one Talenta account for the whole group).
+- PT filter (`?companyId=<id>` or `none` = no PT set) on the pipeline, employees, dashboard (`/api/stats/dashboard` also returns `byCompany` → *Per Company (PT)* card) and the recruitment report (new *Per PT* sheet + PT column on job / hires / applicant sheets).
+
+### M. Hide Identity Mode (screenshots / demos)
+- Header toggle **Hide identity** (`components/privacy/IdentityToggle.tsx`), shortcut **Ctrl+Shift+H** on any page (admin, login, public portal), or `?hideIdentity=1|0` in the URL. Stored per browser in `localStorage.hr_hub_hide_identity`.
+- `components/privacy/IdentityMask.tsx` (mounted in the root layout) rewrites rendered text, option labels, `title`/`placeholder`/`alt`/`aria-label` and the tab title through `lib/identityMask.ts` (pure rules): `PT …` → `PT Perusahaan XX` (stable 2-letter pseudonym per name), brand names → `Brand XX`, `MRA` / Mugi Rekso Abadi → `Contoso`, `mragroup.co.id` → `contoso.co.id`, the head-office street → a generic one. `globals.css` blurs the MRA logo, building photo and brand logos (`html.hide-identity`). Display only — data and form values are never changed; turning it off restores the original text. Add new brand names to `BRANDS` in `identityMask.ts`; wrap anything that must stay unmasked in `data-identity-keep`.
 
 ### K. Talenta (Mekari HRIS) Integration
 - Registered employees are sent to Talenta with **Add Employee** (`POST /v2/talenta/v3/employee`, docs: https://documenter.getpostman.com/view/12246328/UVR5qp6v). HR (`employee.sync`) fills personal, placement, payroll/tax, BPJS and bank data in the *Talenta* drawer on `/admin/employees`, saves a draft, then sends.

@@ -24,7 +24,8 @@ export type Permission =
   | 'approval.offer'
   | 'approval.hire'
   | 'team.monitor'
-  | 'users.manage';
+  | 'users.manage'
+  | 'company.manage';
 
 export type CmsUser = {
   id: string;

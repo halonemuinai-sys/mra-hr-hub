@@ -12,9 +12,9 @@ import JourneyStageBar, { fmtDays } from './JourneyStageBar';
 import JourneyTimeline from './JourneyTimeline';
 
 const INTAKE_LABELS: Record<string, string> = {
-  ATS_RESUME_UPLOAD: 'Upload CV via portal karier',
-  EXCEL_TEMPLATE: 'Template Excel',
-  MANUAL_INPUT: 'Input manual oleh tim TA'
+  ATS_RESUME_UPLOAD: 'CV upload on the career portal',
+  EXCEL_TEMPLATE: 'Excel template',
+  MANUAL_INPUT: 'Entered manually by the TA team'
 };
 
 const scoreTone = (n: number) => (n >= 85 ? 'text-emerald-600' : n >= 60 ? 'text-blue-600' : 'text-amber-600');
@@ -81,10 +81,10 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300 flex items-center gap-1.5">
                 <Route className="w-3 h-3" /> Recruitment Journey
               </p>
-              <h3 className="text-base font-black truncate">{emp?.fullName || 'Memuat…'}</h3>
+              <h3 className="text-base font-black truncate">{emp?.fullName || 'Loading…'}</h3>
               {emp && (
                 <p className="text-[11px] text-slate-300 truncate">
-                  {emp.position} · {emp.division} · <span className="font-mono">{emp.employeeNo}</span>
+                  {emp.position} · {emp.company?.name || emp.division} · <span className="font-mono">{emp.employeeNo}</span>
                 </p>
               )}
             </div>
@@ -92,7 +92,7 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
             <button
               type="button"
               onClick={onClose}
-              aria-label="Tutup"
+              aria-label="Close"
               className="p-1.5 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white"
             >
               <X className="w-4 h-4" />
@@ -113,8 +113,8 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
 
           {data && !j && (
             <div className="bg-white rounded-2xl border border-dashed border-slate-300 py-12 text-center text-xs text-slate-500">
-              Data lamaran asal karyawan ini sudah tidak ada (kandidat atau lowongan dihapus), jadi perjalanan rekrutmennya tidak bisa
-              ditampilkan.
+              The original application of this employee no longer exists (the candidate or job was deleted), so the recruitment
+              journey cannot be shown.
             </div>
           )}
 
@@ -124,26 +124,26 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <Kpi
                   icon={Clock}
-                  label="Lamar → Hired"
+                  label="Applied → Hired"
                   value={daysText(m.timeToHireDays)}
                   hint={`${fmtDate(j.milestones.applied)} → ${fmtDate(j.milestones.hired)}`}
                 />
                 <Kpi
                   icon={Hand}
-                  label="Diambil PIC"
+                  label="Claimed by PIC"
                   value={daysText(m.timeToClaimDays)}
-                  hint={app?.assignedRecruiter ? shortName(app.assignedRecruiter.name) : 'setelah melamar'}
+                  hint={app?.assignedRecruiter ? shortName(app.assignedRecruiter.name) : 'after applying'}
                 />
                 <Kpi
                   icon={MessagesSquare}
-                  label="Ke interview 1"
+                  label="To 1st interview"
                   value={daysText(m.timeToInterviewDays)}
-                  hint={`${m.interviewCount} sesi interview`}
+                  hint={`${m.interviewCount} interview session(s)`}
                 />
                 <Kpi
                   icon={CalendarCheck}
                   label="Hired → Join"
-                  value={m.hireToJoinDays === null ? '—' : `${m.hireToJoinDays} hari`}
+                  value={m.hireToJoinDays === null ? '—' : `${m.hireToJoinDays} days`}
                   hint={j.milestones.joinDate ? fmtDate(j.milestones.joinDate) : undefined}
                 />
               </div>
@@ -151,12 +151,12 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
               {/* Stage bar */}
               <section className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-xs font-bold text-slate-900">Alur tahapan</h4>
+                  <h4 className="text-xs font-bold text-slate-900">Stage flow</h4>
                   <p className="text-[10px] text-slate-500">
-                    {m.stageCount} tahap · {m.peopleInvolved} orang terlibat
-                    {m.backMoves ? ` · ${m.backMoves}× mundur` : ''}
+                    {m.stageCount} stages · {m.peopleInvolved} people involved
+                    {m.backMoves ? ` · ${m.backMoves}× moved back` : ''}
                     {m.slowestStage
-                      ? ` · terlama: ${m.slowestStage.status === 'APPLIED' ? 'menunggu screening' : stageLabel(m.slowestStage.status)}`
+                      ? ` · slowest: ${m.slowestStage.status === 'APPLIED' ? 'waiting for screening' : stageLabel(m.slowestStage.status)}`
                       : ''}
                   </p>
                 </div>
@@ -168,7 +168,7 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <FileSearch className="w-3.5 h-3.5 text-blue-600" /> Saat melamar
+                      <FileSearch className="w-3.5 h-3.5 text-blue-600" /> At application
                     </h4>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       {INTAKE_LABELS[cand?.intakeSource] || cand?.intakeSource} · {fmtDate(app.appliedAt)} · {emp.job?.title}
@@ -180,8 +180,8 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
                   {[
                     ['ATS', app.atsScore],
                     ['Skill', app.skillsScore],
-                    ['Pengalaman', app.expScore],
-                    ['Pendidikan', app.eduScore]
+                    ['Experience', app.expScore],
+                    ['Education', app.eduScore]
                   ].map(([label, v]: any) => (
                     <div key={label} className="rounded-xl bg-slate-50 border border-slate-100 py-2">
                       <p className={`text-base font-black tabular-nums ${scoreTone(Math.round(v || 0))}`}>{Math.round(v || 0)}%</p>
@@ -218,7 +218,7 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
                 )}
                 {cand && (
                   <p className="text-[11px] text-slate-500">
-                    {[cand.headline, cand.currentCompany, `${cand.totalExperienceYrs || 0} th pengalaman`, cand.location]
+                    {[cand.headline, cand.currentCompany, `${cand.totalExperienceYrs || 0} yrs experience`, cand.location]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
@@ -239,8 +239,8 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
                       <div className="min-w-0">
                         <p className="text-slate-800">{r.reason}</p>
                         <p className="text-[10px] text-slate-400">
-                          Diminta {shortName(r.requestedBy) || '—'} · {fmtDate(r.createdAt)}
-                          {r.decidedBy ? ` · diputuskan ${shortName(r.decidedBy)} ${fmtDate(r.decidedAt)}` : ''}
+                          Requested by {shortName(r.requestedBy) || '—'} · {fmtDate(r.createdAt)}
+                          {r.decidedBy ? ` · decided by ${shortName(r.decidedBy)} ${fmtDate(r.decidedAt)}` : ''}
                         </p>
                         {r.decisionNote && <p className="text-slate-600 italic">“{r.decisionNote}”</p>}
                       </div>
@@ -255,12 +255,12 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
                           }`}
                         >
                           {r.status === 'APPROVED'
-                            ? 'Disetujui'
+                            ? 'Approved'
                             : r.status === 'PENDING'
-                              ? 'Menunggu'
+                              ? 'Pending'
                               : r.status === 'REJECTED'
-                                ? 'Ditolak'
-                                : 'Dibatalkan'}
+                                ? 'Rejected'
+                                : 'Cancelled'}
                         </span>
                         <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">{daysText(r.waitDays)}</p>
                       </div>
@@ -272,7 +272,7 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
               {/* Timeline */}
               <section className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h4 className="text-xs font-bold text-slate-900">Detail perjalanan</h4>
+                  <h4 className="text-xs font-bold text-slate-900">Journey details</h4>
                   {m.offerSalary && (
                     <span className="text-[10px] text-slate-500 flex items-center gap-1">
                       <Wallet className="w-3 h-3" /> Offering IDR {m.offerSalary.toLocaleString('id-ID')}
@@ -282,13 +282,13 @@ export default function EmployeeJourneyDrawer({ employeeId, onClose }: { employe
                 <JourneyTimeline
                   stages={j.stages}
                   afterHire={j.afterHire}
-                  appliedVia={INTAKE_LABELS[cand?.intakeSource] || 'melamar'}
+                  appliedVia={INTAKE_LABELS[cand?.intakeSource] || 'applied'}
                   joinDate={j.milestones.joinDate}
                 />
               </section>
 
               <p className="text-[10px] text-slate-400 flex items-center gap-1">
-                <Users className="w-3 h-3" /> Dihitung dari log aktivitas pipeline; aktivitas sebelum fitur log aktif tidak tercatat.
+                <Users className="w-3 h-3" /> Built from the pipeline activity log; activity before the log was enabled is not included.
               </p>
             </>
           )}

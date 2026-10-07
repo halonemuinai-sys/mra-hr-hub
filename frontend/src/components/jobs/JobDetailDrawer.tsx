@@ -93,7 +93,7 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                     </span>
                   </div>
                   <h2 className="text-xl font-semibold leading-snug">{job.title}</h2>
-                  <p className="text-[11px] text-slate-400 mt-0.5">{job.division}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{[job.company?.name || 'No company (PT) set', job.division].join(' · ')}</p>
                 </div>
                 <button type="button" onClick={onClose} aria-label="Close job details" className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
                   <X className="w-5 h-5" />

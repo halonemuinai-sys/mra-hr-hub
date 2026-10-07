@@ -18,8 +18,8 @@ class TalentaError extends Error {
 }
 
 async function talentaRequest(method, path, body, cfg = talentaConfig()) {
-  if (cfg.mode === 'off') throw new TalentaError('Integrasi Talenta belum diaktifkan (TALENTA_MODE=off).', { status: 503 });
-  if (!cfg.ready) throw new TalentaError(`Kredensial Talenta belum diisi: ${cfg.missing.join(', ')}.`, { status: 503 });
+  if (cfg.mode === 'off') throw new TalentaError('Talenta integration is not enabled (TALENTA_MODE=off).', { status: 503 });
+  if (!cfg.ready) throw new TalentaError(`Talenta credentials missing: ${cfg.missing.join(', ')}.`, { status: 503 });
 
   if (cfg.mode === 'mock') {
     try {
@@ -42,7 +42,7 @@ async function talentaRequest(method, path, body, cfg = talentaConfig()) {
       signal: AbortSignal.timeout(TIMEOUT_MS)
     });
   } catch (err) {
-    throw new TalentaError(`Tidak dapat menghubungi Talenta: ${err.message}`, { status: 504 });
+    throw new TalentaError(`Could not reach Talenta: ${err.message}`, { status: 504 });
   }
 
   let json = null;
@@ -52,7 +52,7 @@ async function talentaRequest(method, path, body, cfg = talentaConfig()) {
   if (!res.ok) {
     const errors = Array.isArray(json?.errors) ? json.errors.map(String) : [];
     const message = errors[0] || json?.message || `Talenta HTTP ${res.status}`;
-    throw new TalentaError(res.status === 401 ? 'Talenta menolak kredensial HMAC (401). Cek username/secret & scope.' : message, {
+    throw new TalentaError(res.status === 401 ? 'Talenta rejected the HMAC credentials (401). Check username / secret & scopes.' : message, {
       errors,
       status: res.status >= 500 ? 502 : res.status
     });

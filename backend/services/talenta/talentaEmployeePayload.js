@@ -10,11 +10,11 @@
 const opts = (pairs) => pairs.map(([value, label]) => ({ value: String(value), label }));
 
 const SECTIONS = [
-  { key: 'personal', label: 'Data Pribadi' },
-  { key: 'employment', label: 'Penempatan di Talenta' },
-  { key: 'payroll', label: 'Payroll & Pajak' },
+  { key: 'personal', label: 'Personal Data' },
+  { key: 'employment', label: 'Placement in Talenta' },
+  { key: 'payroll', label: 'Payroll & Tax' },
   { key: 'bpjs', label: 'BPJS' },
-  { key: 'bank', label: 'Rekening Gaji' }
+  { key: 'bank', label: 'Salary Account' }
 ];
 
 /**
@@ -23,58 +23,58 @@ const SECTIONS = [
  */
 const FIELDS = [
   // Personal
-  { key: 'dateOfBirth', api: 'date_of_birth', section: 'personal', label: 'Tanggal lahir', type: 'date', required: true },
-  { key: 'placeOfBirth', api: 'place_of_birth', section: 'personal', label: 'Tempat lahir', type: 'text' },
-  { key: 'gender', api: 'gender', section: 'personal', label: 'Jenis kelamin', type: 'select', required: true, int: true, options: opts([[1, 'Laki-laki'], [2, 'Perempuan']]) },
-  { key: 'maritalStatus', api: 'marital_status', section: 'personal', label: 'Status pernikahan', type: 'select', required: true, int: true, options: opts([[1, 'Lajang'], [2, 'Menikah'], [3, 'Janda'], [4, 'Duda']]) },
-  { key: 'religion', api: 'religion', section: 'personal', label: 'Agama', type: 'select', required: true, int: true, options: opts([[2, 'Islam'], [3, 'Kristen'], [1, 'Katolik'], [5, 'Hindu'], [4, 'Buddha'], [6, 'Konghucu'], [8, 'Ortodoks'], [7, 'Lainnya']]) },
-  { key: 'bloodType', api: 'blood_type', section: 'personal', label: 'Golongan darah', type: 'select', int: true, options: opts([[1, 'A'], [2, 'B'], [3, 'AB'], [4, 'O']]) },
-  { key: 'citizenIdType', api: 'citizen_id_type', section: 'personal', label: 'Jenis identitas', type: 'select', int: true, options: opts([[1, 'KTP'], [2, 'Paspor']]) },
-  { key: 'citizenId', api: 'citizen_id', section: 'personal', label: 'Nomor identitas (NIK KTP / paspor)', type: 'text', sensitive: true },
-  { key: 'citizenAddress', api: 'citizen_address', section: 'personal', label: 'Alamat sesuai identitas', type: 'text' },
-  { key: 'residentialAddress', api: 'residential_address', section: 'personal', label: 'Alamat domisili', type: 'text' },
-  { key: 'postalCode', api: 'postal_code', section: 'personal', label: 'Kode pos', type: 'text', int: true, pattern: /^\d{5}$/, patternHint: '5 digit' },
+  { key: 'dateOfBirth', api: 'date_of_birth', section: 'personal', label: 'Date of birth', type: 'date', required: true },
+  { key: 'placeOfBirth', api: 'place_of_birth', section: 'personal', label: 'Place of birth', type: 'text' },
+  { key: 'gender', api: 'gender', section: 'personal', label: 'Gender', type: 'select', required: true, int: true, options: opts([[1, 'Male'], [2, 'Female']]) },
+  { key: 'maritalStatus', api: 'marital_status', section: 'personal', label: 'Marital status', type: 'select', required: true, int: true, options: opts([[1, 'Single'], [2, 'Married'], [3, 'Widow'], [4, 'Widower']]) },
+  { key: 'religion', api: 'religion', section: 'personal', label: 'Religion', type: 'select', required: true, int: true, options: opts([[2, 'Islam'], [3, 'Christian'], [1, 'Catholic'], [5, 'Hindu'], [4, 'Buddhist'], [6, 'Confucian'], [8, 'Orthodox'], [7, 'Other']]) },
+  { key: 'bloodType', api: 'blood_type', section: 'personal', label: 'Blood type', type: 'select', int: true, options: opts([[1, 'A'], [2, 'B'], [3, 'AB'], [4, 'O']]) },
+  { key: 'citizenIdType', api: 'citizen_id_type', section: 'personal', label: 'ID type', type: 'select', int: true, options: opts([[1, 'KTP'], [2, 'Passport']]) },
+  { key: 'citizenId', api: 'citizen_id', section: 'personal', label: 'ID number (KTP NIK / passport)', type: 'text', sensitive: true },
+  { key: 'citizenAddress', api: 'citizen_address', section: 'personal', label: 'Address on ID', type: 'text' },
+  { key: 'residentialAddress', api: 'residential_address', section: 'personal', label: 'Residential address', type: 'text' },
+  { key: 'postalCode', api: 'postal_code', section: 'personal', label: 'Postal code', type: 'text', int: true, pattern: /^\d{5}$/, patternHint: '5 digits' },
 
   // Employment (names must match Talenta master data exactly)
   { key: 'branch', api: 'branch', section: 'employment', label: 'Branch', type: 'master', master: 'branches', required: true },
   { key: 'organizationName', api: 'organization_name', section: 'employment', label: 'Organization', type: 'master', master: 'organizations', required: true },
   { key: 'jobPosition', api: 'job_position', section: 'employment', label: 'Job position', type: 'master', master: 'jobPositions', required: true },
   { key: 'jobLevel', api: 'job_level', section: 'employment', label: 'Job level', type: 'master', master: 'jobLevels', required: true },
-  { key: 'employmentStatus', api: 'employment_status', section: 'employment', label: 'Status kepegawaian', type: 'select', required: true, int: true, options: opts([[1, 'Tetap (Fulltime)'], [2, 'Kontrak'], [3, 'Probation']]) },
+  { key: 'employmentStatus', api: 'employment_status', section: 'employment', label: 'Employment status', type: 'select', required: true, int: true, options: opts([[1, 'Permanent (full-time)'], [2, 'Contract'], [3, 'Probation']]) },
   {
-    key: 'endEmploymentStatusDate', api: 'end_employment_status_date', section: 'employment', label: 'Akhir kontrak / probation', type: 'date',
+    key: 'endEmploymentStatusDate', api: 'end_employment_status_date', section: 'employment', label: 'Contract / probation end date', type: 'date',
     requiredIf: { key: 'employmentStatus', in: ['2', '3'] }
   },
-  { key: 'autoEmployeeId', section: 'employment', label: 'Biarkan Talenta membuat Employee ID (auto-generate)', type: 'checkbox' },
+  { key: 'autoEmployeeId', section: 'employment', label: 'Let Talenta generate the employee ID (auto-generate)', type: 'checkbox' },
 
   // Payroll & tax
-  { key: 'basicSalary', api: 'basic_salary', section: 'payroll', label: 'Gaji pokok (IDR)', type: 'number', required: true, sensitive: true },
-  { key: 'typeSalary', api: 'type_salary', section: 'payroll', label: 'Tipe gaji', type: 'select', required: true, int: true, options: opts([[1, 'Bulanan'], [2, 'Harian']]) },
-  { key: 'ptkpStatus', api: 'ptkp_status', section: 'payroll', label: 'Status PTKP', type: 'select', required: true, int: true, options: opts([[1, 'TK/0'], [2, 'TK/1'], [3, 'TK/2'], [4, 'TK/3'], [5, 'K/0'], [6, 'K/1'], [7, 'K/2'], [8, 'K/3']]) },
-  { key: 'taxConfiguration', api: 'tax_configuration', section: 'payroll', label: 'Metode pajak', type: 'select', required: true, int: true, options: opts([[1, 'Gross'], [2, 'Gross Up'], [3, 'Netto']]) },
-  { key: 'salaryConfiguration', api: 'salary_configuration', section: 'payroll', label: 'Konfigurasi gaji', type: 'select', required: true, int: true, options: opts([[1, 'Taxable'], [2, 'Non-taxable']]) },
+  { key: 'basicSalary', api: 'basic_salary', section: 'payroll', label: 'Basic salary (IDR)', type: 'number', required: true, sensitive: true },
+  { key: 'typeSalary', api: 'type_salary', section: 'payroll', label: 'Salary type', type: 'select', required: true, int: true, options: opts([[1, 'Monthly'], [2, 'Daily']]) },
+  { key: 'ptkpStatus', api: 'ptkp_status', section: 'payroll', label: 'PTKP status', type: 'select', required: true, int: true, options: opts([[1, 'TK/0'], [2, 'TK/1'], [3, 'TK/2'], [4, 'TK/3'], [5, 'K/0'], [6, 'K/1'], [7, 'K/2'], [8, 'K/3']]) },
+  { key: 'taxConfiguration', api: 'tax_configuration', section: 'payroll', label: 'Tax method', type: 'select', required: true, int: true, options: opts([[1, 'Gross'], [2, 'Gross Up'], [3, 'Netto']]) },
+  { key: 'salaryConfiguration', api: 'salary_configuration', section: 'payroll', label: 'Salary configuration', type: 'select', required: true, int: true, options: opts([[1, 'Taxable'], [2, 'Non-taxable']]) },
   {
-    key: 'employeeTaxStatus', api: 'employee_tax_status', section: 'payroll', label: 'Status pajak karyawan', type: 'select', required: true, int: true,
-    options: opts([[0, 'Pegawai tetap'], [1, 'Pegawai tidak tetap'], [2, 'Bukan pegawai berkesinambungan'], [3, 'Ekspatriat'], [4, 'Ekspatriat domestik'], [5, 'Tenaga ahli'], [6, 'Freelance']])
+    key: 'employeeTaxStatus', api: 'employee_tax_status', section: 'payroll', label: 'Employee tax status', type: 'select', required: true, int: true,
+    options: opts([[0, 'Permanent employee'], [1, 'Non-permanent employee'], [2, 'Non-continuous employee'], [3, 'Expatriate'], [4, 'Domestic expatriate'], [5, 'Expert staff'], [6, 'Freelance']])
   },
-  { key: 'overtimeStatus', api: 'overtime_status', section: 'payroll', label: 'Lembur', type: 'select', required: true, int: true, options: opts([[1, 'Eligible'], [2, 'Tidak eligible']]) },
-  { key: 'npwp', section: 'payroll', label: 'NPWP', type: 'text', sensitive: true, pattern: /^(\d{15}|\d{16})$/, patternHint: '15 atau 16 digit angka' },
+  { key: 'overtimeStatus', api: 'overtime_status', section: 'payroll', label: 'Overtime', type: 'select', required: true, int: true, options: opts([[1, 'Eligible'], [2, 'Not eligible']]) },
+  { key: 'npwp', section: 'payroll', label: 'NPWP', type: 'text', sensitive: true, pattern: /^(\d{15}|\d{16})$/, patternHint: '15 or 16 digits' },
 
   // BPJS
   { key: 'nppBpjsKetenagakerjaan', api: 'npp_bpjs_ketenagakerjaan', section: 'bpjs', label: 'NPP BPJS Ketenagakerjaan', type: 'text', required: true },
-  { key: 'jhtConfiguration', api: 'jht_configuration', section: 'bpjs', label: 'JHT dibayar oleh', type: 'select', required: true, int: true, options: opts([[3, 'Default perusahaan'], [1, 'Perusahaan'], [2, 'Karyawan'], [0, 'Tidak dibayar']]) },
-  { key: 'jpConfiguration', api: 'jp_configuration', section: 'bpjs', label: 'JP dibayar oleh', type: 'select', required: true, int: true, options: opts([[3, 'Default perusahaan'], [1, 'Perusahaan'], [2, 'Karyawan'], [0, 'Tidak dibayar']]) },
-  { key: 'bpjsKesehatanConfig', api: 'bpjs_kesehatan_config', section: 'bpjs', label: 'BPJS Kesehatan dibayar oleh', type: 'select', required: true, int: true, options: opts([[3, 'Default perusahaan'], [1, 'Perusahaan'], [2, 'Karyawan']]) },
-  { key: 'bpjsKetenagakerjaan', api: 'bpjs_ketenagakerjaan', section: 'bpjs', label: 'No. BPJS Ketenagakerjaan', type: 'text' },
-  { key: 'bpjsKesehatan', api: 'bpjs_kesehatan', section: 'bpjs', label: 'No. BPJS Kesehatan', type: 'text' },
+  { key: 'jhtConfiguration', api: 'jht_configuration', section: 'bpjs', label: 'JHT paid by', type: 'select', required: true, int: true, options: opts([[3, 'Company default'], [1, 'Company'], [2, 'Employee'], [0, 'Not paid']]) },
+  { key: 'jpConfiguration', api: 'jp_configuration', section: 'bpjs', label: 'JP paid by', type: 'select', required: true, int: true, options: opts([[3, 'Company default'], [1, 'Company'], [2, 'Employee'], [0, 'Not paid']]) },
+  { key: 'bpjsKesehatanConfig', api: 'bpjs_kesehatan_config', section: 'bpjs', label: 'BPJS Kesehatan paid by', type: 'select', required: true, int: true, options: opts([[3, 'Company default'], [1, 'Company'], [2, 'Employee']]) },
+  { key: 'bpjsKetenagakerjaan', api: 'bpjs_ketenagakerjaan', section: 'bpjs', label: 'BPJS Ketenagakerjaan no.', type: 'text' },
+  { key: 'bpjsKesehatan', api: 'bpjs_kesehatan', section: 'bpjs', label: 'BPJS Kesehatan no.', type: 'text' },
 
   // Bank (Bank ID mapping from the Talenta docs / GET company bank-list)
   {
     key: 'bankName', api: 'bank_name', section: 'bank', label: 'Bank', type: 'select',
     options: opts([[1, 'BCA'], [2, 'Mandiri'], [3, 'BRI'], [6, 'BNI'], [30, 'BSI'], [4, 'CIMB Niaga'], [9, 'Permata'], [7, 'Danamon'], [12, 'OCBC'], [11, 'BTN'], [10, 'Maybank'], [8, 'Panin'], [20, 'Bank DKI'], [94, 'Bank Jago']])
   },
-  { key: 'bankAccount', api: 'bank_account', section: 'bank', label: 'Nomor rekening', type: 'text', sensitive: true, pattern: /^\d{6,20}$/, patternHint: 'angka saja' },
-  { key: 'bankAccountHolder', api: 'bank_account_holder', section: 'bank', label: 'Nama pemilik rekening', type: 'text' }
+  { key: 'bankAccount', api: 'bank_account', section: 'bank', label: 'Account number', type: 'text', sensitive: true, pattern: /^\d{6,20}$/, patternHint: 'digits only' },
+  { key: 'bankAccountHolder', api: 'bank_account_holder', section: 'bank', label: 'Account holder name', type: 'text' }
 ];
 
 const FIELD_KEYS = FIELDS.map((f) => f.key);
@@ -100,7 +100,7 @@ function sanitizeTalentaData(input = {}) {
 /**
  * Suggested values before HR has filled anything.
  * @param {object} employee  Employee record
- * @param {object} ctx       { offerSalary?, masters?: { branches, organizations, jobPositions, jobLevels } }
+ * @param {object} ctx       { offerSalary?, companyBranch? (PT's default Talenta branch), masters?: { branches, organizations, jobPositions, jobLevels } }
  */
 function defaultTalentaData(employee, ctx = {}) {
   const pick = (list, ...candidates) => {
@@ -120,7 +120,7 @@ function defaultTalentaData(employee, ctx = {}) {
     : 'Staff';
 
   return {
-    branch: pick(m.branches, employee.workLocation),
+    branch: pick(m.branches, ctx.companyBranch, employee.workLocation),
     organizationName: pick(m.organizations, employee.department, employee.division),
     jobPosition: pick(m.jobPositions, employee.position) || employee.position || '',
     jobLevel: pick(m.jobLevels, levelGuess),
@@ -159,9 +159,9 @@ function buildEmployeePayload(employee, data = {}, masters = null) {
   const name = splitName(employee.fullName);
   const email = employee.workEmail || employee.personalEmail;
 
-  if (!name.first) errors.push('Nama karyawan kosong.');
-  if (!email) errors.push('Email karyawan kosong.');
-  if (!employee.joinDate) errors.push('Tanggal bergabung kosong.');
+  if (!name.first) errors.push('Employee name is empty.');
+  if (!email) errors.push('Employee email is empty.');
+  if (!employee.joinDate) errors.push('Join date is empty.');
 
   const payload = {
     first_name: name.first,
@@ -177,19 +177,19 @@ function buildEmployeePayload(employee, data = {}, masters = null) {
     const raw = v[f.key];
     const required = f.required || (f.requiredIf && f.requiredIf.in.includes(String(v[f.requiredIf.key] ?? '')));
     if (isBlank(raw)) {
-      if (required) errors.push(`${f.label} wajib diisi.`);
+      if (required) errors.push(`${f.label} is required.`);
       return;
     }
     const s = String(raw).trim();
-    if (f.type === 'date' && !DATE_RE.test(s)) return errors.push(`${f.label}: format tanggal tidak valid.`);
-    if (f.type === 'select' && !f.options.some((o) => o.value === s)) return errors.push(`${f.label}: pilihan tidak dikenal.`);
+    if (f.type === 'date' && !DATE_RE.test(s)) return errors.push(`${f.label}: invalid date format.`);
+    if (f.type === 'select' && !f.options.some((o) => o.value === s)) return errors.push(`${f.label}: unknown option.`);
     if (f.type === 'master' && masters && masters[f.master] && !masters[f.master].some((x) => x.name === s)) {
-      return errors.push(`${f.label} "${s}" tidak ada di master data Talenta.`);
+      return errors.push(`${f.label} "${s}" is not in the Talenta master data.`);
     }
     if (f.pattern && !f.pattern.test(s.replace(/[\s.-]/g, ''))) return errors.push(`${f.label}: ${f.patternHint}.`);
     if (f.type === 'number') {
       const n = Number(s.replace(/[^\d.]/g, ''));
-      if (!Number.isFinite(n) || n < 0) return errors.push(`${f.label} harus angka ≥ 0.`);
+      if (!Number.isFinite(n) || n < 0) return errors.push(`${f.label} must be a number ≥ 0.`);
       payload[f.api] = n;
       return;
     }
@@ -202,10 +202,10 @@ function buildEmployeePayload(employee, data = {}, masters = null) {
   });
 
   if (payload.end_employment_status_date && payload.join_date && payload.end_employment_status_date <= payload.join_date) {
-    errors.push('Akhir kontrak / probation harus setelah tanggal bergabung.');
+    errors.push('Contract / probation end date must be after the join date.');
   }
   if (payload.date_of_birth && payload.date_of_birth >= payload.join_date) {
-    errors.push('Tanggal lahir tidak valid.');
+    errors.push('Date of birth is not valid.');
   }
 
   return { payload, errors };

@@ -61,8 +61,8 @@ export default function TalentaField({ field: f, value, values, masters, disable
     const unknown = !empty && !options.some((o) => o.value === String(value));
     control = (
       <select value={empty ? '' : String(value)} disabled={disabled} onChange={(e) => onChange(e.target.value)} className={`${input} ${border}`}>
-        <option value="">— Pilih —</option>
-        {unknown && <option value={String(value)}>{String(value)} (tidak ada di Talenta)</option>}
+        <option value="">— Select —</option>
+        {unknown && <option value={String(value)}>{String(value)} (not in Talenta)</option>}
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

@@ -42,10 +42,20 @@ async function downloadRecruitmentReport(req, res) {
     const period = resolvePeriod(req.query);
     if (!period) return res.status(400).json({ success: false, message: 'Periode tidak valid (maksimal 1 tahun, format YYYY-MM-DD).' });
     const { from, to } = period;
+    // Optional: one PT only
+    // ?companyId=none → jobs without a PT
+    const noPt = req.query.companyId === 'none';
+    const company = noPt
+      ? { id: null, code: 'TANPA-PT', name: 'Belum diisi (tanpa PT)' }
+      : req.query.companyId
+        ? await prisma.company.findUnique({ where: { id: String(req.query.companyId) }, select: { id: true, code: true, name: true } })
+        : null;
+    if (req.query.companyId && !company) return res.status(400).json({ success: false, message: 'Perusahaan (PT) tidak ditemukan.' });
+    const byPt = company ? { job: { companyId: company.id } } : {};
 
     const [apps, moves, claims] = await Promise.all([
       prisma.jobApplication.findMany({
-        where: { appliedAt: { gte: from, lte: to } },
+        where: { appliedAt: { gte: from, lte: to }, ...byPt },
         orderBy: { appliedAt: 'asc' },
         select: {
           id: true,
@@ -54,12 +64,12 @@ async function downloadRecruitmentReport(req, res) {
           appliedAt: true,
           jobId: true,
           candidate: { select: { fullName: true, email: true, phone: true, intakeSource: true } },
-          job: { select: { title: true, division: true, isActive: true } },
+          job: { select: { title: true, division: true, isActive: true, company: { select: { id: true, name: true } } } },
           assignedRecruiter: { select: { name: true } }
         }
       }),
       prisma.applicationActivity.findMany({
-        where: { action: 'STAGE_CHANGE', createdAt: { gte: from, lte: to } },
+        where: { action: 'STAGE_CHANGE', createdAt: { gte: from, lte: to }, ...(company ? { application: byPt } : {}) },
         select: {
           toStatus: true,
           createdAt: true,
@@ -69,14 +79,14 @@ async function downloadRecruitmentReport(req, res) {
               id: true,
               appliedAt: true,
               candidate: { select: { fullName: true, email: true } },
-              job: { select: { title: true } },
+              job: { select: { title: true, company: { select: { id: true, name: true } } } },
               assignedRecruiter: { select: { name: true } }
             }
           }
         }
       }),
       prisma.applicationActivity.findMany({
-        where: { action: 'CLAIM', createdAt: { gte: from, lte: to } },
+        where: { action: 'CLAIM', createdAt: { gte: from, lte: to }, ...(company ? { application: byPt } : {}) },
         select: { createdAt: true, actor: { select: { id: true, name: true } }, application: { select: { appliedAt: true } } }
       })
     ]);
@@ -95,6 +105,7 @@ async function downloadRecruitmentReport(req, res) {
     sum.columns = [{ header: 'Metrik', key: 'k' }, { header: 'Nilai', key: 'v' }];
     const rows = [
       ['Periode', `${fmt(from)} – ${fmt(to)}`],
+      ['Perusahaan (PT)', company ? company.name : 'Semua PT'],
       ['Lamaran masuk', apps.length],
       ['Lowongan yang menerima lamaran', new Set(apps.map((a) => a.jobId)).size],
       ['Kandidat diterima (Hired) di periode', hires.length],
@@ -113,10 +124,47 @@ async function downloadRecruitmentReport(req, res) {
     rows.forEach((r) => sum.addRow(r));
     styleSheet(sum, [46, 28]);
 
+    // 1b. Per PT
+    const ptName = (j) => (j && j.company ? j.company.name : 'Belum diisi');
+    const perPt = wb.addWorksheet('Per PT');
+    perPt.columns = [
+      { header: 'Perusahaan (PT)', key: 'pt' }, { header: 'Lowongan', key: 'jobs' }, { header: 'Pelamar', key: 'n' },
+      { header: 'Aktif', key: 'active' }, { header: 'Interview', key: 'interview' }, { header: 'Offering', key: 'offering' },
+      { header: 'Diterima di periode', key: 'hired' }, { header: 'Ditolak di periode', key: 'rejected' }, { header: 'Rata-rata ATS', key: 'ats' }
+    ];
+    const ptRows = new Map();
+    const ptRow = (name) => {
+      if (!ptRows.has(name)) ptRows.set(name, { pt: name, jobIds: new Set(), apps: [], hired: 0, rejected: 0 });
+      return ptRows.get(name);
+    };
+    apps.forEach((a) => {
+      const r = ptRow(ptName(a.job));
+      r.apps.push(a);
+      r.jobIds.add(a.jobId);
+    });
+    hires.forEach((m) => ptRow(ptName(m.application.job)).hired++);
+    rejections.forEach((m) => ptRow(ptName(m.application.job)).rejected++);
+    [...ptRows.values()]
+      .sort((x, y) => y.apps.length - x.apps.length)
+      .forEach((r) =>
+        perPt.addRow({
+          pt: r.pt,
+          jobs: r.jobIds.size,
+          n: r.apps.length,
+          active: r.apps.filter((a) => !CLOSED.includes(a.status)).length,
+          interview: r.apps.filter((a) => ['INTERVIEW_HR', 'INTERVIEW_USER'].includes(a.status)).length,
+          offering: r.apps.filter((a) => a.status === 'OFFERING').length,
+          hired: r.hired,
+          rejected: r.rejected,
+          ats: avg(r.apps.map((a) => a.atsScore || 0))
+        })
+      );
+    styleSheet(perPt, [36, 10, 10, 9, 10, 10, 18, 17, 13]);
+
     // 2. Per job
     const perJob = wb.addWorksheet('Per Lowongan');
     perJob.columns = [
-      { header: 'Lowongan', key: 'title' }, { header: 'Divisi', key: 'division' }, { header: 'Status', key: 'state' },
+      { header: 'Lowongan', key: 'title' }, { header: 'PT', key: 'pt' }, { header: 'Divisi', key: 'division' }, { header: 'Status', key: 'state' },
       { header: 'Pelamar', key: 'n' }, { header: 'Aktif', key: 'active' }, { header: 'Interview', key: 'interview' },
       { header: 'Offering', key: 'offering' }, { header: 'Diterima', key: 'hired' }, { header: 'Ditolak', key: 'rejected' },
       { header: 'Rata-rata ATS', key: 'ats' }
@@ -129,6 +177,7 @@ async function downloadRecruitmentReport(req, res) {
         const j = list[0].job;
         perJob.addRow({
           title: j.title,
+          pt: ptName(j),
           division: j.division,
           state: j.isActive ? 'Aktif' : 'Ditutup',
           n: list.length,
@@ -140,7 +189,7 @@ async function downloadRecruitmentReport(req, res) {
           ats: avg(list.map((a) => a.atsScore || 0))
         });
       });
-    styleSheet(perJob, [44, 34, 10, 10, 9, 10, 10, 10, 10, 13]);
+    styleSheet(perJob, [44, 30, 34, 10, 10, 9, 10, 10, 10, 10, 13]);
 
     // 3. Per recruiter
     const perRec = wb.addWorksheet('Per Recruiter');
@@ -173,7 +222,7 @@ async function downloadRecruitmentReport(req, res) {
     // 4. Hires
     const hired = wb.addWorksheet('Diterima');
     hired.columns = [
-      { header: 'Kandidat', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Lowongan', key: 'job' },
+      { header: 'Kandidat', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Lowongan', key: 'job' }, { header: 'PT', key: 'pt' },
       { header: 'Tanggal lamar', key: 'applied' }, { header: 'Tanggal diterima', key: 'hired' }, { header: 'Hari ke Hired', key: 'days' },
       { header: 'PIC', key: 'pic' }
     ];
@@ -182,19 +231,20 @@ async function downloadRecruitmentReport(req, res) {
         name: m.application.candidate.fullName,
         email: m.application.candidate.email,
         job: m.application.job.title,
+        pt: ptName(m.application.job),
         applied: new Date(m.application.appliedAt),
         hired: new Date(m.createdAt),
         days: daysToHire(m),
         pic: shortName(m.application.assignedRecruiter?.name) || '—'
       })
     );
-    styleSheet(hired, [28, 34, 40, 14, 16, 13, 24]);
+    styleSheet(hired, [28, 34, 40, 30, 14, 16, 13, 24]);
 
     // 5. Applicants
     const list = wb.addWorksheet('Pelamar');
     list.columns = [
       { header: 'Kandidat', key: 'name' }, { header: 'Email', key: 'email' }, { header: 'Telepon', key: 'phone' },
-      { header: 'Lowongan', key: 'job' }, { header: 'Sumber', key: 'source' }, { header: 'Tahap saat ini', key: 'stage' },
+      { header: 'Lowongan', key: 'job' }, { header: 'PT', key: 'pt' }, { header: 'Sumber', key: 'source' }, { header: 'Tahap saat ini', key: 'stage' },
       { header: 'Skor ATS', key: 'ats' }, { header: 'Tanggal lamar', key: 'applied' }, { header: 'PIC', key: 'pic' }
     ];
     apps.forEach((a) =>
@@ -203,6 +253,7 @@ async function downloadRecruitmentReport(req, res) {
         email: a.candidate.email,
         phone: a.candidate.phone,
         job: a.job.title,
+        pt: ptName(a.job),
         source: SOURCE_ID[a.candidate.intakeSource] || a.candidate.intakeSource,
         stage: STAGE_ID[a.status] || a.status,
         ats: Math.round(a.atsScore || 0),
@@ -210,13 +261,13 @@ async function downloadRecruitmentReport(req, res) {
         pic: shortName(a.assignedRecruiter?.name) || 'Belum diambil'
       })
     );
-    styleSheet(list, [28, 34, 16, 40, 16, 16, 10, 14, 24]);
+    styleSheet(list, [28, 34, 16, 40, 30, 16, 16, 10, 14, 24]);
     [hired.getColumn('applied'), hired.getColumn('hired'), list.getColumn('applied')].forEach((c) => (c.numFmt = 'dd mmm yyyy'));
 
     // Local calendar date (toISOString() would shift WIB midnight to the previous UTC day)
     const stamp = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="laporan-rekrutmen_${stamp(from)}_${stamp(to)}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="laporan-rekrutmen${company ? `_${company.code}` : ''}_${stamp(from)}_${stamp(to)}.xlsx"`);
     await wb.xlsx.write(res);
     return res.end();
   } catch (error) {

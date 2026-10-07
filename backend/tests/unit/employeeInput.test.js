@@ -27,7 +27,7 @@ test('valid input is normalised', () => {
 test('required fields, emails, status and date are checked', () => {
   const { errors } = sanitizeEmployeeInput({ ...valid, employeeNo: '', personalEmail: 'nope', employmentStatus: 'FREELANCE', joinDate: 'soon' });
   assert.equal(errors.length, 4);
-  assert.ok(errors.some((e) => e.includes('NIK')));
+  assert.ok(errors.some((e) => e.includes('Employee ID')));
 });
 
 test('status defaults to probation', () => {

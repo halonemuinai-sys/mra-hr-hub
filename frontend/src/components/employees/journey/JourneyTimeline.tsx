@@ -9,7 +9,7 @@ import { fmtDays } from './JourneyStageBar';
 
 const dotOf = (status: string) => ALL_STAGES.find((s) => s.key === status)?.dot || 'bg-slate-400';
 const when = (d: string) =>
-  new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 function StageData({ data }: { data: Record<string, any> | null }) {
   const fields = Object.entries(data || {}).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && !v.length));
@@ -78,19 +78,19 @@ export default function JourneyTimeline({ stages, afterHire, appliedVia, joinDat
               )}
             </span>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <p className="text-xs font-bold text-slate-900">{first ? 'CV diterima' : stageLabel(s.status)}</p>
+              <p className="text-xs font-bold text-slate-900">{first ? 'CV received' : stageLabel(s.status)}</p>
               {s.backward && (
-                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold">dipindah mundur</span>
+                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-bold">moved back</span>
               )}
               {s.days !== null && s.days !== undefined && (
                 <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-semibold tabular-nums">
-                  {fmtDays(s.days)} di tahap ini
+                  {fmtDays(s.days)} in this stage
                 </span>
               )}
             </div>
             <p className="text-[10px] text-slate-400 mt-0.5">
               {when(s.enteredAt)}
-              {first ? ` · ${appliedVia}` : s.by ? ` · oleh ${shortName(s.by)}` : ''}
+              {first ? ` · ${appliedVia}` : s.by ? ` · by ${shortName(s.by)}` : ''}
             </p>
             {s.note && <p className="mt-1 text-[11px] text-slate-600 italic">“{s.note}”</p>}
             <StageData data={s.data} />
@@ -110,7 +110,7 @@ export default function JourneyTimeline({ stages, afterHire, appliedVia, joinDat
           <span className="absolute -left-[13px] top-0 w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center">
             <BadgeCheck className="w-3.5 h-3.5" />
           </span>
-          <p className="text-xs font-bold text-slate-900">Setelah diterima</p>
+          <p className="text-xs font-bold text-slate-900">After the hire</p>
           <ul className="mt-2 space-y-1.5">
             {afterHire.map((a: any) => (
               <EventRow key={a.id || a.createdAt + a.action} a={a} />
@@ -121,9 +121,9 @@ export default function JourneyTimeline({ stages, afterHire, appliedVia, joinDat
                   <CalendarCheck className="w-3 h-3" />
                 </span>
                 <p className="text-[11px] text-slate-700">
-                  {new Date(joinDate).getTime() <= Date.now() ? 'Mulai bekerja' : 'Dijadwalkan mulai bekerja'}{' '}
+                  {new Date(joinDate).getTime() <= Date.now() ? 'Started work on' : 'Scheduled to start on'}{' '}
                   <b>
-                    {new Date(joinDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}
+                    {new Date(joinDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}
                   </b>
                 </p>
               </li>

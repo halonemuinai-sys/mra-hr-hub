@@ -84,13 +84,17 @@ model JobPosting {
   isActive         Boolean          @default(true)
   // Hiring Manager who owns this job (sees its candidates, confirms hires). Null = any Hiring Manager.
   hiringManagerId  String?
+  // Legal entity (PT) within MRA Group that hires for this job
+  companyId        String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   applications     JobApplication[]
   hiringManager    User?            @relation("JobHiringManager", fields: [hiringManagerId], references: [id], onDelete: SetNull)
   employees        Employee[]
+  company          Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
   @@index([hiringManagerId])
+  @@index([companyId])
 }
 
 model Candidate {
@@ -252,6 +256,8 @@ model Employee {
   applicationId       String?          @unique
   candidateId         String?
   jobId               String?
+  // Employing PT (from the job, can differ)
+  companyId           String?
   fullName            String
   personalEmail       String
   workEmail           String?
@@ -283,9 +289,27 @@ model Employee {
   application         JobApplication?  @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   candidate           Candidate?       @relation(fields: [candidateId], references: [id], onDelete: SetNull)
   job                 JobPosting?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  company             Company?         @relation(fields: [companyId], references: [id], onDelete: SetNull)
   createdBy           User?            @relation("EmployeeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   announcedBy         User?            @relation("EmployeeAnnouncedBy", fields: [announcedById], references: [id], onDelete: SetNull)
 
   @@index([announcedAt])
   @@index([joinDate])
+  @@index([companyId])
+}
+
+// Legal entities (PT) of MRA Group — managed by Super Admin (company.manage)
+model Company {
+  id            String       @id @default(uuid())
+  code          String       @unique // short code shown in lists, e.g. MRA
+  name          String       @unique // PT Mugi Rekso Abadi
+  npwp          String?
+  address       String?      @db.Text
+  // Default Talenta branch for this PT (one Talenta account for the whole group)
+  talentaBranch String?
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  jobs          JobPosting[]
+  employees     Employee[]
 }

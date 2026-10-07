@@ -23,10 +23,13 @@ const { hasPermission } = require('../config/permissions');
 const { PENDING } = require('../services/stageMoveService');
 const { jobScope, applicationScope, canAccessJob } = require('../services/hiringManagerScope');
 const { buildJourney } = require('../services/journeyService');
+const { companyError, companyFilterValue } = require('./companyController');
+
+const COMPANY = { select: { id: true, code: true, name: true } };
 const { sanitizeEmployeeInput, suggestEmployeeNo } = require('../services/employeeInput');
 
 const STATUS_FROM_JOB_TYPE = { contract: 'CONTRACT', internship: 'INTERNSHIP', magang: 'INTERNSHIP', kontrak: 'CONTRACT' };
-const STATUS_LABELS = { PROBATION: 'Probation', CONTRACT: 'Kontrak', PERMANENT: 'Tetap', INTERNSHIP: 'Magang' };
+const STATUS_LABELS = { PROBATION: 'Probation', CONTRACT: 'Contract', PERMANENT: 'Permanent', INTERNSHIP: 'Internship' };
 const MAX_MESSAGE = 1000;
 
 const isLead = (user) => hasPermission(user, 'pipeline.move.any');
@@ -63,6 +66,7 @@ const joinDateOf = (app) => {
 
 const EMPLOYEE_INCLUDE = {
   job: { select: { id: true, title: true } },
+  company: COMPANY,
   createdBy: { select: { id: true, name: true } },
   announcedBy: { select: { id: true, name: true } },
   application: { select: { id: true, assignedRecruiterId: true, assignedRecruiter: { select: { id: true, name: true } } } }
@@ -74,6 +78,8 @@ function employeeWhere(req) {
   const scope = jobScope(req.user);
   if (scope) where.job = scope;
   if (status && STATUS_LABELS[status]) where.employmentStatus = status;
+  const pt = companyFilterValue(req.query.companyId);
+  if (pt !== undefined) where.companyId = pt;
   if (announced === 'yes') where.announcedAt = { not: null };
   if (announced === 'no') where.announcedAt = null;
   if (search && String(search).trim()) {
@@ -111,7 +117,7 @@ async function listPendingHires(req, res) {
         stageChangedAt: true,
         assignedRecruiterId: true,
         candidate: { select: { id: true, fullName: true, email: true, headline: true } },
-        job: { select: { id: true, title: true, department: true, division: true, location: true } },
+        job: { select: { id: true, title: true, department: true, division: true, location: true, company: COMPANY } },
         assignedRecruiter: { select: { id: true, name: true } },
         activities: HIRE_MOVE
       }
@@ -136,7 +142,7 @@ async function loadHire(user, applicationId) {
       candidate: { select: { id: true, fullName: true, email: true, phone: true } },
       job: {
         select: {
-          id: true, title: true, department: true, division: true, location: true, employmentType: true,
+          id: true, title: true, department: true, division: true, location: true, employmentType: true, companyId: true,
           hiringManager: { select: { name: true } }
         }
       },
@@ -145,10 +151,10 @@ async function loadHire(user, applicationId) {
       activities: HIRE_MOVE
     }
   });
-  if (!app) return { status: 404, message: 'Lamaran tidak ditemukan.' };
-  if (app.status !== 'HIRED') return { status: 409, message: 'Hanya kandidat berstatus Hired yang bisa didaftarkan sebagai karyawan.' };
-  if (app.employee) return { status: 409, message: 'Kandidat ini sudah terdaftar sebagai karyawan.' };
-  if (!canHandleHire(user, app)) return { status: 403, message: 'Hanya PIC kandidat ini atau TA Lead yang dapat mendaftarkannya.' };
+  if (!app) return { status: 404, message: 'Application not found.' };
+  if (app.status !== 'HIRED') return { status: 409, message: 'Only Hired candidates can be registered as employees.' };
+  if (app.employee) return { status: 409, message: 'This candidate is already registered as an employee.' };
+  if (!canHandleHire(user, app)) return { status: 403, message: 'Only this candidate\'s PIC or a TA Lead can register them.' };
   return { app };
 }
 
@@ -180,6 +186,7 @@ async function prefillEmployee(req, res) {
           employmentStatus: STATUS_FROM_JOB_TYPE[String(job.employmentType || '').toLowerCase()] || 'PROBATION',
           joinDate: dayString(joinDateOf(app)) || '',
           managerName: (job.hiringManager && job.hiringManager.name) || '',
+          companyId: job.companyId || '',
           notes: ''
         }
       }
@@ -202,13 +209,17 @@ async function registerEmployee(req, res) {
     const { app, status, message } = await loadHire(req.user, req.body && req.body.applicationId);
     if (!app) return res.status(status).json({ success: false, message });
     if (app.stageRequests.length) {
-      return res.status(409).json({ success: false, message: 'Masih ada approval yang menunggu untuk kandidat ini.' });
+      return res.status(409).json({ success: false, message: 'This candidate still has a pending approval.' });
     }
 
     const { data, errors } = sanitizeEmployeeInput(req.body);
     const announce = !!req.body.announce;
     const announcementMessage = cleanMessage(req.body.announcementMessage);
-    if (announce && !announcementMessage) errors.push('Isi pesan pengumuman, atau matikan opsi umumkan.');
+    if (announce && !announcementMessage) errors.push('Write the announcement message, or turn the announcement off.');
+    // Employing PT: as sent by the form, otherwise the job's PT
+    const companyId = req.body.companyId !== undefined ? req.body.companyId || null : (app.job && app.job.companyId) || null;
+    const ptError = await companyError(companyId);
+    if (ptError) errors.push(ptError);
     if (errors.length) return res.status(400).json({ success: false, message: errors[0], errors });
 
     const now = new Date();
@@ -219,13 +230,14 @@ async function registerEmployee(req, res) {
           applicationId: app.id,
           candidateId: app.candidateId,
           jobId: app.jobId,
+          companyId,
           createdById: req.user.id,
           ...(announce ? { announcedAt: now, announcedById: req.user.id, announcementMessage } : {})
         },
         include: EMPLOYEE_INCLUDE
       });
       if (!app.releasedAt) await tx.jobApplication.update({ where: { id: app.id }, data: { releasedAt: now } });
-      const log = [{ applicationId: app.id, actorId: req.user.id, action: 'EMPLOYEE_REGISTERED', note: `NIK ${data.employeeNo}` }];
+      const log = [{ applicationId: app.id, actorId: req.user.id, action: 'EMPLOYEE_REGISTERED', note: `Employee ID ${data.employeeNo}` }];
       if (announce) log.push({ applicationId: app.id, actorId: req.user.id, action: 'EMPLOYEE_ANNOUNCED' });
       await tx.applicationActivity.createMany({ data: log });
       return emp;
@@ -233,11 +245,11 @@ async function registerEmployee(req, res) {
 
     return res.status(201).json({
       success: true,
-      message: `${employee.fullName} terdaftar sebagai karyawan (${employee.employeeNo})${announce ? ' dan sudah diumumkan' : ''}.`,
+      message: `${employee.fullName} registered as an employee (${employee.employeeNo})${announce ? ' and announced' : ''}.`,
       data: publicEmployee(employee, req.user)
     });
   } catch (error) {
-    if (duplicateNo(error)) return res.status(409).json({ success: false, message: 'NIK karyawan sudah dipakai. Gunakan nomor lain.' });
+    if (duplicateNo(error)) return res.status(409).json({ success: false, message: 'That employee ID is already used. Choose another one.' });
     console.error('Error registering employee:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -245,8 +257,8 @@ async function registerEmployee(req, res) {
 
 async function loadEditable(user, id) {
   const emp = await prisma.employee.findUnique({ where: { id: String(id) }, include: EMPLOYEE_INCLUDE });
-  if (!emp) return { status: 404, message: 'Data karyawan tidak ditemukan.' };
-  if (!canEditEmployee(user, emp)) return { status: 403, message: 'Anda tidak dapat mengubah data karyawan ini.' };
+  if (!emp) return { status: 404, message: 'Employee not found.' };
+  if (!canEditEmployee(user, emp)) return { status: 403, message: 'You cannot edit this employee.' };
   return { emp };
 }
 
@@ -255,13 +267,18 @@ async function updateEmployee(req, res) {
     const { emp, status, message } = await loadEditable(req.user, req.params.id);
     if (!emp) return res.status(status).json({ success: false, message });
     const { data, errors } = sanitizeEmployeeInput(req.body, { partial: true });
+    if (req.body.companyId !== undefined) {
+      data.companyId = req.body.companyId || null;
+      const ptError = await companyError(data.companyId);
+      if (ptError) errors.push(ptError);
+    }
     if (errors.length) return res.status(400).json({ success: false, message: errors[0], errors });
-    if (!Object.keys(data).length) return res.status(400).json({ success: false, message: 'Tidak ada perubahan.' });
+    if (!Object.keys(data).length) return res.status(400).json({ success: false, message: 'Nothing to update.' });
 
     const updated = await prisma.employee.update({ where: { id: emp.id }, data, include: EMPLOYEE_INCLUDE });
-    return res.json({ success: true, message: 'Data karyawan diperbarui.', data: publicEmployee(updated, req.user) });
+    return res.json({ success: true, message: 'Employee updated.', data: publicEmployee(updated, req.user) });
   } catch (error) {
-    if (duplicateNo(error)) return res.status(409).json({ success: false, message: 'NIK karyawan sudah dipakai. Gunakan nomor lain.' });
+    if (duplicateNo(error)) return res.status(409).json({ success: false, message: 'That employee ID is already used. Choose another one.' });
     console.error('Error updating employee:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -272,7 +289,7 @@ async function announceEmployee(req, res) {
     const { emp, status, message } = await loadEditable(req.user, req.params.id);
     if (!emp) return res.status(status).json({ success: false, message });
     const text = cleanMessage(req.body && req.body.message);
-    if (!text) return res.status(400).json({ success: false, message: 'Pesan pengumuman wajib diisi.' });
+    if (!text) return res.status(400).json({ success: false, message: 'The announcement message is required.' });
 
     const first = !emp.announcedAt;
     const updated = await prisma.$transaction(async (tx) => {
@@ -287,7 +304,7 @@ async function announceEmployee(req, res) {
       }
       return u;
     });
-    return res.json({ success: true, message: first ? `${emp.fullName} sudah diumumkan.` : 'Pengumuman diperbarui.', data: publicEmployee(updated, req.user) });
+    return res.json({ success: true, message: first ? `${emp.fullName} has been announced.` : 'Announcement updated.', data: publicEmployee(updated, req.user) });
   } catch (error) {
     console.error('Error announcing employee:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -298,13 +315,13 @@ async function withdrawAnnouncement(req, res) {
   try {
     const { emp, status, message } = await loadEditable(req.user, req.params.id);
     if (!emp) return res.status(status).json({ success: false, message });
-    if (!emp.announcedAt) return res.status(409).json({ success: false, message: 'Karyawan ini belum diumumkan.' });
+    if (!emp.announcedAt) return res.status(409).json({ success: false, message: 'This employee has not been announced.' });
     const updated = await prisma.employee.update({
       where: { id: emp.id },
       data: { announcedAt: null, announcedById: null },
       include: EMPLOYEE_INCLUDE
     });
-    return res.json({ success: true, message: 'Pengumuman ditarik.', data: publicEmployee(updated, req.user) });
+    return res.json({ success: true, message: 'Announcement withdrawn.', data: publicEmployee(updated, req.user) });
   } catch (error) {
     console.error('Error withdrawing announcement:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -321,7 +338,7 @@ async function getEmployeeJourney(req, res) {
         job: { select: { id: true, title: true, department: true, division: true, location: true, hiringManagerId: true, hiringManager: { select: { name: true } } } }
       }
     });
-    if (!emp || !canAccessJob(req.user, emp.job)) return res.status(404).json({ success: false, message: 'Data karyawan tidak ditemukan.' });
+    if (!emp || !canAccessJob(req.user, emp.job)) return res.status(404).json({ success: false, message: 'Employee not found.' });
 
     const app = emp.applicationId
       ? await prisma.jobApplication.findUnique({
@@ -416,16 +433,16 @@ async function restoreHire(req, res) {
       where: { id: String((req.body && req.body.applicationId) || '') },
       select: { id: true, status: true, releasedAt: true, assignedRecruiterId: true, employee: { select: { id: true } } }
     });
-    if (!app) return res.status(404).json({ success: false, message: 'Lamaran tidak ditemukan.' });
-    if (!app.releasedAt) return res.status(409).json({ success: false, message: 'Kandidat ini masih ada di pipeline.' });
-    if (app.employee) return res.status(409).json({ success: false, message: 'Sudah terdaftar sebagai karyawan — tidak bisa dikembalikan ke pipeline.' });
-    if (!canHandleHire(req.user, app)) return res.status(403).json({ success: false, message: 'Hanya PIC kandidat ini atau TA Lead yang dapat mengembalikannya.' });
+    if (!app) return res.status(404).json({ success: false, message: 'Application not found.' });
+    if (!app.releasedAt) return res.status(409).json({ success: false, message: 'This candidate is still on the pipeline board.' });
+    if (app.employee) return res.status(409).json({ success: false, message: 'Already registered as an employee — cannot be put back on the pipeline.' });
+    if (!canHandleHire(req.user, app)) return res.status(403).json({ success: false, message: 'Only this candidate\'s PIC or a TA Lead can restore them.' });
 
     await prisma.$transaction([
       prisma.jobApplication.update({ where: { id: app.id }, data: { releasedAt: null } }),
       prisma.applicationActivity.create({ data: { applicationId: app.id, actorId: req.user.id, action: 'HIRE_RESTORED' } })
     ]);
-    return res.json({ success: true, message: 'Dikembalikan ke kolom Hired di pipeline.' });
+    return res.json({ success: true, message: 'Restored to the Hired column of the pipeline.' });
   } catch (error) {
     console.error('Error restoring hire:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -467,31 +484,33 @@ async function exportEmployees(req, res) {
     const rows = await prisma.employee.findMany({
       where: employeeWhere(req),
       orderBy: [{ joinDate: 'desc' }, { createdAt: 'desc' }],
-      include: { createdBy: { select: { name: true } } }
+      include: { createdBy: { select: { name: true } }, company: COMPANY }
     });
     const wb = new ExcelJS.Workbook();
     wb.creator = 'MRA HR HUB';
-    const ws = wb.addWorksheet('Karyawan Baru');
+    const ws = wb.addWorksheet('New Employees');
     ws.columns = [
-      { header: 'NIK', key: 'employeeNo', width: 16 },
-      { header: 'Nama Lengkap', key: 'fullName', width: 28 },
-      { header: 'Jabatan', key: 'position', width: 30 },
-      { header: 'Departemen', key: 'department', width: 22 },
-      { header: 'Divisi / Unit', key: 'division', width: 20 },
-      { header: 'Lokasi Kerja', key: 'workLocation', width: 20 },
+      { header: 'Employee ID', key: 'employeeNo', width: 16 },
+      { header: 'Full Name', key: 'fullName', width: 28 },
+      { header: 'Position', key: 'position', width: 30 },
+      { header: 'Department', key: 'department', width: 22 },
+      { header: 'Company (PT)', key: 'company', width: 28 },
+      { header: 'Division / Unit', key: 'division', width: 20 },
+      { header: 'Work Location', key: 'workLocation', width: 20 },
       { header: 'Status', key: 'status', width: 12 },
-      { header: 'Tanggal Bergabung', key: 'joinDate', width: 16 },
-      { header: 'Atasan Langsung', key: 'managerName', width: 22 },
-      { header: 'Email Pribadi', key: 'personalEmail', width: 28 },
-      { header: 'Email Kantor', key: 'workEmail', width: 28 },
-      { header: 'No. HP', key: 'phone', width: 16 },
-      { header: 'Didaftarkan Oleh', key: 'createdBy', width: 20 },
-      { header: 'Catatan', key: 'notes', width: 30 }
+      { header: 'Join Date', key: 'joinDate', width: 16 },
+      { header: 'Direct Manager', key: 'managerName', width: 22 },
+      { header: 'Personal Email', key: 'personalEmail', width: 28 },
+      { header: 'Work Email', key: 'workEmail', width: 28 },
+      { header: 'Mobile', key: 'phone', width: 16 },
+      { header: 'Registered By', key: 'createdBy', width: 20 },
+      { header: 'Notes', key: 'notes', width: 30 }
     ];
     rows.forEach((e) => ws.addRow({
       ...e,
       status: STATUS_LABELS[e.employmentStatus] || e.employmentStatus,
-      createdBy: e.createdBy ? e.createdBy.name : ''
+      createdBy: e.createdBy ? e.createdBy.name : '',
+      company: e.company ? e.company.name : ''
     }));
     const header = ws.getRow(1);
     header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -503,7 +522,7 @@ async function exportEmployees(req, res) {
     const d = new Date();
     const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="karyawan-baru_${stamp}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="new-employees_${stamp}.xlsx"`);
     await wb.xlsx.write(res);
     return res.end();
   } catch (error) {

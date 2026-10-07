@@ -127,9 +127,9 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
             <CloudUpload className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-slate-900">Kirim ke Talenta</h3>
+            <h3 className="text-sm font-bold text-slate-900">Send to Talenta</h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate">
-              {view ? `${view.employee.fullName} · ${view.employee.employeeNo} · ${view.employee.email}` : 'Memuat…'}
+              {view ? `${view.employee.fullName} · ${view.employee.employeeNo} · ${view.employee.email}` : 'Loading…'}
             </p>
           </div>
           {cfg && (
@@ -145,7 +145,7 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
               {cfg.label}
             </span>
           )}
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -153,14 +153,14 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {cfg?.mode === 'mock' && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-800">
-              <b>Mode simulasi.</b> Data tidak dikirim ke Talenta sungguhan; respons &amp; error meniru dokumentasi Talenta API. Setelah
-              kredensial didapat, isi <code className="font-mono">TALENTA_HMAC_USERNAME</code>, <code className="font-mono">TALENTA_HMAC_SECRET</code> dan{' '}
-              <code className="font-mono">TALENTA_MODE=sandbox</code> di <code className="font-mono">backend/.env</code>.
+              <b>Simulation mode.</b> Nothing is sent to the real Talenta; responses &amp; errors mimic the Talenta API docs. Once the
+              credentials arrive, set <code className="font-mono">TALENTA_HMAC_USERNAME</code>, <code className="font-mono">TALENTA_HMAC_SECRET</code> and{' '}
+              <code className="font-mono">TALENTA_MODE=sandbox</code> in <code className="font-mono">backend/.env</code>.
             </div>
           )}
           {cfg && !cfg.ready && cfg.mode !== 'mock' && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-800">
-              {cfg.mode === 'off' ? 'Integrasi Talenta nonaktif (TALENTA_MODE=off).' : `Kredensial belum diisi: ${cfg.missing.join(', ')}.`}
+              {cfg.mode === 'off' ? 'Talenta integration is off (TALENTA_MODE=off).' : `Credentials missing: ${cfg.missing.join(', ')}.`}
             </div>
           )}
 
@@ -170,19 +170,19 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
               <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${sent ? 'text-emerald-600' : 'text-slate-400'}`} />
               <div className="text-[11px] text-slate-700">
                 <p className="font-bold text-slate-900">
-                  {sent ? `Sudah terkirim ke ${cfg?.label}` : `Pernah terkirim ke mode ${sync.mode} — belum ke ${cfg?.label}`}
+                  {sent ? `Already sent to ${cfg?.label}` : `Sent to ${sync.mode} mode before — not yet to ${cfg?.label}`}
                 </p>
                 <p className="mt-0.5">
                   user_id <b className="font-mono">{sync.userId || '-'}</b> · Employee ID <b className="font-mono">{sync.employeeId || '-'}</b> · {fmtDate(sync.syncedAt)}
                 </p>
-                {sent && <p className="mt-1 text-slate-500">Perubahan data setelah ini dilakukan langsung di Talenta.</p>}
+                {sent && <p className="mt-1 text-slate-500">Further changes are made directly in Talenta.</p>}
               </div>
             </div>
           )}
           {sync?.status === 'FAILED' && sync.error && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-900">
               <p className="font-bold flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" /> Pengiriman terakhir ditolak Talenta ({fmtDate(sync.syncedAt)})
+                <AlertTriangle className="w-3.5 h-3.5" /> Last send rejected by Talenta ({fmtDate(sync.syncedAt)})
               </p>
               <ul className="mt-1 list-disc pl-5 space-y-0.5">
                 {String(sync.error)
@@ -196,7 +196,7 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
 
           {view?.masterError && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] text-amber-800 flex items-center justify-between gap-3">
-              <span>Master data Talenta tidak bisa dimuat: {view.masterError}. Isian branch/organisasi/posisi/level diketik manual.</span>
+              <span>Talenta master data could not be loaded: {view.masterError}. Branch / organization / position / level are typed manually.</span>
             </div>
           )}
 
@@ -218,12 +218,12 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
                       disabled={busy === 'masters'}
                       className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:opacity-50"
                     >
-                      <RefreshCw className={`w-3 h-3 ${busy === 'masters' ? 'animate-spin' : ''}`} /> Muat ulang master data
+                      <RefreshCw className={`w-3 h-3 ${busy === 'masters' ? 'animate-spin' : ''}`} /> Reload master data
                     </button>
                   )}
                 </div>
                 {s.key === 'employment' && (
-                  <p className="text-[10px] text-slate-500 -mt-2 mb-3">Nama harus sama persis dengan master data di Talenta.</p>
+                  <p className="text-[10px] text-slate-500 -mt-2 mb-3">Names must match the Talenta master data exactly.</p>
                 )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {fields
@@ -252,7 +252,7 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
                 className="w-full px-4 py-3 flex items-center justify-between text-xs font-bold text-slate-700"
               >
                 <span className="flex items-center gap-1.5">
-                  <Code2 className="w-3.5 h-3.5 text-blue-600" /> Payload yang dikirim ke Talenta {dirty && <span className="font-normal text-slate-400">(simpan untuk memperbarui)</span>}
+                  <Code2 className="w-3.5 h-3.5 text-blue-600" /> Payload sent to Talenta {dirty && <span className="font-normal text-slate-400">(save to refresh)</span>}
                 </span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${showPayload ? 'rotate-180' : ''}`} />
               </button>
@@ -270,10 +270,10 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
           {!sent && view && (
             <p className={`text-[11px] ${missing.length || (!dirty && serverErrors.length) ? 'text-amber-700' : 'text-emerald-700'}`}>
               {missing.length
-                ? `${missing.length} data wajib belum diisi: ${missing.slice(0, 4).map((f) => f.label).join(', ')}${missing.length > 4 ? '…' : ''}`
+                ? `${missing.length} required field(s) missing: ${missing.slice(0, 4).map((f) => f.label).join(', ')}${missing.length > 4 ? '…' : ''}`
                 : !dirty && serverErrors.length
                 ? serverErrors[0]
-                : 'Data wajib lengkap — siap dikirim.'}
+                : 'All required fields filled — ready to send.'}
             </p>
           )}
           {error && (
@@ -283,7 +283,7 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
           )}
           <div className="flex items-center justify-end gap-2">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
-              Tutup
+              Close
             </button>
             {!sent && (
               <>
@@ -294,7 +294,7 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
                   className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {busy === 'save' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  Simpan draft
+                  Save draft
                 </button>
                 <button
                   type="button"
@@ -303,7 +303,7 @@ export default function TalentaSyncDrawer({ employeeId, onClose, onChanged }: Pr
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {busy === 'send' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CloudUpload className="w-3.5 h-3.5" />}
-                  {cfg?.mode === 'mock' ? 'Kirim (simulasi)' : 'Kirim ke Talenta'}
+                  {cfg?.mode === 'mock' ? 'Send (simulation)' : 'Send to Talenta'}
                 </button>
               </>
             )}

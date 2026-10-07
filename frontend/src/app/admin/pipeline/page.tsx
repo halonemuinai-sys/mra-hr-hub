@@ -121,6 +121,7 @@ export default function PipelinePage() {
     try {
       const params: Record<string, string> = {};
       if (filters.jobId) params.jobId = filters.jobId;
+      if (filters.companyId) params.companyId = filters.companyId;
       if (filters.jobFamily) params.jobFamily = filters.jobFamily;
       if (filters.minScore) params.minScore = filters.minScore;
       if (filters.search.trim()) params.search = filters.search.trim();
@@ -131,7 +132,7 @@ export default function PipelinePage() {
     } finally {
       setLoading(false);
     }
-  }, [filters.jobId, filters.jobFamily, filters.minScore, filters.search]);
+  }, [filters.jobId, filters.companyId, filters.jobFamily, filters.minScore, filters.search]);
 
   useEffect(() => {
     api.getJobs({ activeOnly: false })

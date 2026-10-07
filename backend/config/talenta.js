@@ -18,8 +18,8 @@ const BASE_URLS = {
 };
 
 const MODE_LABELS = {
-  off: 'Nonaktif',
-  mock: 'Simulasi (lokal)',
+  off: 'Off',
+  mock: 'Simulation (local)',
   sandbox: 'Talenta Sandbox',
   production: 'Talenta Production'
 };

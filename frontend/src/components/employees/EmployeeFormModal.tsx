@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BadgeCheck, Loader2, Megaphone, X } from 'lucide-react';
 import { api } from '@/lib/api';
+import CompanySelect from '@/components/companies/CompanySelect';
+import { useCompanies } from '@/components/companies/useCompanies';
 import { announcementDraft, EMPLOYMENT_STATUSES } from './employeeFormat';
 
 type Values = Record<string, string>;
@@ -18,17 +20,17 @@ interface Props {
 }
 
 const FIELDS: { key: string; label: string; required?: boolean; type?: string; span?: boolean; placeholder?: string }[] = [
-  { key: 'employeeNo', label: 'NIK karyawan', required: true, placeholder: 'MRA-2026-0001' },
-  { key: 'joinDate', label: 'Tanggal bergabung', required: true, type: 'date' },
-  { key: 'fullName', label: 'Nama lengkap', required: true, span: true },
-  { key: 'position', label: 'Jabatan', required: true },
-  { key: 'department', label: 'Departemen', required: true },
-  { key: 'division', label: 'Divisi / unit bisnis', required: true },
-  { key: 'workLocation', label: 'Lokasi kerja', required: true },
-  { key: 'managerName', label: 'Atasan langsung' },
-  { key: 'phone', label: 'No. HP' },
-  { key: 'personalEmail', label: 'Email pribadi', required: true, type: 'email' },
-  { key: 'workEmail', label: 'Email kantor', type: 'email', placeholder: 'nama@mragroup.co.id' }
+  { key: 'employeeNo', label: 'Employee ID (NIK)', required: true, placeholder: 'MRA-2026-0001' },
+  { key: 'joinDate', label: 'Join date', required: true, type: 'date' },
+  { key: 'fullName', label: 'Full name', required: true, span: true },
+  { key: 'position', label: 'Position', required: true },
+  { key: 'department', label: 'Department', required: true },
+  { key: 'division', label: 'Division / business unit', required: true },
+  { key: 'workLocation', label: 'Work location', required: true },
+  { key: 'managerName', label: 'Direct manager' },
+  { key: 'phone', label: 'Mobile number' },
+  { key: 'personalEmail', label: 'Personal email', required: true, type: 'email' },
+  { key: 'workEmail', label: 'Work email', type: 'email', placeholder: 'nama@mragroup.co.id' }
 ];
 
 const fromEmployee = (e: any): Values => ({
@@ -44,12 +46,15 @@ const fromEmployee = (e: any): Values => ({
   personalEmail: e.personalEmail || '',
   workEmail: e.workEmail || '',
   employmentStatus: e.employmentStatus || 'PROBATION',
-  notes: e.notes || ''
+  notes: e.notes || '',
+  companyId: e.companyId || ''
 });
 
 export default function EmployeeFormModal({ applicationId, employee, onClose, onSaved }: Props) {
   const editing = !!employee;
   const [values, setValues] = useState<Values | null>(editing ? fromEmployee(employee) : null);
+  const { companies } = useCompanies();
+  const needsCompany = companies.some((c) => c.isActive);
   const [context, setContext] = useState<{ candidate?: any; job?: any } | null>(null);
   const [loadError, setLoadError] = useState('');
   const [announce, setAnnounce] = useState(true);
@@ -117,16 +122,16 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
             <BadgeCheck className="w-5 h-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-bold text-slate-900">{editing ? 'Ubah data karyawan' : 'Daftarkan sebagai karyawan'}</h3>
+            <h3 className="text-sm font-bold text-slate-900">{editing ? 'Edit employee' : 'Register as employee'}</h3>
             <p className="text-xs text-slate-500 mt-0.5 truncate">
               {editing
                 ? `${employee.fullName} · ${employee.employeeNo}`
                 : context
-                ? `${context.candidate?.fullName} · diterima untuk ${context.job?.title}`
-                : 'Memuat data kandidat…'}
+                ? `${context.candidate?.fullName} · hired for ${context.job?.title}`
+                : 'Loading candidate data…'}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+          <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -144,8 +149,8 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
             <>
               {!editing && (
                 <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                  Data diisi otomatis dari profil kandidat, lowongan, dan tanggal join saat konfirmasi Hired. Setelah disimpan,
-                  kartu kandidat keluar dari pipeline.
+                  Prefilled from the candidate profile, the job and the join date confirmed at Hired. Once saved, the candidate
+                  card leaves the pipeline.
                 </p>
               )}
 
@@ -167,7 +172,19 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
                   </label>
                 ))}
                 <label className="space-y-1">
-                  <span className="text-[11px] font-bold text-slate-600">Status kepegawaian</span>
+                  <span className="text-[11px] font-bold text-slate-600">
+                    Employing company (PT){needsCompany && <span className="text-amber-600"> *</span>}
+                  </span>
+                  <CompanySelect
+                    companies={companies}
+                    value={values.companyId || ''}
+                    onChange={(id) => set('companyId', id)}
+                    required={needsCompany}
+                    placeholder="— Choose a company (PT) —"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-[11px] font-bold text-slate-600">Employment status</span>
                   <select value={values.employmentStatus} onChange={(e) => set('employmentStatus', e.target.value)} className={input}>
                     {EMPLOYMENT_STATUSES.map((s) => (
                       <option key={s.key} value={s.key}>
@@ -177,12 +194,12 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
                   </select>
                 </label>
                 <label className="space-y-1 sm:col-span-2">
-                  <span className="text-[11px] font-bold text-slate-600">Catatan onboarding</span>
+                  <span className="text-[11px] font-bold text-slate-600">Onboarding notes</span>
                   <textarea
                     value={values.notes || ''}
                     onChange={(e) => set('notes', e.target.value)}
                     rows={2}
-                    placeholder="Mis. perlengkapan kerja, akses sistem, jadwal orientasi…"
+                    placeholder="E.g. equipment, system access, orientation schedule…"
                     className={`${input} resize-none`}
                   />
                 </label>
@@ -198,7 +215,7 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
                       className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30"
                     />
                     <Megaphone className="w-3.5 h-3.5 text-blue-600" />
-                    Umumkan di papan &quot;Selamat Bergabung&quot;
+                    Announce on the &quot;Welcome Aboard&quot; board
                   </label>
                   {announce && (
                     <>
@@ -213,14 +230,14 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
                         className={`${input} resize-none bg-white`}
                       />
                       <div className="flex items-center justify-between text-[10px] text-slate-500">
-                        <span>Tampil untuk semua user HR HUB, tanpa data kontak.</span>
+                        <span>Visible to every HR HUB user, without contact details.</span>
                         {messageEdited && (
                           <button
                             type="button"
                             onClick={() => setMessageEdited(false)}
                             className="font-bold text-blue-600 hover:text-blue-800"
                           >
-                            Pakai teks otomatis
+                            Use generated text
                           </button>
                         )}
                       </div>
@@ -238,7 +255,7 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
           </p>
           <div className="flex gap-2 shrink-0">
             <button type="button" onClick={onClose} className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50">
-              Batal
+              Cancel
             </button>
             <button
               type="submit"
@@ -246,7 +263,7 @@ export default function EmployeeFormModal({ applicationId, employee, onClose, on
               className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5"
             >
               {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {editing ? 'Simpan perubahan' : announce ? 'Daftarkan & umumkan' : 'Daftarkan'}
+              {editing ? 'Save changes' : announce ? 'Register & announce' : 'Register'}
             </button>
           </div>
         </div>

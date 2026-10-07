@@ -30,6 +30,7 @@ export type JobForm = {
   niceToHaveSkills: string[];
   isActive: boolean;
   hiringManagerId: string;
+  companyId: string;
 };
 
 export const EMPTY_JOB: JobForm = {
@@ -48,7 +49,8 @@ export const EMPTY_JOB: JobForm = {
   mustHaveSkills: [],
   niceToHaveSkills: [],
   isActive: true,
-  hiringManagerId: ''
+  hiringManagerId: '',
+  companyId: ''
 };
 
 /** Map an API job to the form shape */
@@ -69,6 +71,7 @@ export function toForm(job: any): JobForm {
     mustHaveSkills: job.mustHaveSkills || [],
     niceToHaveSkills: job.niceToHaveSkills || [],
     isActive: job.isActive !== false,
-    hiringManagerId: job.hiringManagerId || ''
+    hiringManagerId: job.hiringManagerId || '',
+    companyId: job.companyId || ''
   };
 }

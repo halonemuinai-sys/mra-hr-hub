@@ -12,6 +12,8 @@ import EmployeeFormModal from '@/components/employees/EmployeeFormModal';
 import AnnounceModal from '@/components/employees/AnnounceModal';
 import TalentaSyncDrawer from '@/components/employees/talenta/TalentaSyncDrawer';
 import EmployeeJourneyDrawer from '@/components/employees/journey/EmployeeJourneyDrawer';
+import CompanySelect from '@/components/companies/CompanySelect';
+import { useCompanies } from '@/components/companies/useCompanies';
 import { EMPLOYMENT_STATUSES } from '@/components/employees/employeeFormat';
 import PipelineToast, { ToastState } from '@/components/pipeline/PipelineToast';
 
@@ -28,6 +30,8 @@ export default function EmployeesPage() {
   const [tabChosen, setTabChosen] = useState(false);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [companyId, setCompanyId] = useState('');
+  const { companies } = useCompanies();
   const [registerApp, setRegisterApp] = useState<any | null>(null);
   const [editEmp, setEditEmp] = useState<any | null>(null);
   const [announceEmp, setAnnounceEmp] = useState<any | null>(null);
@@ -47,7 +51,7 @@ export default function EmployeesPage() {
       setPending(p.data || []);
       setEmployees(e.data || []);
     } catch (err: any) {
-      setToast({ id: Date.now(), tone: 'error', message: 'Gagal memuat data: ' + err.message });
+      setToast({ id: Date.now(), tone: 'error', message: 'Failed to load data: ' + err.message });
     } finally {
       setLoading(false);
     }
@@ -76,9 +80,10 @@ export default function EmployeesPage() {
       employees.filter(
         (e) =>
           (!status || e.employmentStatus === status) &&
+          (companyId === 'none' ? !e.companyId : !companyId || e.companyId === companyId) &&
           matches(q, e.fullName, e.employeeNo, e.position, e.department, e.division, e.personalEmail)
       ),
-    [employees, q, status]
+    [employees, q, status, companyId]
   );
 
   const stats = useMemo(() => {
@@ -115,12 +120,13 @@ export default function EmployeesPage() {
       const params: Record<string, string> = {};
       if (search.trim()) params.search = search.trim();
       if (status) params.status = status;
+      if (companyId) params.companyId = companyId;
       const blob = await downloadEmployees(params);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       const d = new Date();
       a.href = url;
-      a.download = `karyawan-baru_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.xlsx`;
+      a.download = `new-employees_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: any) {
@@ -131,10 +137,10 @@ export default function EmployeesPage() {
   };
 
   const tiles = [
-    { label: 'Menunggu registrasi', value: stats.pending, icon: Hourglass, cls: 'text-amber-600' },
-    { label: 'Karyawan terdaftar', value: stats.registered, icon: Users, cls: 'text-slate-900' },
-    { label: 'Bergabung 30 hari ke depan', value: stats.upcoming, icon: CalendarDays, cls: 'text-emerald-600' },
-    { label: 'Belum diumumkan', value: stats.unannounced, icon: Megaphone, cls: 'text-blue-600' }
+    { label: 'Awaiting registration', value: stats.pending, icon: Hourglass, cls: 'text-amber-600' },
+    { label: 'Registered employees', value: stats.registered, icon: Users, cls: 'text-slate-900' },
+    { label: 'Joining in the next 30 days', value: stats.upcoming, icon: CalendarDays, cls: 'text-emerald-600' },
+    { label: 'Not announced yet', value: stats.unannounced, icon: Megaphone, cls: 'text-blue-600' }
   ];
 
   return (
@@ -143,12 +149,12 @@ export default function EmployeesPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <BadgeCheck className="w-5 h-5 text-blue-600" />
-            Karyawan Baru
+            New Employees
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Kandidat Hired didaftarkan sebagai karyawan, keluar dari pipeline, lalu diumumkan di papan{' '}
+            Hired candidates are registered as employees, leave the pipeline and are announced on the{' '}
             <Link href="/admin/announcements" className="font-bold text-blue-600 hover:text-blue-800">
-              Selamat Bergabung
+              Welcome Aboard
             </Link>
             .
           </p>
@@ -163,7 +169,7 @@ export default function EmployeesPage() {
                     ? 'bg-blue-50 text-blue-700 border-blue-200'
                     : 'bg-amber-50 text-amber-700 border-amber-200'
               }`}
-              title="Mode integrasi Talenta (backend/.env)"
+              title="Talenta integration mode (backend/.env)"
             >
               Talenta: {talenta.label}
             </span>
@@ -199,8 +205,8 @@ export default function EmployeesPage() {
           <div className="inline-flex bg-slate-100 rounded-xl p-1" role="tablist">
             {(
               [
-                ['pending', 'Menunggu Registrasi', stats.pending],
-                ['registered', 'Terdaftar', stats.registered]
+                ['pending', 'Awaiting Registration', stats.pending],
+                ['registered', 'Registered', stats.registered]
               ] as [Tab, string, number][]
             ).map(([key, label, n]) => (
               <button
@@ -232,18 +238,21 @@ export default function EmployeesPage() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={tab === 'pending' ? 'Cari nama, email, atau posisi…' : 'Cari nama, NIK, jabatan, departemen…'}
+              placeholder={tab === 'pending' ? 'Search name, email or position…' : 'Search name, employee ID, position, department…'}
               className="pl-8 pr-3 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
             />
           </div>
+          {tab === 'registered' && companies.length > 0 && (
+            <CompanySelect companies={companies} value={companyId} onChange={setCompanyId} allLabel="All companies" withUnassigned className="w-full sm:w-60" />
+          )}
           {tab === 'registered' && (
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              aria-label="Filter status kepegawaian"
+              aria-label="Filter by employment status"
               className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
             >
-              <option value="">Semua status</option>
+              <option value="">All statuses</option>
               {EMPLOYMENT_STATUSES.map((s) => (
                 <option key={s.key} value={s.key}>
                   {s.label}
@@ -270,7 +279,7 @@ export default function EmployeesPage() {
       </div>
 
       {!can(user, 'employee.manage') && (
-        <p className="text-[11px] text-slate-500">Anda dapat melihat data ini; pendaftaran dilakukan oleh tim Talent Acquisition.</p>
+        <p className="text-[11px] text-slate-500">You can view this data; registration is done by the Talent Acquisition team.</p>
       )}
 
       <AnimatePresence>

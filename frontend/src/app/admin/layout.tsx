@@ -23,12 +23,14 @@ import {
   Activity,
   BadgeCheck,
   Megaphone,
-  History
+  History,
+  Building2
 } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { api } from '@/lib/api';
 import { can, CurrentUserProvider, Permission, ROLE_LABELS } from '@/lib/permissions';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import IdentityToggle from '@/components/privacy/IdentityToggle';
 
 export default function DashboardLayout({
   children,
@@ -157,7 +159,8 @@ export default function DashboardLayout({
     { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, permission: 'dashboard.view' },
     { name: 'TA Team Performance', href: '/admin/team', icon: Activity, permission: 'team.monitor' },
     { name: 'Team Activity Log', href: '/admin/activity', icon: History, permission: 'team.monitor' },
-    { name: 'Users & Access', href: '/admin/users', icon: UserCog, permission: 'users.manage' }
+    { name: 'Users & Access', href: '/admin/users', icon: UserCog, permission: 'users.manage' },
+    { name: 'Companies (PT)', href: '/admin/companies', icon: Building2, permission: 'company.manage' }
   ];
   const navigation = allNavigation.filter((item) => can(currentUser, item.permission));
 
@@ -180,7 +183,7 @@ export default function DashboardLayout({
   const navigationGroups = [
     { label: 'Recruitment', paths: ['/admin', '/admin/pipeline', '/admin/candidates', '/admin/jobs'] },
     { label: 'People', paths: ['/admin/employees', '/admin/announcements', '/admin/team', '/admin/activity'] },
-    { label: 'Administration', paths: ['/admin/templates', '/admin/users'] }
+    { label: 'Administration', paths: ['/admin/templates', '/admin/users', '/admin/companies'] }
   ];
 
   const renderSidebar = (mobile = false) => (
@@ -320,6 +323,7 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <IdentityToggle />
             {!permissionsMissing && <NotificationBell userId={currentUser?.id} pathname={pathname} />}
             <a
               href="http://localhost:5006/api/templates/download"

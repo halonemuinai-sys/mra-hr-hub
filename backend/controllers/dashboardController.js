@@ -1,9 +1,10 @@
 /**
- * GET /api/stats/dashboard?weeks=12 — analytics for the recruitment dashboard.
+ * GET /api/stats/dashboard?weeks=12&companyId= — analytics for the recruitment dashboard (optionally one PT).
  * Everything is computed in memory from applications + activity log (HR HUB volumes are small).
  */
 const prisma = require('../api/db');
 const { FUNNEL, CLOSED } = require('../config/stageRules');
+const { companyFilterValue } = require('./companyController');
 
 const DAY = 86400000;
 const WEEK = 7 * DAY;
@@ -36,9 +37,14 @@ async function getDashboardAnalytics(req, res) {
   try {
     const weeks = Math.min(Math.max(parseInt(req.query.weeks, 10) || 12, 4), 52);
     const now = Date.now();
+    // undefined = all PTs, null = jobs without a PT ('none'), otherwise one PT
+    const pt = companyFilterValue(req.query.companyId);
+    const companyId = pt === undefined ? null : req.query.companyId;
+    const byJob = pt !== undefined ? { job: { companyId: pt } } : {};
 
-    const [apps, moves, jobs, candidates] = await Promise.all([
+    const [apps, moves, jobs, candidates, companies] = await Promise.all([
       prisma.jobApplication.findMany({
+        where: byJob,
         select: {
           id: true,
           jobId: true,
@@ -50,11 +56,18 @@ async function getDashboardAnalytics(req, res) {
         }
       }),
       prisma.applicationActivity.findMany({
-        where: { action: 'STAGE_CHANGE' },
+        where: { action: 'STAGE_CHANGE', ...(pt !== undefined ? { application: byJob } : {}) },
         select: { applicationId: true, fromStatus: true, toStatus: true, createdAt: true }
       }),
-      prisma.jobPosting.findMany({ select: { id: true, title: true, division: true, isActive: true } }),
-      prisma.candidate.findMany({ select: { jobFamily: true, intakeSource: true } })
+      prisma.jobPosting.findMany({
+        where: pt !== undefined ? { companyId: pt } : {},
+        select: { id: true, title: true, division: true, isActive: true, companyId: true }
+      }),
+      prisma.candidate.findMany({
+        where: pt !== undefined ? { applications: { some: byJob } } : {},
+        select: { jobFamily: true, intakeSource: true }
+      }),
+      prisma.company.findMany({ select: { id: true, code: true, name: true, isActive: true }, orderBy: { name: 'asc' } })
     ]);
 
     // ---- Furthest funnel stage each application ever reached ----
@@ -187,7 +200,22 @@ async function getDashboardAnalytics(req, res) {
         stageAging,
         topJobs,
         jobFamily: countBy(candidates, 'jobFamily'),
-        intakeSource: countBy(candidates, 'intakeSource')
+        intakeSource: countBy(candidates, 'intakeSource'),
+        companyId,
+        // Recap per PT (within the current filter) — jobs without a PT are grouped as "unassigned"
+        byCompany: [...companies.map((c) => ({ id: c.id, code: c.code, name: c.name })), { id: null, code: '—', name: 'No company set' }]
+          .map((c) => {
+            const jobIds = new Set(jobs.filter((j) => (j.companyId || null) === c.id).map((j) => j.id));
+            const ja = apps.filter((a) => jobIds.has(a.jobId));
+            return {
+              ...c,
+              openJobs: jobs.filter((j) => jobIds.has(j.id) && j.isActive).length,
+              applications: ja.length,
+              active: ja.filter((a) => !CLOSED.includes(a.status)).length,
+              hired: ja.filter((a) => a.status === 'HIRED').length
+            };
+          })
+          .filter((c) => c.applications > 0 || c.openJobs > 0)
       }
     });
   } catch (error) {

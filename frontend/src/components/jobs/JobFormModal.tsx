@@ -6,6 +6,8 @@ import { X, Loader2, Sparkles, Briefcase, Wallet, FileText, ScanLine } from 'luc
 import { api } from '@/lib/api';
 import SkillTagInput from './SkillTagInput';
 import { DIVISIONS, EMPLOYMENT_TYPES, EDUCATION_LEVELS, EMPTY_JOB, JobForm, toForm } from './jobOptions';
+import CompanySelect from '@/components/companies/CompanySelect';
+import { useCompanies } from '@/components/companies/useCompanies';
 
 interface Props {
   /** null = create a new job */
@@ -36,6 +38,8 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [managers, setManagers] = useState<any[]>([]);
+  const { companies } = useCompanies();
+  const needsCompany = companies.some((c) => c.isActive);
   const set = (patch: Partial<JobForm>) => setForm((f) => ({ ...f, ...patch }));
 
   useEffect(() => {
@@ -52,6 +56,7 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
     e.preventDefault();
     if (salaryInvalid) return setError('Minimum salary cannot exceed maximum salary.');
     if (!form.mustHaveSkills.length) return setError('Add at least one must-have keyword for ATS scoring.');
+    if (needsCompany && !form.companyId) return setError('Choose the hiring company (PT).');
     setSaving(true);
     setError('');
     try {
@@ -59,7 +64,8 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
         ...form,
         salaryMin: !hasSalary || form.salaryMin === '' ? null : Number(form.salaryMin),
         salaryMax: !hasSalary || form.salaryMax === '' ? null : Number(form.salaryMax),
-        hiringManagerId: form.hiringManagerId || null
+        hiringManagerId: form.hiringManagerId || null,
+        companyId: form.companyId || null
       };
       const res = isEdit ? await api.updateJob(job.id, payload) : await api.createJob(payload);
       onSaved(res.message);
@@ -97,6 +103,9 @@ export default function JobFormModal({ job, onClose, onSaved }: Props) {
             <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3"><span className="rounded-lg bg-blue-50 p-2 text-blue-600"><Briefcase className="h-4 w-4" /></span><h4 className="flex-1 text-sm font-semibold text-slate-900">Position details</h4><span className="text-xs font-medium text-slate-300">01</span></div>
             <Field label="Job title" required>
               <input required value={form.title} onChange={(e) => set({ title: e.target.value })} className={inputCls} placeholder="e.g. Senior React Developer" />
+            </Field>
+            <Field label="Company (PT)" required={needsCompany} hint="Legal entity within MRA Group that hires for this job and employs the new hire.">
+              <CompanySelect companies={companies} value={form.companyId} onChange={(id) => set({ companyId: id })} required={needsCompany} />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Department" required>

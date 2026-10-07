@@ -8,17 +8,17 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // key → [label, required, maxLength]
 const TEXT_FIELDS = {
-  employeeNo: ['NIK karyawan', true, 40],
-  fullName: ['Nama lengkap', true, 120],
-  personalEmail: ['Email pribadi', true, 120],
-  workEmail: ['Email kantor', false, 120],
-  phone: ['No. HP', false, 30],
-  position: ['Jabatan', true, 120],
-  department: ['Departemen', true, 120],
-  division: ['Divisi / unit bisnis', true, 120],
-  workLocation: ['Lokasi kerja', true, 120],
-  managerName: ['Atasan langsung', false, 120],
-  notes: ['Catatan', false, 2000]
+  employeeNo: ['Employee ID', true, 40],
+  fullName: ['Full name', true, 120],
+  personalEmail: ['Personal email', true, 120],
+  workEmail: ['Work email', false, 120],
+  phone: ['Mobile number', false, 30],
+  position: ['Position', true, 120],
+  department: ['Department', true, 120],
+  division: ['Division / business unit', true, 120],
+  workLocation: ['Work location', true, 120],
+  managerName: ['Direct manager', false, 120],
+  notes: ['Notes', false, 2000]
 };
 
 const clean = (v) => (typeof v === 'string' ? v.trim() : v === null || v === undefined ? '' : String(v).trim());
@@ -45,11 +45,11 @@ function sanitizeEmployeeInput(body = {}, { partial = false } = {}) {
     if (partial && !sent(key)) return;
     const v = clean(body[key]);
     if (!v) {
-      if (required) errors.push(`${label} wajib diisi.`);
+      if (required) errors.push(`${label} is required.`);
       else data[key] = null;
       return;
     }
-    if (v.length > max) errors.push(`${label} maksimal ${max} karakter.`);
+    if (v.length > max) errors.push(`${label} must be at most ${max} characters.`);
     data[key] = v;
   });
 
@@ -57,19 +57,19 @@ function sanitizeEmployeeInput(body = {}, { partial = false } = {}) {
   ['personalEmail', 'workEmail'].forEach((key) => {
     if (data[key]) {
       data[key] = data[key].toLowerCase();
-      if (!EMAIL_RE.test(data[key])) errors.push(`${TEXT_FIELDS[key][0]} tidak valid.`);
+      if (!EMAIL_RE.test(data[key])) errors.push(`${TEXT_FIELDS[key][0]} is not valid.`);
     }
   });
 
   if (!partial || sent('employmentStatus')) {
     const st = clean(body.employmentStatus).toUpperCase() || 'PROBATION';
-    if (!EMPLOYMENT_STATUSES.includes(st)) errors.push('Status kepegawaian tidak dikenal.');
+    if (!EMPLOYMENT_STATUSES.includes(st)) errors.push('Unknown employment status.');
     else data.employmentStatus = st;
   }
 
   if (!partial || sent('joinDate')) {
     const d = parseDay(body.joinDate);
-    if (!d) errors.push('Tanggal bergabung wajib diisi dengan tanggal yang valid.');
+    if (!d) errors.push('Join date is required and must be a valid date.');
     else data.joinDate = d;
   }
 

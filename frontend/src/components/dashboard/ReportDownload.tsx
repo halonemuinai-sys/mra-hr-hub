@@ -22,7 +22,8 @@ function presets() {
 }
 
 /** Recruitment report (.xlsx) for a chosen period — Super Admin / TA Lead */
-export default function ReportDownload({ onError }: { onError?: (m: string) => void }) {
+/** companyId: '' = all PTs, 'none' = jobs without a PT, otherwise one PT */
+export default function ReportDownload({ onError, companyId = '' }: { onError?: (m: string) => void; companyId?: string }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -37,11 +38,11 @@ export default function ReportDownload({ onError }: { onError?: (m: string) => v
   const download = async (p: { label: string; from: string; to: string }) => {
     setBusy(p.label);
     try {
-      const blob = await downloadReport(p.from, p.to);
+      const blob = await downloadReport(p.from, p.to, companyId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `recruitment-report_${p.from}_${p.to}.xlsx`;
+      a.download = `recruitment-report${companyId ? '_PT' : ''}_${p.from}_${p.to}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
       setOpen(false);

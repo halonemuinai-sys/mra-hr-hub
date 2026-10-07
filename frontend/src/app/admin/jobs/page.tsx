@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useJobRefresh } from '@/components/jobs/useJobRefresh';
 import { AnimatePresence } from 'framer-motion';
 import { Briefcase, Plus, Search, RefreshCw, ArrowUpRight, Users, ScanLine, CircleCheck, X } from 'lucide-react';
@@ -9,6 +9,8 @@ import JobCard from '@/components/jobs/JobCard';
 import JobFormModal from '@/components/jobs/JobFormModal';
 import JobDetailDrawer from '@/components/jobs/JobDetailDrawer';
 import PipelineToast, { ToastState } from '@/components/pipeline/PipelineToast';
+import CompanySelect from '@/components/companies/CompanySelect';
+import { useCompanies } from '@/components/companies/useCompanies';
 
 type StatusFilter = 'all' | 'active' | 'closed';
 
@@ -18,6 +20,13 @@ export default function JobsManagementPage() {
   const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
+  // '' = all PTs, 'none' = jobs without a PT, otherwise a company id (deep link: ?companyId=)
+  const [companyId, setCompanyId] = useState('');
+  const { companies } = useCompanies();
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('companyId');
+    if (q) setCompanyId(q);
+  }, []);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [form, setForm] = useState<{ job: any | null } | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -48,9 +57,10 @@ export default function JobsManagementPage() {
   const visible = jobs.filter((j) => {
     if (status === 'active' && !j.isActive) return false;
     if (status === 'closed' && j.isActive) return false;
+    if (companyId === 'none' ? j.companyId : companyId && j.companyId !== companyId) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    return [j.title, j.department, j.division, j.location, ...(j.mustHaveSkills || [])]
+    return [j.title, j.department, j.division, j.location, j.company?.name, j.company?.code, ...(j.mustHaveSkills || [])]
       .some((v) => String(v || '').toLowerCase().includes(q));
   });
 
@@ -102,6 +112,9 @@ export default function JobsManagementPage() {
             className="pl-8 pr-3 py-2 w-full bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
           />
         </div>
+        {companies.length > 0 && (
+          <CompanySelect companies={companies} value={companyId} onChange={setCompanyId} allLabel="All companies" withUnassigned className="w-full sm:w-64" />
+        )}
         <div className="inline-flex bg-slate-100 rounded-xl p-1" role="group" aria-label="Filter by status">
           {([
             ['all', 'All'],

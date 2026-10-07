@@ -5,11 +5,11 @@ import { CornerUpLeft, Trophy } from 'lucide-react';
 import { ALL_STAGES, stageLabel } from '@/components/pipeline/stages';
 
 const dotOf = (status: string) => ALL_STAGES.find((s) => s.key === status)?.dot || 'bg-slate-400';
-/** 0.4 → "10 jam", 5.06 → "5,1 hari", 38.1 → "38 hari" */
+/** 0.4 → "10 hrs", 5.06 → "5.1 days", 38.1 → "38 days" */
 const fmtDays = (d: number) =>
   d < 1
-    ? `${Math.max(1, Math.round(d * 24))} jam`
-    : `${d.toLocaleString('id-ID', { maximumFractionDigits: d >= 10 ? 0 : 1 })} hari`;
+    ? `${Math.max(1, Math.round(d * 24))} hrs`
+    : `${d.toLocaleString('en-GB', { maximumFractionDigits: d >= 10 ? 0 : 1 })} days`;
 
 /** Proportional bar: how long the candidate spent in each stage visit, applied → hired */
 export default function JourneyStageBar({ stages, slowest }: { stages: any[]; slowest?: { status: string; days: number } | null }) {
@@ -44,7 +44,7 @@ export default function JourneyStageBar({ stages, slowest }: { stages: any[]; sl
                       ? 'bg-amber-50 border-amber-200 text-amber-800'
                       : 'bg-white border-slate-200 text-slate-600'
                 }`}
-                title={s.backward ? 'Dipindah mundur ke tahap ini' : undefined}
+                title={s.backward ? 'Moved back to this stage' : undefined}
               >
                 {s.backward ? (
                   <CornerUpLeft className="w-3 h-3 text-amber-600" />
@@ -62,7 +62,7 @@ export default function JourneyStageBar({ stages, slowest }: { stages: any[]; sl
           );
         })}
       </ol>
-      {!hired && <p className="text-[10px] text-slate-400">Belum mencapai tahap Hired.</p>}
+      {!hired && <p className="text-[10px] text-slate-400">Has not reached Hired yet.</p>}
     </div>
   );
 }

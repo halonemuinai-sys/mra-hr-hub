@@ -9,13 +9,14 @@ const { PENDING, applyStageChange } = require('../services/stageMoveService');
 const { canMoveApplication, resolveMovePermission } = require('./assignmentController');
 const { hasPermission } = require('../config/permissions');
 const { jobScope } = require('../services/hiringManagerScope');
+const { companyFilterValue } = require('./companyController');
 
 /**
  * ?owner=me|unassigned|all (default all), plus jobId, search, minScore, jobFamily, minRating
  */
 async function listPipeline(req, res) {
   try {
-    const { jobId, search, minScore, jobFamily, minRating, owner } = req.query;
+    const { jobId, search, minScore, jobFamily, minRating, owner, companyId } = req.query;
 
     // Released hires (registered as employee or taken off manually) leave the board
     const where = { releasedAt: null };
@@ -34,7 +35,8 @@ async function listPipeline(req, res) {
     }
     if (Object.keys(candidateWhere).length) where.candidate = candidateWhere;
     const hmJob = jobScope(req.user);
-    if (hmJob) where.job = hmJob;
+    const pt = companyFilterValue(companyId);
+    if (hmJob || pt !== undefined) where.job = { ...(hmJob || {}), ...(pt !== undefined ? { companyId: pt } : {}) };
 
     const rows = await prisma.jobApplication.findMany({
       where,
@@ -53,7 +55,7 @@ async function listPipeline(req, res) {
             seniorityLevel: true
           }
         },
-        job: { select: { id: true, title: true, department: true, division: true } },
+        job: { select: { id: true, title: true, department: true, division: true, company: { select: { id: true, code: true, name: true } } } },
         assignedRecruiter: { select: { id: true, name: true } },
         stageRequests: {
           where: { status: PENDING },

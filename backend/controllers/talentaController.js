@@ -24,6 +24,8 @@ const {
 } = require('../services/talenta/talentaEmployeePayload');
 
 const SENDING_TIMEOUT_MS = 2 * 60 * 1000;
+// PT's default Talenta branch prefills the Branch field
+const WITH_COMPANY = { company: { select: { name: true, talentaBranch: true } } };
 
 const publicConfig = (cfg) => ({ mode: cfg.mode, label: cfg.label, ready: cfg.ready, missing: cfg.missing });
 
@@ -75,13 +77,13 @@ async function getMasters(req, res) {
 }
 
 async function loadEmployee(id) {
-  return prisma.employee.findUnique({ where: { id: String(id) } });
+  return prisma.employee.findUnique({ where: { id: String(id) }, include: WITH_COMPANY });
 }
 
 async function buildView(emp) {
   const cfg = talentaConfig();
   const { masters, masterError } = cfg.mode === 'off' ? { masters: null } : await mastersOrError();
-  const values = { ...defaultTalentaData(emp, { offerSalary: await offerSalaryOf(emp.applicationId), masters }), ...(emp.talentaData || {}) };
+  const values = { ...defaultTalentaData(emp, { offerSalary: await offerSalaryOf(emp.applicationId), companyBranch: emp.company?.talentaBranch, masters }), ...(emp.talentaData || {}) };
   const { payload, errors } = buildEmployeePayload(emp, values, masters);
   return {
     employee: {
@@ -110,7 +112,7 @@ async function buildView(emp) {
 async function getEmployeeTalenta(req, res) {
   try {
     const emp = await loadEmployee(req.params.id);
-    if (!emp) return res.status(404).json({ success: false, message: 'Data karyawan tidak ditemukan.' });
+    if (!emp) return res.status(404).json({ success: false, message: 'Employee not found.' });
     return res.json({ success: true, data: await buildView(emp) });
   } catch (error) {
     console.error('Error loading Talenta data:', error);
@@ -121,10 +123,10 @@ async function getEmployeeTalenta(req, res) {
 async function saveEmployeeTalenta(req, res) {
   try {
     const emp = await loadEmployee(req.params.id);
-    if (!emp) return res.status(404).json({ success: false, message: 'Data karyawan tidak ditemukan.' });
+    if (!emp) return res.status(404).json({ success: false, message: 'Employee not found.' });
     const data = { ...(emp.talentaData || {}), ...sanitizeTalentaData((req.body && req.body.data) || {}) };
-    const updated = await prisma.employee.update({ where: { id: emp.id }, data: { talentaData: data } });
-    return res.json({ success: true, message: 'Data Talenta disimpan.', data: await buildView(updated) });
+    const updated = await prisma.employee.update({ where: { id: emp.id }, include: WITH_COMPANY, data: { talentaData: data } });
+    return res.json({ success: true, message: 'Talenta data saved.', data: await buildView(updated) });
   } catch (error) {
     console.error('Error saving Talenta data:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -137,26 +139,26 @@ async function syncEmployee(req, res) {
     if (!cfg.ready) {
       return res.status(503).json({
         success: false,
-        message: cfg.mode === 'off' ? 'Integrasi Talenta nonaktif.' : `Kredensial Talenta belum diisi: ${cfg.missing.join(', ')}.`
+        message: cfg.mode === 'off' ? 'Talenta integration is off.' : `Talenta credentials missing: ${cfg.missing.join(', ')}.`
       });
     }
     let emp = await loadEmployee(req.params.id);
-    if (!emp) return res.status(404).json({ success: false, message: 'Data karyawan tidak ditemukan.' });
+    if (!emp) return res.status(404).json({ success: false, message: 'Employee not found.' });
 
     // Save what the form sent first, so a failed send keeps the latest input
     if (req.body && req.body.data) {
       emp = await prisma.employee.update({
-        where: { id: emp.id },
+        where: { id: emp.id }, include: WITH_COMPANY,
         data: { talentaData: { ...(emp.talentaData || {}), ...sanitizeTalentaData(req.body.data) } }
       });
     }
 
     if (syncState(emp, cfg).sentHere) {
-      return res.status(409).json({ success: false, message: `Sudah terkirim ke ${cfg.label} (user_id ${emp.talentaUserId}).` });
+      return res.status(409).json({ success: false, message: `Already sent to ${cfg.label} (user_id ${emp.talentaUserId}).` });
     }
 
     const { masters } = await mastersOrError();
-    const values = { ...defaultTalentaData(emp, { offerSalary: await offerSalaryOf(emp.applicationId), masters }), ...(emp.talentaData || {}) };
+    const values = { ...defaultTalentaData(emp, { offerSalary: await offerSalaryOf(emp.applicationId), companyBranch: emp.company?.talentaBranch, masters }), ...(emp.talentaData || {}) };
     const { payload, errors } = buildEmployeePayload(emp, values, masters);
     if (errors.length) return res.status(400).json({ success: false, message: errors[0], errors });
 
@@ -172,7 +174,7 @@ async function syncEmployee(req, res) {
       },
       data: { talentaStatus: 'SENDING', talentaMode: cfg.mode, talentaData: values }
     });
-    if (!claimed.count) return res.status(409).json({ success: false, message: 'Pengiriman sedang berjalan atau sudah selesai.' });
+    if (!claimed.count) return res.status(409).json({ success: false, message: 'A send is already in progress or finished.' });
 
     try {
       const result = await talentaRequest('POST', '/v2/talenta/v3/employee', payload, cfg);
@@ -186,7 +188,7 @@ async function syncEmployee(req, res) {
         } catch {}
       }
       const updated = await prisma.employee.update({
-        where: { id: emp.id },
+        where: { id: emp.id }, include: WITH_COMPANY,
         data: {
           talentaStatus: 'SENT',
           talentaUserId: userId || null,
@@ -202,13 +204,13 @@ async function syncEmployee(req, res) {
       }
       return res.json({
         success: true,
-        message: `${emp.fullName} terkirim ke ${cfg.label}${employeeId ? ` (Employee ID ${employeeId})` : ''}.`,
+        message: `${emp.fullName} sent to ${cfg.label}${employeeId ? ` (Employee ID ${employeeId})` : ''}.`,
         data: await buildView(updated)
       });
     } catch (err) {
       const errorsList = err instanceof TalentaError && err.errors.length ? err.errors : [err.message];
       const updated = await prisma.employee.update({
-        where: { id: emp.id },
+        where: { id: emp.id }, include: WITH_COMPANY,
         data: { talentaStatus: 'FAILED', talentaError: errorsList.join('\n').slice(0, 2000), talentaSyncedAt: new Date() }
       });
       if (emp.applicationId) {
@@ -218,7 +220,7 @@ async function syncEmployee(req, res) {
       }
       return res.status(err.status && err.status < 500 ? 422 : 502).json({
         success: false,
-        message: `Talenta menolak data: ${errorsList[0]}`,
+        message: `Talenta rejected the data: ${errorsList[0]}`,
         errors: errorsList,
         data: await buildView(updated)
       });

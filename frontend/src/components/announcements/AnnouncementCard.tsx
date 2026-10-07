@@ -8,7 +8,7 @@ import { fmtDate, joinBadge } from '@/components/employees/employeeFormat';
 
 const NEW_DAYS = 7;
 
-/** "Selamat Bergabung" card — no contact details, safe for every CMS user */
+/** "Welcome Aboard" card — no contact details, safe for every CMS user */
 export default function AnnouncementCard({ item, compact = false }: { item: any; compact?: boolean }) {
   const jb = joinBadge(item.joinDate);
   const fresh = item.announcedAt && Date.now() - new Date(item.announcedAt).getTime() < NEW_DAYS * 86400000;
@@ -25,7 +25,7 @@ export default function AnnouncementCard({ item, compact = false }: { item: any;
             {item.position} · {item.division}
           </p>
         </div>
-        <span className="text-[10px] font-semibold text-slate-500 tabular-nums shrink-0">{fmtDate(item.joinDate, false, 'en-GB')}</span>
+        <span className="text-[10px] font-semibold text-slate-500 tabular-nums shrink-0">{fmtDate(item.joinDate)}</span>
       </div>
     );
   }
@@ -35,10 +35,10 @@ export default function AnnouncementCard({ item, compact = false }: { item: any;
       <div className="relative bg-slate-900 px-5 pt-4 pb-10">
         <div className="absolute inset-x-0 bottom-0 h-1 bg-blue-600" />
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">Selamat Bergabung</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-300">Welcome Aboard</span>
           {fresh && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] font-bold">
-              <Sparkles className="w-3 h-3" /> Baru
+              <Sparkles className="w-3 h-3" /> New
             </span>
           )}
         </div>
@@ -56,7 +56,7 @@ export default function AnnouncementCard({ item, compact = false }: { item: any;
 
         <div className="mt-3 grid grid-cols-1 gap-1 text-[11px] text-slate-600">
           <span className="flex items-center gap-1.5">
-            <CalendarDays className="w-3.5 h-3.5 text-slate-400" /> Bergabung {fmtDate(item.joinDate, true)}
+            <CalendarDays className="w-3.5 h-3.5 text-slate-400" /> Joins {fmtDate(item.joinDate, true)}
           </span>
           {item.workLocation && (
             <span className="flex items-center gap-1.5">
@@ -65,7 +65,7 @@ export default function AnnouncementCard({ item, compact = false }: { item: any;
           )}
           {item.managerName && (
             <span className="flex items-center gap-1.5">
-              <UserRound className="w-3.5 h-3.5 text-slate-400" /> Atasan: {item.managerName}
+              <UserRound className="w-3.5 h-3.5 text-slate-400" /> Manager: {item.managerName}
             </span>
           )}
         </div>
@@ -77,8 +77,8 @@ export default function AnnouncementCard({ item, compact = false }: { item: any;
         )}
 
         <p className="mt-auto pt-3 text-[10px] text-slate-400">
-          Diumumkan {fmtDate(item.announcedAt)}
-          {item.announcedBy?.name ? ` oleh ${shortName(item.announcedBy.name)}` : ''}
+          Announced {fmtDate(item.announcedAt)}
+          {item.announcedBy?.name ? ` by ${shortName(item.announcedBy.name)}` : ''}
         </p>
       </div>
     </article>

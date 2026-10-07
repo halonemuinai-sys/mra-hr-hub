@@ -1,5 +1,8 @@
 const prisma = require('../api/db');
 const { SALARY_MODES, normalizeSalary, publicJob } = require('../services/jobSalary');
+const { companyError } = require('./companyController');
+
+const COMPANY = { select: { id: true, code: true, name: true } };
 
 const CLOSED = ['HIRED', 'REJECTED', 'TALENT_POOL'];
 
@@ -32,6 +35,7 @@ function sanitizeJobInput(body, { partial }) {
   if (body.niceToHaveSkills !== undefined) data.niceToHaveSkills = list(body.niceToHaveSkills);
   if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
   if (body.hiringManagerId !== undefined) data.hiringManagerId = body.hiringManagerId ? String(body.hiringManagerId) : null;
+  if (body.companyId !== undefined) data.companyId = body.companyId ? String(body.companyId) : null;
 
   if (!partial && (!data.title || !data.department)) return { error: 'Title and department are required.' };
   if (partial && (data.title === '' || data.department === '')) return { error: 'Title and department cannot be empty.' };
@@ -82,7 +86,8 @@ async function listJobs(req, res) {
       include: {
         _count: {
           select: { applications: true }
-        }
+        },
+        ...(req.jobsManagement ? { company: COMPANY } : {})
       }
     });
 
@@ -124,7 +129,7 @@ async function getJobForManagement(req, res) {
   try {
     const job = await prisma.jobPosting.findUnique({
       where: { id: req.params.id },
-      include: { hiringManager: { select: { id: true, name: true, email: true } } }
+      include: { hiringManager: { select: { id: true, name: true, email: true } }, company: COMPANY }
     });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' });
 
@@ -173,8 +178,12 @@ async function createJob(req, res) {
     const { data, error } = sanitizeJobInput(req.body, { partial: false });
     if (error) return res.status(400).json({ success: false, message: error });
     normalizeSalary(data);
-    const rangeError = salaryRangeError(data.salaryMin, data.salaryMax) || (await hiringManagerError(data.hiringManagerId));
+    const rangeError =
+      salaryRangeError(data.salaryMin, data.salaryMax) || (await hiringManagerError(data.hiringManagerId)) || (await companyError(data.companyId));
     if (rangeError) return res.status(400).json({ success: false, message: rangeError });
+    if (!data.companyId && (await prisma.company.count({ where: { isActive: true } }))) {
+      return res.status(400).json({ success: false, message: 'Choose the hiring company (PT).' });
+    }
 
     const slug = `${data.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${Date.now().toString().slice(-4)}`;
 
@@ -222,7 +231,7 @@ async function updateJob(req, res) {
       data.salaryMax !== undefined ? data.salaryMax : current.salaryMax
     );
     if (rangeError) return res.status(400).json({ success: false, message: rangeError });
-    const hmError = await hiringManagerError(data.hiringManagerId);
+    const hmError = (await hiringManagerError(data.hiringManagerId)) || (await companyError(data.companyId));
     if (hmError) return res.status(400).json({ success: false, message: hmError });
 
     const updatedJob = await prisma.jobPosting.update({ where: { id: req.params.id }, data });

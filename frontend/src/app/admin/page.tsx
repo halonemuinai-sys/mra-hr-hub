@@ -15,7 +15,8 @@ import {
   Hourglass,
   Award,
   Briefcase,
-  Layers
+  Layers,
+  Building2
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { can, useCurrentUser } from '@/lib/permissions';
@@ -30,6 +31,9 @@ import TopJobsTable from '@/components/dashboard/TopJobsTable';
 import TalentMix from '@/components/dashboard/TalentMix';
 import ActionCenter from '@/components/dashboard/ActionCenter';
 import NewColleagues from '@/components/dashboard/NewColleagues';
+import CompanyBreakdown from '@/components/dashboard/CompanyBreakdown';
+import CompanySelect from '@/components/companies/CompanySelect';
+import { useCompanies } from '@/components/companies/useCompanies';
 import { fmtWeek } from '@/components/dashboard/chartTheme';
 
 const PERIODS = [8, 12, 26];
@@ -37,6 +41,9 @@ const PERIODS = [8, 12, 26];
 export default function AdminDashboardPage() {
   const user = useCurrentUser();
   const [weeks, setWeeks] = useState(12);
+  // '' = all PTs, 'none' = jobs without a PT
+  const [companyId, setCompanyId] = useState('');
+  const { companies } = useCompanies();
   const [data, setData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,14 +52,14 @@ export default function AdminDashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.getDashboard(weeks);
+      const res = await api.getDashboard(weeks, companyId);
       if (res.success) setData(res.data);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [weeks]);
+  }, [weeks, companyId]);
 
   useEffect(() => {
     load();
@@ -74,6 +81,9 @@ export default function AdminDashboardPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {companies.length > 0 && (
+            <CompanySelect companies={companies} value={companyId} onChange={setCompanyId} allLabel="All companies" withUnassigned className="w-56" />
+          )}
           <div className="inline-flex bg-white border border-slate-200/80 rounded-xl p-1 shadow-xs" role="group" aria-label="Trend period">
             {PERIODS.map((w) => (
               <button
@@ -88,7 +98,7 @@ export default function AdminDashboardPage() {
               </button>
             ))}
           </div>
-          {can(user, 'team.monitor') && <ReportDownload />}
+          {can(user, 'team.monitor') && <ReportDownload companyId={companyId} />}
           <button type="button" onClick={load} className="p-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl" title="Refresh">
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -154,6 +164,12 @@ export default function AdminDashboardPage() {
           {data ? <TopJobsTable jobs={data.topJobs} /> : <div className="h-[220px] rounded-xl bg-slate-100 animate-pulse" />}
         </DashboardCard>
       </div>
+
+      {!companyId && (data?.byCompany?.length || 0) > 0 && (
+        <DashboardCard title="Per Company (PT)" subtitle="Jobs and applications by MRA Group legal entity — select a row to filter" icon={Building2}>
+          <CompanyBreakdown rows={data.byCompany} onSelect={setCompanyId} />
+        </DashboardCard>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <DashboardCard title="Talent Mix" subtitle="Candidate job families and application sources" icon={Layers} className="xl:col-span-2">

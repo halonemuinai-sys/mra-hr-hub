@@ -87,3 +87,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-\[wiggle_1s_ease-in-out_2\] { animation: none; }
 }
+
+/* "Hide identity" mode (components/privacy/IdentityMask.tsx): blur the MRA logo, building photo and brand logos */
+html.hide-identity img[src*="mra_logo"],
+html.hide-identity img[src*="mra_building"],
+html.hide-identity img[src*="/brands/"] {
+  filter: blur(14px) grayscale(1);
+}

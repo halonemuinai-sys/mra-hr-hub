@@ -70,9 +70,9 @@ export async function downloadEmployees(params: Record<string, string> = {}): Pr
 }
 
 /** Recruitment report workbook for a period (YYYY-MM-DD, inclusive) */
-export async function downloadReport(from: string, to: string): Promise<Blob> {
+export async function downloadReport(from: string, to: string, companyId = ''): Promise<Blob> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('hr_hub_token') : null;
-  const res = await fetch(`${API_BASE_URL}/reports/recruitment.xlsx?from=${from}&to=${to}`, {
+  const res = await fetch(`${API_BASE_URL}/reports/recruitment.xlsx?from=${from}&to=${to}${companyId ? `&companyId=${companyId}` : ''}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {}
   });
   if (!res.ok) {
@@ -223,7 +223,13 @@ export const api = {
 
   // KPIs
   getKpis: () => fetchApi('/stats/kpis'),
-  getDashboard: (weeks = 12) => fetchApi(`/stats/dashboard?weeks=${weeks}`),
+  getDashboard: (weeks = 12, companyId = '') => fetchApi(`/stats/dashboard?weeks=${weeks}${companyId ? `&companyId=${companyId}` : ''}`),
+
+  // Companies (PT) of MRA Group
+  getCompanies: (activeOnly = false) => fetchApi(`/companies${activeOnly ? '?active=1' : ''}`),
+  createCompany: (data: Record<string, any>) => fetchApi('/companies', { method: 'POST', body: JSON.stringify(data) }),
+  updateCompany: (id: string, data: Record<string, any>) =>
+    fetchApi(`/companies/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Reminders (header bell + dashboard Action Center)
   getReminders: () => fetchApi('/reminders'),

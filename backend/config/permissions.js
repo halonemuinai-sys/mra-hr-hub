@@ -35,7 +35,8 @@ const PERMISSIONS = [
   { key: 'approval.hire', group: 'Approval', label: 'Konfirmasi kandidat diterima (Hired)' },
 
   { key: 'team.monitor', group: 'Administrasi', label: 'Pantau kinerja tim Talent Acquisition' },
-  { key: 'users.manage', group: 'Administrasi', label: 'Kelola user & role' }
+  { key: 'users.manage', group: 'Administrasi', label: 'Kelola user & role' },
+  { key: 'company.manage', group: 'Administrasi', label: 'Kelola daftar perusahaan (PT) MRA Group' }
 ];
 
 const ALL = PERMISSIONS.map((p) => p.key);
@@ -43,7 +44,7 @@ const ALL = PERMISSIONS.map((p) => p.key);
 const ROLE_PERMISSIONS = {
   SUPERADMIN: ALL,
   // TA Lead: everything except user admin and hire confirmation (that belongs to the Hiring Manager)
-  HR_ADMIN: ALL.filter((p) => !['users.manage', 'approval.hire'].includes(p)),
+  HR_ADMIN: ALL.filter((p) => !['users.manage', 'company.manage', 'approval.hire'].includes(p)),
   RECRUITER: [
     'dashboard.view',
     'pipeline.view',

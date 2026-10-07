@@ -29,7 +29,18 @@ export default function JobCard({ job, onOpen, onEdit }: Props) {
         <h3 className="text-base font-semibold leading-snug tracking-tight text-slate-900">
           <button type="button" onClick={onOpen} className="text-left transition-colors after:absolute after:inset-0 hover:text-blue-700 focus-visible:outline-none focus-visible:after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-blue-500">{job.title}</button>
         </h3>
-        <p className="mt-1 text-xs text-slate-500">{job.division}</p>
+        <p className="mt-1 text-xs text-slate-500 flex items-center gap-1.5 min-w-0">
+          {job.company ? (
+            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-slate-900 text-white font-mono text-[10px] font-bold" title={job.company.name}>
+              {job.company.code}
+            </span>
+          ) : (
+            <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold" title="Edit the job to choose its company (PT)">
+              No PT
+            </span>
+          )}
+          <span className="truncate">{job.division}</span>
+        </p>
 
         <div className="mt-5 space-y-2.5 text-xs text-slate-500">
           <p className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 shrink-0 text-slate-400" /><span>{job.location || 'Location not specified'}</span></p>

@@ -73,10 +73,10 @@ test('complete data builds a valid Talenta payload', () => {
 
 test('missing required fields, wrong options and unknown master names are reported', () => {
   const { errors } = buildEmployeePayload(employee, { ...complete, dateOfBirth: '', gender: '9', branch: 'Medan', endEmploymentStatusDate: '' }, masters);
-  assert.ok(errors.some((e) => e.includes('Tanggal lahir')));
-  assert.ok(errors.some((e) => e.includes('Jenis kelamin')));
+  assert.ok(errors.some((e) => e.includes('Date of birth')));
+  assert.ok(errors.some((e) => e.includes('Gender')));
   assert.ok(errors.some((e) => e.includes('Medan')));
-  assert.ok(errors.some((e) => e.includes('Akhir kontrak')), 'probation needs an end date');
+  assert.ok(errors.some((e) => e.includes('end date')), 'probation needs an end date');
 });
 
 test('permanent staff need no end date; auto employee id omits employee_id', () => {
@@ -117,5 +117,5 @@ test('simulator: accepts a valid payload once, then rejects duplicates in Talent
     assert.ok(err.errors.some((e) => e.includes('has already been taken')));
     return true;
   });
-  await assert.rejects(talentaRequest('GET', '/v2/talenta/v2/employee/1', undefined, talentaConfig({ TALENTA_MODE: 'off' })), /nonaktif|belum diaktifkan/);
+  await assert.rejects(talentaRequest('GET', '/v2/talenta/v2/employee/1', undefined, talentaConfig({ TALENTA_MODE: 'off' })), /not enabled/);
 });
