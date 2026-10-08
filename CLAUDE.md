@@ -249,7 +249,8 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - Opening the job: the drawer's *Open job posting* opens `JobFormModal` prefilled (`jobPrefill`: title, PT, division, location, type, budget as **confidential** salary range, skills as must-have keywords, requester as Hiring Manager). `POST /api/jobs` with `manpowerRequestId` creates the job and links it in one transaction (one job per request; 409 otherwise). Job detail shows "From MPR-…".
 - Reminders: approvals waiting (urgent = critical), approved requests without a job (TA Lead), requester's decided requests (3 days).
 - UI: `frontend/src/app/admin/manpower/page.tsx`, `components/manpower/*` (`ManpowerFormModal`, `ManpowerDetailDrawer`, `manpowerFormat.ts`).
-- **User guide** (Indonesian, with screenshots): `docs/guides/manpower-request/README.md`. End-user guides live in `docs/guides/<feature>/` (`README.md` + `images/`), indexed in `docs/README.md`; update the screenshots when the screens change.
+- **User guides** (Indonesian, with screenshots) for the main menus live in `docs/guides/<feature>/` (`README.md` + `images/`): dashboard, manpower-request, job-management, applicant-pipeline, candidate-database, talent-pool, interview-calendar, offer-letters, new-employees, onboarding — indexed in `docs/README.md`; update the screenshots when the screens change.
+- **Word manual**: `docs/tools` (`npm install`, `npm run build`, `npm run finalize` with MS Word) merges all guides plus an introduction chapter into `docs/HR-HUB-Panduan-Pengguna.docx`. MS Office files (`*.docx`, `*.xlsx`, …) are git-ignored — generated documents are never committed.
 
 ### M. Hide Identity Mode (screenshots / demos)
 - Header toggle **Hide identity** (`components/privacy/IdentityToggle.tsx`), shortcut **Ctrl+Shift+H** on any page (admin, login, public portal), or `?hideIdentity=1|0` in the URL. Stored per browser in `localStorage.hr_hub_hide_identity`.

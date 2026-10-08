@@ -40,3 +40,13 @@ uploads/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# MS Office files (generated documents such as the Word user manual stay local)
+*.docx
+*.doc
+*.xlsx
+*.xls
+*.pptx
+*.ppt
+~$*
+docs/HR-HUB-Panduan-Pengguna.pdf
