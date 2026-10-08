@@ -56,6 +56,18 @@ export function describeActivity(a: any) {
       return { who, text: `scheduled the ${stageLabel(a.toStatus)} of ${cand}` };
     case 'HIRE_RESTORED':
       return { who, text: `restored ${cand} to the pipeline` };
+    case 'TALENT_POOL_ADDED':
+      return { who, text: `added ${cand} from the talent pool (${a.note || ''})` };
+    case 'OFFER_LETTER_CREATED':
+      return { who, text: `drafted offer letter ${a.note || ''} for ${cand}` };
+    case 'OFFER_LETTER_SENT':
+      return { who, text: `sent offer letter ${a.note || ''} to ${cand}` };
+    case 'OFFER_ACCEPTED':
+      return { who, text: `recorded that ${cand} accepted the offer (${a.note || ''})` };
+    case 'OFFER_DECLINED':
+      return { who, text: `recorded that ${cand} declined the offer: ${a.note || ''}` };
+    case 'OFFER_LETTER_CANCELLED':
+      return { who, text: `cancelled offer letter ${a.note || ''} of ${cand}` };
     default:
       return { who, text: `${a.action} ${cand}` };
   }

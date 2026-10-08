@@ -65,6 +65,7 @@ model User {
   manpowerDecided      ManpowerRequest[]     @relation("ManpowerDecider")
   onboardingAssigned   OnboardingTask[]      @relation("OnboardingAssignee")
   onboardingCompleted  OnboardingTask[]      @relation("OnboardingCompleter")
+  offerLettersCreated  OfferLetter[]         @relation("OfferLetterCreator")
   employeesAnnounced   Employee[]            @relation("EmployeeAnnouncedBy")
 }
 
@@ -194,6 +195,7 @@ model JobApplication {
   activities        ApplicationActivity[]
   stageRequests     StageRequest[]
   employee          Employee?
+  offerLetters      OfferLetter[]
 
   @@index([assignedRecruiterId])
 }
@@ -321,6 +323,7 @@ model Company {
   jobs          JobPosting[]
   employees     Employee[]
   manpowerRequests ManpowerRequest[]
+  offerLetters  OfferLetter[]
 }
 
 // Manpower request (permintaan rekrutmen): a Hiring Manager asks for headcount, a TA Lead / Director
@@ -388,4 +391,47 @@ model OnboardingTask {
 
   @@index([employeeId, sortOrder])
   @@index([status, dueDate])
+}
+
+// Offer letter (surat penawaran kerja) for a candidate in Offering — a snapshot of the terms at the time it was written
+model OfferLetter {
+  id               String         @id @default(uuid())
+  letterNo         String         @unique // 001/OL-MRA/HR/X/2026
+  applicationId    String
+  companyId        String?
+  language         String         @default("id") // id | en
+  status           String         @default("DRAFT") // DRAFT, SENT, ACCEPTED, DECLINED, CANCELLED
+  candidateName    String
+  candidateEmail   String?
+  candidatePhone   String?
+  candidateAddress String?
+  positionTitle    String
+  department       String?
+  workLocation     String
+  employmentType   String         // Full-time, Contract, Internship, Part-time
+  startDate        DateTime
+  baseSalary       Decimal
+  allowances       Json?          // [{ label, amount }]
+  benefits         String?        @db.Text // one per line
+  probationMonths  Int?
+  contractMonths   Int?
+  workingHours     String?
+  reportingTo      String?
+  validUntil       DateTime
+  signatoryName    String
+  signatoryTitle   String
+  additionalTerms  String?        @db.Text
+  createdById      String?
+  sentAt           DateTime?
+  respondedAt      DateTime?
+  responseNote     String?        @db.Text
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  application      JobApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  company          Company?       @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  createdBy        User?          @relation("OfferLetterCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([applicationId])
+  @@index([status, validUntil])
 }

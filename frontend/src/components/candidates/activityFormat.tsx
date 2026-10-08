@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock } from 'lucide-react';
+import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock, FileSignature, UserSearch } from 'lucide-react';
 import { stageLabel } from '@/components/pipeline/stages';
 import { shortName } from '@/components/pipeline/ownership';
 
@@ -84,6 +84,18 @@ export function describeActivity(a: any) {
       return { Icon: CalendarClock, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>Interview scheduled — <b>{stageLabel(a.toStatus)}</b></>, who };
     case 'HIRE_RESTORED':
       return { Icon: ArchiveX, tone: 'bg-slate-100 text-slate-500 border-slate-200', title: 'Restored to pipeline', who };
+    case 'TALENT_POOL_ADDED':
+      return { Icon: UserSearch, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>Added from the talent pool{a.note ? <> · <b>{a.note}</b></> : null}</>, who };
+    case 'OFFER_LETTER_CREATED':
+      return { Icon: FileSignature, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>Offer letter drafted{a.note ? <> · <b>{a.note}</b></> : null}</>, who };
+    case 'OFFER_LETTER_SENT':
+      return { Icon: FileSignature, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>Offer letter sent{a.note ? <> · <b>{a.note}</b></> : null}</>, who };
+    case 'OFFER_ACCEPTED':
+      return { Icon: FileSignature, tone: 'bg-emerald-50 text-emerald-600 border-emerald-200', title: <>Offer accepted{a.note ? <> · <b>{a.note}</b></> : null}</>, who };
+    case 'OFFER_DECLINED':
+      return { Icon: FileSignature, tone: 'bg-amber-50 text-amber-700 border-amber-200', title: <>Offer declined{a.note ? <>: {a.note}</> : null}</>, who };
+    case 'OFFER_LETTER_CANCELLED':
+      return { Icon: FileSignature, tone: 'bg-slate-100 text-slate-500 border-slate-200', title: <>Offer letter cancelled{a.note ? <> · {a.note}</> : null}</>, who };
     case 'PROFILE_RESUBMITTED':
       return { Icon: RefreshCw, tone: 'bg-amber-50 text-amber-700 border-amber-200', title: 'Candidate resubmitted application', who: 'Career portal' };
     default:

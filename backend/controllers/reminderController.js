@@ -10,6 +10,7 @@ const { hasPermission, PERMISSIONS } = require('../config/permissions');
 const { CLOSED } = require('../config/stageRules');
 const { jobScope, applicationScope } = require('../services/hiringManagerScope');
 const { buildInterviews } = require('../services/interviewService');
+const { recentJobsWithStrongMatches } = require('./talentPoolController');
 
 const DAY = 86400000;
 const STALE_DAYS = 7;
@@ -287,6 +288,69 @@ async function getReminders(req, res) {
           detail: 'Hold the probation review and record the decision.',
           count: soon.length,
           href: '/admin/onboarding?filter=probation'
+        });
+      }
+    }
+
+    // 14. Offer letters: candidates in Offering without a letter, sent letters expiring / expired without an answer
+    if (canClaim) {
+      const mine = isLead ? {} : { assignedRecruiterId: user.id };
+      const today = new Date(new Date(now).toISOString().slice(0, 10) + 'T00:00:00Z');
+      const [noLetter, sent] = await Promise.all([
+        prisma.jobApplication.count({
+          where: { ...mine, status: 'OFFERING', releasedAt: null, offerLetters: { none: { status: { in: ['DRAFT', 'SENT', 'ACCEPTED'] } } } }
+        }),
+        prisma.offerLetter.findMany({
+          where: { status: 'SENT', validUntil: { lte: new Date(today.getTime() + 2 * DAY) }, application: mine },
+          select: { validUntil: true, candidateName: true }
+        })
+      ]);
+      if (noLetter) {
+        items.push({
+          id: 'offers-to-write',
+          severity: 'info',
+          title: `${plural(noLetter, 'candidate')} in Offering without an offer letter`,
+          detail: 'Generate the letter from the offer terms of the stage gate.',
+          count: noLetter,
+          href: '/admin/offers?view=ready'
+        });
+      }
+      const expired = sent.filter((l) => new Date(l.validUntil) < today);
+      if (expired.length) {
+        items.push({
+          id: 'offers-expired',
+          severity: 'warning',
+          title: `${plural(expired.length, 'offer letter')} expired without an answer`,
+          detail: `${expired.slice(0, 2).map((l) => l.candidateName).join(', ')}${expired.length > 2 ? ` +${expired.length - 2}` : ''} — record the response or cancel.`,
+          count: expired.length,
+          href: '/admin/offers?status=EXPIRED'
+        });
+      }
+      const expiring = sent.length - expired.length;
+      if (expiring) {
+        items.push({
+          id: 'offers-expiring',
+          severity: 'info',
+          title: `${plural(expiring, 'offer letter')} expire within 2 days`,
+          detail: 'Follow up with the candidate before the offer lapses.',
+          count: expiring,
+          href: '/admin/offers?status=SENT'
+        });
+      }
+    }
+
+    // 15. New jobs with strong talent-pool matches (TA team)
+    if (canClaim) {
+      const strongJobs = await recentJobsWithStrongMatches();
+      if (strongJobs.length) {
+        const people = strongJobs.reduce((n, j) => n + j.strong, 0);
+        items.push({
+          id: 'talent-pool-matches',
+          severity: 'info',
+          title: `Talent pool has ${people} strong match${people === 1 ? '' : 'es'} for ${plural(strongJobs.length, 'new job')}`,
+          detail: `${strongJobs.slice(0, 2).map((j) => j.title).join(', ')}${strongJobs.length > 2 ? ` +${strongJobs.length - 2}` : ''} — earlier candidates scoring 80+.`,
+          count: people,
+          href: strongJobs.length === 1 ? `/admin/talent-pool?jobId=${strongJobs[0].id}` : '/admin/talent-pool'
         });
       }
     }

@@ -27,7 +27,9 @@ import {
   Building2,
   ClipboardList,
   CalendarDays,
-  ListChecks
+  ListChecks,
+  FileSignature,
+  UserSearch
 } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { api } from '@/lib/api';
@@ -158,7 +160,9 @@ export default function DashboardLayout({
     { name: 'Database & Profiles', href: '/admin/candidates', icon: Users, permission: 'candidate.view' },
     { name: 'Templates & Bulk Import', href: '/admin/templates', icon: FileSpreadsheet, permission: 'candidate.import' },
     { name: 'Manage ATS Jobs', href: '/admin/jobs', icon: Briefcase, permission: 'jobs.manage' },
+    { name: 'Talent Pool Matching', href: '/admin/talent-pool', icon: UserSearch, permission: 'pipeline.claim' },
     { name: 'Interview Calendar', href: '/admin/interviews', icon: CalendarDays, permission: 'pipeline.view' },
+    { name: 'Offer Letters', href: '/admin/offers', icon: FileSignature, permission: 'pipeline.view' },
     { name: 'Manpower Requests', href: '/admin/manpower', icon: ClipboardList, permission: 'manpower.view' },
     { name: 'New Employees', href: '/admin/employees', icon: BadgeCheck, permission: 'employee.view' },
     { name: 'Onboarding', href: '/admin/onboarding', icon: ListChecks, permission: 'employee.view' },
@@ -187,7 +191,7 @@ export default function DashboardLayout({
   };
 
   const navigationGroups = [
-    { label: 'Recruitment', paths: ['/admin', '/admin/pipeline', '/admin/candidates', '/admin/jobs', '/admin/interviews', '/admin/manpower'] },
+    { label: 'Recruitment', paths: ['/admin', '/admin/pipeline', '/admin/candidates', '/admin/jobs', '/admin/talent-pool', '/admin/interviews', '/admin/offers', '/admin/manpower'] },
     { label: 'People', paths: ['/admin/employees', '/admin/onboarding', '/admin/announcements', '/admin/team', '/admin/activity'] },
     { label: 'Administration', paths: ['/admin/templates', '/admin/users', '/admin/companies'] }
   ];

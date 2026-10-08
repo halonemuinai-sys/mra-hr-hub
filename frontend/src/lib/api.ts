@@ -53,6 +53,22 @@ export async function fetchResumeBlob(candidateId: string): Promise<Blob> {
   return res.blob();
 }
 
+/** Offer letter PDF as a Blob (needs the CMS token) */
+export async function fetchOfferPdf(offerId: string): Promise<Blob> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('hr_hub_token') : null;
+  const res = await fetch(`${API_BASE_URL}/offers/${offerId}/pdf`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
+  if (!res.ok) {
+    let msg = `Error ${res.status}`;
+    try {
+      msg = (await res.json()).message || msg;
+    } catch {}
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 /** New-employees workbook (same filters as the list) for HRIS / payroll import */
 export async function downloadEmployees(params: Record<string, string> = {}): Promise<Blob> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('hr_hub_token') : null;
@@ -236,6 +252,25 @@ export const api = {
   deleteOnboardingTask: (taskId: string) => fetchApi(`/onboarding/tasks/${taskId}`, { method: 'DELETE' }),
   setProbationEnd: (employeeId: string, probationEndDate: string) =>
     fetchApi(`/onboarding/${employeeId}/probation`, { method: 'PATCH', body: JSON.stringify({ probationEndDate }) }),
+
+  // Talent pool matching
+  getTalentPoolJobs: () => fetchApi('/talent-pool/jobs'),
+  matchTalentPool: (jobId: string, params: Record<string, string> = {}) => fetchApi(`/talent-pool/jobs/${jobId}?${new URLSearchParams(params)}`),
+  getTalentPool: (params: Record<string, string> = {}) => fetchApi(`/talent-pool/candidates?${new URLSearchParams(params)}`),
+  addFromTalentPool: (jobId: string, candidateIds: string[], claim = true) =>
+    fetchApi(`/talent-pool/jobs/${jobId}/add`, { method: 'POST', body: JSON.stringify({ candidateIds, claim }) }),
+
+  // Offer letters
+  getOffers: (params: Record<string, string> = {}) => fetchApi(`/offers?${new URLSearchParams(params)}`),
+  getOffer: (id: string) => fetchApi(`/offers/${id}`),
+  getOfferPrefill: (applicationId: string, language = 'id') => fetchApi(`/offers/prefill/${applicationId}?language=${language}`),
+  previewOffer: (data: Record<string, any>) => fetchApi('/offers/preview', { method: 'POST', body: JSON.stringify(data) }),
+  createOffer: (data: Record<string, any>) => fetchApi('/offers', { method: 'POST', body: JSON.stringify(data) }),
+  updateOffer: (id: string, data: Record<string, any>) => fetchApi(`/offers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  sendOffer: (id: string) => fetchApi(`/offers/${id}/send`, { method: 'POST' }),
+  respondOffer: (id: string, response: 'ACCEPTED' | 'DECLINED', note = '') =>
+    fetchApi(`/offers/${id}/respond`, { method: 'POST', body: JSON.stringify({ response, note }) }),
+  cancelOffer: (id: string, note = '') => fetchApi(`/offers/${id}/cancel`, { method: 'POST', body: JSON.stringify({ note }) }),
 
   // Interview calendar
   getInterviews: (params: Record<string, string> = {}) => fetchApi(`/interviews?${new URLSearchParams(params)}`),

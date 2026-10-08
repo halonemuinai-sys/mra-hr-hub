@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { X, Pencil, MapPin, Clock, GraduationCap, Wallet, Sparkles, KanbanSquare, Power, Trash2, Users, Loader2, UserCheck } from 'lucide-react';
+import { X, Pencil, MapPin, Clock, GraduationCap, Wallet, Sparkles, KanbanSquare, Power, Trash2, Users, Loader2, UserCheck, UserSearch } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getScoreBadge } from '@/lib/utils';
 import { internalSalaryLabel } from '@/lib/jobSalary';
@@ -130,11 +130,18 @@ export default function JobDetailDrawer({ jobId, onClose, onEdit, onChanged, onE
                   <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" /> Applicants ({s.total})
                   </h3>
-                  {s.total > 0 && (
-                    <Link href={`/admin/pipeline?jobId=${job.id}`} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
-                      <KanbanSquare className="w-3.5 h-3.5" /> View Pipeline
-                    </Link>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {job.isActive && (
+                      <Link href={`/admin/talent-pool?jobId=${job.id}`} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        <UserSearch className="w-3.5 h-3.5" /> Find in talent pool
+                      </Link>
+                    )}
+                    {s.total > 0 && (
+                      <Link href={`/admin/pipeline?jobId=${job.id}`} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                        <KanbanSquare className="w-3.5 h-3.5" /> View Pipeline
+                      </Link>
+                    )}
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   {[

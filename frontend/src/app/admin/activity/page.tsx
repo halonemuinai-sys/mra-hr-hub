@@ -14,6 +14,7 @@ const GROUPS = [
   { key: 'moves', count: 'moves', label: 'Stage moves' },
   { key: 'ownership', count: 'ownership', label: 'Claims / assignments' },
   { key: 'approvals', count: 'approvals', label: 'Approvals' },
+  { key: 'offers', count: 'offers', label: 'Offer letters' },
   { key: 'hires', count: 'hires', label: 'Hires & onboarding' }
 ];
 
