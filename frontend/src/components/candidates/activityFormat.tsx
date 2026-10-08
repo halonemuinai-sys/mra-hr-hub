@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload } from 'lucide-react';
+import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock } from 'lucide-react';
 import { stageLabel } from '@/components/pipeline/stages';
 import { shortName } from '@/components/pipeline/ownership';
 
@@ -80,6 +80,8 @@ export function describeActivity(a: any) {
       return { Icon: CloudUpload, tone: 'bg-emerald-50 text-emerald-600 border-emerald-200', title: <>Sent to Talenta{a.note ? <> · <b>{a.note}</b></> : null}</>, who };
     case 'TALENTA_SYNC_FAILED':
       return { Icon: CloudUpload, tone: 'bg-amber-50 text-amber-700 border-amber-200', title: <>Failed to send to Talenta{a.note ? <>: {a.note}</> : null}</>, who };
+    case 'INTERVIEW_SCHEDULED':
+      return { Icon: CalendarClock, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>Interview scheduled — <b>{stageLabel(a.toStatus)}</b></>, who };
     case 'HIRE_RESTORED':
       return { Icon: ArchiveX, tone: 'bg-slate-100 text-slate-500 border-slate-200', title: 'Restored to pipeline', who };
     case 'PROFILE_RESUBMITTED':

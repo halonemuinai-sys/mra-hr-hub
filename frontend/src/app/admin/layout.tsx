@@ -25,7 +25,9 @@ import {
   Megaphone,
   History,
   Building2,
-  ClipboardList
+  ClipboardList,
+  CalendarDays,
+  ListChecks
 } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { api } from '@/lib/api';
@@ -156,8 +158,10 @@ export default function DashboardLayout({
     { name: 'Database & Profiles', href: '/admin/candidates', icon: Users, permission: 'candidate.view' },
     { name: 'Templates & Bulk Import', href: '/admin/templates', icon: FileSpreadsheet, permission: 'candidate.import' },
     { name: 'Manage ATS Jobs', href: '/admin/jobs', icon: Briefcase, permission: 'jobs.manage' },
+    { name: 'Interview Calendar', href: '/admin/interviews', icon: CalendarDays, permission: 'pipeline.view' },
     { name: 'Manpower Requests', href: '/admin/manpower', icon: ClipboardList, permission: 'manpower.view' },
     { name: 'New Employees', href: '/admin/employees', icon: BadgeCheck, permission: 'employee.view' },
+    { name: 'Onboarding', href: '/admin/onboarding', icon: ListChecks, permission: 'employee.view' },
     { name: 'Announcements', href: '/admin/announcements', icon: Megaphone, permission: 'dashboard.view' },
     { name: 'TA Team Performance', href: '/admin/team', icon: Activity, permission: 'team.monitor' },
     { name: 'Team Activity Log', href: '/admin/activity', icon: History, permission: 'team.monitor' },
@@ -183,8 +187,8 @@ export default function DashboardLayout({
   };
 
   const navigationGroups = [
-    { label: 'Recruitment', paths: ['/admin', '/admin/pipeline', '/admin/candidates', '/admin/jobs', '/admin/manpower'] },
-    { label: 'People', paths: ['/admin/employees', '/admin/announcements', '/admin/team', '/admin/activity'] },
+    { label: 'Recruitment', paths: ['/admin', '/admin/pipeline', '/admin/candidates', '/admin/jobs', '/admin/interviews', '/admin/manpower'] },
+    { label: 'People', paths: ['/admin/employees', '/admin/onboarding', '/admin/announcements', '/admin/team', '/admin/activity'] },
     { label: 'Administration', paths: ['/admin/templates', '/admin/users', '/admin/companies'] }
   ];
 

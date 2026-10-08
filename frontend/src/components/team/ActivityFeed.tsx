@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Hand, LogOut, UserPlus, ArrowRightLeft, XCircle, CheckCircle2, ShieldCheck, BadgeCheck, Megaphone, ArchiveX, CloudUpload } from 'lucide-react';
+import { Hand, LogOut, UserPlus, ArrowRightLeft, XCircle, CheckCircle2, ShieldCheck, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock } from 'lucide-react';
 import { describeActivity, formatRelative } from './teamFormat';
 
 /** Actions whose note is already part of the sentence (describeActivity) */
@@ -17,6 +17,7 @@ function iconFor(a: any) {
     return { Icon: ShieldCheck, cls: 'bg-amber-50 text-amber-600 border-amber-200' };
   if (a.action === 'EMPLOYEE_REGISTERED') return { Icon: BadgeCheck, cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
   if (a.action === 'TALENTA_SYNCED') return { Icon: CloudUpload, cls: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
+  if (a.action === 'INTERVIEW_SCHEDULED') return { Icon: CalendarClock, cls: 'bg-blue-50 text-blue-600 border-blue-200' };
   if (a.action === 'TALENTA_SYNC_FAILED') return { Icon: CloudUpload, cls: 'bg-amber-50 text-amber-600 border-amber-200' };
   if (a.action === 'EMPLOYEE_ANNOUNCED') return { Icon: Megaphone, cls: 'bg-blue-50 text-blue-600 border-blue-200' };
   if (a.action === 'HIRE_RELEASED' || a.action === 'HIRE_RESTORED') return { Icon: ArchiveX, cls: 'bg-slate-100 text-slate-500 border-slate-200' };

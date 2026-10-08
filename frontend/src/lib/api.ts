@@ -225,6 +225,23 @@ export const api = {
   getKpis: () => fetchApi('/stats/kpis'),
   getDashboard: (weeks = 12, companyId = '') => fetchApi(`/stats/dashboard?weeks=${weeks}${companyId ? `&companyId=${companyId}` : ''}`),
 
+  // Onboarding checklists
+  getOnboarding: (params: Record<string, string> = {}) => fetchApi(`/onboarding?${new URLSearchParams(params)}`),
+  getOnboardingChecklist: (employeeId: string) => fetchApi(`/onboarding/${employeeId}`),
+  startOnboarding: (employeeId: string) => fetchApi(`/onboarding/${employeeId}/start`, { method: 'POST' }),
+  addOnboardingTask: (employeeId: string, data: Record<string, any>) =>
+    fetchApi(`/onboarding/${employeeId}/tasks`, { method: 'POST', body: JSON.stringify(data) }),
+  updateOnboardingTask: (taskId: string, data: Record<string, any>) =>
+    fetchApi(`/onboarding/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteOnboardingTask: (taskId: string) => fetchApi(`/onboarding/tasks/${taskId}`, { method: 'DELETE' }),
+  setProbationEnd: (employeeId: string, probationEndDate: string) =>
+    fetchApi(`/onboarding/${employeeId}/probation`, { method: 'PATCH', body: JSON.stringify({ probationEndDate }) }),
+
+  // Interview calendar
+  getInterviews: (params: Record<string, string> = {}) => fetchApi(`/interviews?${new URLSearchParams(params)}`),
+  scheduleInterview: (applicationId: string, data: Record<string, any>) =>
+    fetchApi(`/interviews/${applicationId}/schedule`, { method: 'POST', body: JSON.stringify(data) }),
+
   // Manpower requests (permintaan rekrutmen)
   getManpowerRequests: (params: Record<string, string> = {}) => fetchApi(`/manpower?${new URLSearchParams(params)}`),
   getManpowerRequest: (id: string) => fetchApi(`/manpower/${id}`),

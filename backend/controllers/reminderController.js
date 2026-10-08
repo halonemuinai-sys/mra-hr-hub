@@ -9,6 +9,7 @@ const prisma = require('../api/db');
 const { hasPermission, PERMISSIONS } = require('../config/permissions');
 const { CLOSED } = require('../config/stageRules');
 const { jobScope, applicationScope } = require('../services/hiringManagerScope');
+const { buildInterviews } = require('../services/interviewService');
 
 const DAY = 86400000;
 const STALE_DAYS = 7;
@@ -93,7 +94,7 @@ async function getReminders(req, res) {
       }
     }
 
-    // 4. Interviews in the next 48 hours (schedule comes from the stage-gate form)
+    // 4. Interviews in the next 48 hours (stage-gate schedule, incl. reschedules — services/interviewService.js)
     const interviewApps = await prisma.jobApplication.findMany({
       where: {
         status: { in: ['INTERVIEW_HR', 'INTERVIEW_USER'] },
@@ -103,20 +104,16 @@ async function getReminders(req, res) {
         id: true,
         status: true,
         activities: {
-          where: { action: 'STAGE_CHANGE' },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-          select: { toStatus: true, stageData: true }
+          where: { action: { in: ['STAGE_CHANGE', 'INTERVIEW_SCHEDULED'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, action: true, toStatus: true, stageData: true, createdAt: true }
         }
       }
     });
-    const upcoming = interviewApps
-      .map((a) => {
-        const last = a.activities[0];
-        const at = last && last.toStatus === a.status && last.stageData && last.stageData.interviewAt;
-        return at ? new Date(at).getTime() : null;
-      })
-      .filter((t) => t && t >= now - 2 * 3600000 && t <= now + 2 * DAY);
+    const upcoming = buildInterviews(interviewApps, new Date(now))
+      .events.filter((e) => e.current)
+      .map((e) => new Date(e.start).getTime())
+      .filter((t) => t >= now - 2 * 3600000 && t <= now + 2 * DAY);
     if (upcoming.length) {
       const next = new Date(Math.min(...upcoming));
       items.push({
@@ -125,7 +122,7 @@ async function getReminders(req, res) {
         title: `${plural(upcoming.length, 'interview')} in the next 48 hours`,
         detail: `Next: ${next.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}.`,
         count: upcoming.length,
-        href: '/admin/pipeline'
+        href: '/admin/interviews'
       });
     }
 
@@ -247,6 +244,51 @@ async function getReminders(req, res) {
         count: myDecided.length,
         href: '/admin/manpower?mine=1'
       });
+    }
+
+    // 12. Overdue onboarding tasks (HR & TA: all; Hiring Managers: line-manager tasks of their new hires)
+    const canOnboard = hasPermission(user, 'employee.manage');
+    if (canOnboard || user.role === 'HIRING_MANAGER') {
+      const today = new Date(new Date(now).toISOString().slice(0, 10) + 'T00:00:00Z');
+      const overdueTasks = await prisma.onboardingTask.findMany({
+        where: {
+          status: 'TODO',
+          dueDate: { lt: today },
+          ...(canOnboard ? {} : { owner: 'MANAGER', employee: { job: jobScope(user) || {} } })
+        },
+        select: { employeeId: true }
+      });
+      if (overdueTasks.length) {
+        const people = new Set(overdueTasks.map((t) => t.employeeId)).size;
+        items.push({
+          id: 'onboarding-overdue',
+          severity: 'warning',
+          title: `${plural(overdueTasks.length, 'onboarding task')} overdue`,
+          detail: `For ${plural(people, 'new employee')}.`,
+          count: overdueTasks.length,
+          href: '/admin/onboarding?filter=overdue'
+        });
+      }
+
+      // 13. Probation ending within 14 days
+      const soon = await prisma.employee.findMany({
+        where: {
+          employmentStatus: 'PROBATION',
+          probationEndDate: { gte: today, lte: new Date(today.getTime() + 14 * DAY) },
+          ...(canOnboard ? {} : { job: jobScope(user) || {} })
+        },
+        select: { fullName: true }
+      });
+      if (soon.length) {
+        items.push({
+          id: 'probation-ending',
+          severity: 'info',
+          title: `Probation ends within 14 days: ${soon.slice(0, 2).map((e) => e.fullName).join(', ')}${soon.length > 2 ? ` +${soon.length - 2}` : ''}`,
+          detail: 'Hold the probation review and record the decision.',
+          count: soon.length,
+          href: '/admin/onboarding?filter=probation'
+        });
+      }
     }
 
     items.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);

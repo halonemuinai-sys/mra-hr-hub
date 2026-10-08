@@ -52,6 +52,8 @@ export function describeActivity(a: any) {
       return { who, text: `sent ${cand} to Talenta (${a.note || ''})` };
     case 'TALENTA_SYNC_FAILED':
       return { who, text: `failed to send ${cand} to Talenta: ${a.note || ''}` };
+    case 'INTERVIEW_SCHEDULED':
+      return { who, text: `scheduled the ${stageLabel(a.toStatus)} of ${cand}` };
     case 'HIRE_RESTORED':
       return { who, text: `restored ${cand} to the pipeline` };
     default:

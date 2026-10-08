@@ -24,6 +24,7 @@ const { PENDING } = require('../services/stageMoveService');
 const { jobScope, applicationScope, canAccessJob } = require('../services/hiringManagerScope');
 const { buildJourney } = require('../services/journeyService');
 const { companyError, companyFilterValue } = require('./companyController');
+const { buildChecklist, defaultProbationEnd } = require('../services/onboardingRules');
 
 const COMPANY = { select: { id: true, code: true, name: true } };
 const { sanitizeEmployeeInput, suggestEmployeeNo } = require('../services/employeeInput');
@@ -232,10 +233,13 @@ async function registerEmployee(req, res) {
           jobId: app.jobId,
           companyId,
           createdById: req.user.id,
+          ...(data.employmentStatus === 'PROBATION' ? { probationEndDate: defaultProbationEnd(data.joinDate) } : {}),
           ...(announce ? { announcedAt: now, announcedById: req.user.id, announcementMessage } : {})
         },
         include: EMPLOYEE_INCLUDE
       });
+      // Onboarding checklist from config/onboardingTasks.js
+      await tx.onboardingTask.createMany({ data: buildChecklist(emp).map((t) => ({ ...t, employeeId: emp.id })) });
       if (!app.releasedAt) await tx.jobApplication.update({ where: { id: app.id }, data: { releasedAt: now } });
       const log = [{ applicationId: app.id, actorId: req.user.id, action: 'EMPLOYEE_REGISTERED', note: `Employee ID ${data.employeeNo}` }];
       if (announce) log.push({ applicationId: app.id, actorId: req.user.id, action: 'EMPLOYEE_ANNOUNCED' });

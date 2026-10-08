@@ -18,6 +18,8 @@ const announcementRoutes = require('../routes/announcementRoutes');
 const talentaRoutes = require('../routes/talentaRoutes');
 const companyRoutes = require('../routes/companyRoutes');
 const manpowerRoutes = require('../routes/manpowerRoutes');
+const interviewRoutes = require('../routes/interviewRoutes');
+const onboardingRoutes = require('../routes/onboardingRoutes');
 const jobRoutes = require('../routes/jobRoutes');
 const statsRoutes = require('../routes/statsRoutes');
 const authRoutes = require('../routes/authRoutes');
@@ -60,6 +62,8 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/talenta', talentaRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/manpower', manpowerRoutes);
+app.use('/api/interviews', interviewRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

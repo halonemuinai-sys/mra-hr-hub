@@ -29,6 +29,7 @@ node scripts/seedUsers.js
 node scripts/seedCompanies.js               # 21 PTs of MRA Group (idempotent, matched by name; codes editable in the Companies menu)
 node scripts/seedPipelineSamples.js          # 50 demo candidates across the pipeline (@sample.hrhub.test), incl. 5 multi-job applicants, 1 duplicate profile, 2 pending approvals
 node scripts/seedPipelineSamples.js --clean  # remove only the demo candidates
+node scripts/seedInterviewSamples.js         # demo interview schedules for sample candidates (this/next week, 2 awaiting outcome, 1 clash, 2 unscheduled); --clean removes them
 node scripts/seedJobSamples.js               # top up to 25 jobs with sample postings (slug prefix `sample-`)
 node scripts/seedJobSamples.js --clean       # remove only the sample jobs (cascades to their applications)
 node scripts/generate_sample_cvs.js --batch 2 # 12 sample resumes (.pdf + .txt) → sample_cv_ats/batch_02 (not in DB; for upload tests)
@@ -68,6 +69,7 @@ SQL migrations live in `backend/prisma/sql/` (run in filename order):
 - `2026-10-07_employee_talenta.sql` — `Employee.talentaData/Status/Mode/UserId/EmployeeId/SyncedAt/Error`
 - `2026-10-07_companies.sql` — `Company` (PT) + `JobPosting.companyId` / `Employee.companyId`, seeds PT Mugi Rekso Abadi (`MRA`). Tables are schema-qualified (`public.`) because the shared DB also has a `helpdesk."Company"` table.
 - `2026-10-08_manpower_requests.sql` — `ManpowerRequest` (schema-qualified, links to `User`, `Company`, `JobPosting`)
+- `2026-10-08_onboarding.sql` — `OnboardingTask` + `Employee.probationEndDate` (schema-qualified)
 
 ### Health Check Endpoints
 - **Backend Health**: `curl http://localhost:5006/api/health`
@@ -212,6 +214,17 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - Every **job** has a PT (`JobPosting.companyId`; required on create once an active company exists, shown as a code chip on job cards; not shown on the public portal). **Employees** inherit the job's PT at registration and can change it (form, table chip, filter, Excel export column, Journey header). The PT's `talentaBranch` is the first default for the Talenta *Branch* field (one Talenta account for the whole group).
 - PT filter (`?companyId=<id>` or `none` = no PT set) on the pipeline, employees, dashboard (`/api/stats/dashboard` also returns `byCompany` → *Per Company (PT)* card) and the recruitment report (new *Per PT* sheet + PT column on job / hires / applicant sheets).
 
+### P. Onboarding (`/admin/onboarding`, `employee.view`; Hiring Managers scoped to their jobs)
+- Every registered employee gets a checklist from **`config/onboardingTasks.js`** (the only place to change the standard tasks): phases *Before day one / Day one / First week / First month / Probation*, owner teams HR / IT / GA / Manager / Payroll, due date = join date + offset (probation tasks count from the probation end and only exist for `PROBATION` hires). Created inside `registerEmployee`; employees registered earlier get it with *Start onboarding*. Probation end defaults to join + 3 months (`Employee.probationEndDate`); changing it moves the open probation tasks.
+- Rules in `services/onboardingRules.js` (pure, unit-tested): `buildChecklist`, `progressOf` (done / total excluding skipped, overdue, next task, NOT_STARTED / IN_PROGRESS / COMPLETED), `canUpdateTask` — `employee.manage` (HR & TA) may tick, skip, re-date, add and remove tasks; **Hiring Managers may tick / comment only the Manager tasks**.
+- `GET /api/onboarding?status=&filter=overdue|probation&companyId=&search=` (list + summary), `GET /:employeeId`, `POST /:employeeId/start`, `POST /:employeeId/tasks`, `PATCH /:employeeId/probation`, `PATCH /tasks/:taskId`, `DELETE /tasks/:taskId` (`controllers/onboardingController.js`).
+- Reminders: overdue onboarding tasks (HMs: their Manager tasks) and probation ending within 14 days. UI: `app/admin/onboarding/page.tsx`, `components/onboarding/*`.
+
+### O. Interview Calendar (`/admin/interviews`, `pipeline.view`; Hiring Managers scoped to their jobs)
+- Events come from the activity log (`services/interviewService.js`, pure, unit-tested): each visit to Interview HR / User is one interview; its schedule is the stage-gate data of the move into the stage (`interviewAt`, `interviewer` / `hiringManager`, `interviewMode`) overridden by later **`INTERVIEW_SCHEDULED`** activities in the same visit (reschedules). Status: `UPCOMING`, `AWAITING_OUTCOME` (time passed, still in the stage), `COMPLETED` (left after the interview, `outcome` = next stage), `CANCELLED` (left before it), `UNSCHEDULED` (in the stage without a date). Interviews are blocked for 60 min; the same interviewer (case/space-insensitive) in an overlapping open slot = **clash**.
+- `GET /api/interviews?from=&to=&companyId=&jobId=&stage=&interviewer=&mine=1` → events in the window, unscheduled list, summary (today, this week, awaiting outcome, clashes, interviewer load this week), interviewer names. `POST /api/interviews/:applicationId/schedule` (PIC or TA Lead, current interview stage only) writes an `INTERVIEW_SCHEDULED` activity. Times are datetime-local strings (WIB) parsed in the server's local time zone.
+- UI (`components/interviews/*`): Week (time grid 08–19, lanes for overlaps, now-line), Month, Agenda; filters PT / stage / interviewer / mine; side panel *Not scheduled yet* (Schedule button) and interviewer load; detail modal with Google Calendar link, `.ics` download, WhatsApp invite to the candidate (`wa.me`, 08… → 628…), copy invite text, reschedule. The 48h interview reminder uses the same service (so reschedules count).
+
 ### N. Manpower Requests (`/admin/manpower`)
 - Flow: a Hiring Manager (or TA Lead) submits a request (`manpower.request`) → a TA Lead or the Super Admin approves / rejects it (`manpower.approve`; rejecting needs a note; nobody approves their own request except the Super Admin) → TA opens it as a job posting (`jobs.manage`) → progress = hired / headcount of that job.
 - Request: PT (required), position, department, division, location, employment type, headcount (1–50), reason `REPLACEMENT` (+ who is replaced) / `ADDITIONAL` / `NEW_POSITION`, justification, priority (`URGENT` flag), target start date, monthly salary budget, min. education / experience, key skills. Numbered `MPR-<year>-0001`. Status `PENDING` → `APPROVED` / `REJECTED`; requester or approver can withdraw (`CANCELLED`) while pending or approved without a job; only pending requests can be edited.
@@ -219,6 +232,7 @@ Every stage change goes through the gate: rules in `backend/config/stageRules.js
 - Opening the job: the drawer's *Open job posting* opens `JobFormModal` prefilled (`jobPrefill`: title, PT, division, location, type, budget as **confidential** salary range, skills as must-have keywords, requester as Hiring Manager). `POST /api/jobs` with `manpowerRequestId` creates the job and links it in one transaction (one job per request; 409 otherwise). Job detail shows "From MPR-…".
 - Reminders: approvals waiting (urgent = critical), approved requests without a job (TA Lead), requester's decided requests (3 days).
 - UI: `frontend/src/app/admin/manpower/page.tsx`, `components/manpower/*` (`ManpowerFormModal`, `ManpowerDetailDrawer`, `manpowerFormat.ts`).
+- **User guide** (Indonesian, with screenshots): `docs/guides/manpower-request/README.md`. End-user guides live in `docs/guides/<feature>/` (`README.md` + `images/`), indexed in `docs/README.md`; update the screenshots when the screens change.
 
 ### M. Hide Identity Mode (screenshots / demos)
 - Header toggle **Hide identity** (`components/privacy/IdentityToggle.tsx`), shortcut **Ctrl+Shift+H** on any page (admin, login, public portal), or `?hideIdentity=1|0` in the URL. Stored per browser in `localStorage.hr_hub_hide_identity`.
