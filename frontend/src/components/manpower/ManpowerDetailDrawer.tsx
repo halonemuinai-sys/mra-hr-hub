@@ -123,7 +123,7 @@ export default function ManpowerDetailDrawer({ requestId, onClose, onEdit, onOpe
                   </Row>
                   <Row label="Salary budget / month">{budgetLabel(r.salaryMin, r.salaryMax)}</Row>
                   <Row label="Min. education">{r.minEducation || '—'}</Row>
-                  <Row label="Min. experience">{r.minExperience == null ? '—' : `${r.minExperience} yrs`}</Row>
+                  <Row label="Min. experience">{r.minExperience == null ? '—' : `${r.minExperience} yr${r.minExperience === 1 ? '' : 's'}`}</Row>
                 </dl>
                 {r.skills?.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1">
