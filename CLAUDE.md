@@ -52,6 +52,11 @@ $env:NEXT_DIST_DIR=".next-build"; npx next build  # production build next to a r
 - `next.config.ts` no longer ignores type or lint errors — they fail `next build`. Restore `next-env.d.ts` (`git checkout frontend/next-env.d.ts`) after an isolated build; Next rewrites it to the build folder.
 - CI (`.github/workflows/ci.yml`) runs backend unit tests and frontend lint + build on every push / PR to `main`. API tests need the real DB and stay local.
 
+### Deploy to Vercel (two projects from this repo)
+- **Backend** project (e.g. `be-mra-hr-hub`): Root Directory `backend`. `backend/vercel.json` routes every path to `api/index.js` (exports the Express app; `listen()` only runs outside Vercel) and bundles the pdfkit fonts; `postinstall` runs `prisma generate`. Env vars: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET` (new, ≥32 chars), `NODE_ENV=production`, `MAIL_MODE=smtp` + `SMTP_*`, `PORTAL_URL`. Check `/api/health`.
+- **Frontend** project: Root Directory `frontend`, env `NEXT_PUBLIC_API_URL=https://<backend>/api` (read at build time — redeploy after changing it).
+- ⚠️ On Vercel only `/tmp` is writable: CV files (`resumeStorage`, `UPLOADS_DIR` overrides) and the mail outbox go to `/tmp` and are **temporary**. Move CVs to object storage (e.g. Supabase Storage) or run the backend on a server before relying on stored CVs in production.
+
 ### Database Schema Changes (⚠️ never `prisma db push`)
 The DB URL has no `schema` param and the Supabase instance is shared with other apps (e.g. `helpdesk` schema), so `db push` is unsafe. Generate additive SQL and apply it explicitly:
 ```powershell

@@ -4,6 +4,7 @@
   "description": "Backend API for HR HUB - ATS Resume Parser, Template Engine, and Talent Profiling System",
   "main": "api/index.js",
   "scripts": {
+    "postinstall": "prisma generate",
     "start": "node api/index.js",
     "dev": "nodemon api/index.js",
     "prisma:generate": "prisma generate",

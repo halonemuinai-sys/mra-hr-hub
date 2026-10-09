@@ -9,7 +9,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const ROOT = path.join(__dirname, '../uploads');
+// UPLOADS_DIR overrides the folder. On Vercel only /tmp is writable — files there are TEMPORARY
+// (lost between function instances / deploys); use a persistent server or object storage for production CVs.
+const ROOT = process.env.UPLOADS_DIR || (process.env.VERCEL ? '/tmp/hrhub-uploads' : path.join(__dirname, '../uploads'));
 const STORE_DIR = path.join(ROOT, 'resumes');
 const TMP_DIR = path.join(STORE_DIR, 'tmp');
 const TEMP_TTL_MS = 24 * 3600 * 1000;

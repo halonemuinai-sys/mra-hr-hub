@@ -7,7 +7,7 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const cfg = require('../../config/mail');
 
-const OUTBOX = path.join(__dirname, '../../mail-outbox');
+const OUTBOX = process.env.VERCEL ? '/tmp/mail-outbox' : path.join(__dirname, '../../mail-outbox');
 // Addresses that can never receive mail (sample / demo data)
 const UNDELIVERABLE = /@([a-z0-9-]+\.)*(test|example|invalid|local|localhost)$|@example\.(com|org|net)$/i;
 
