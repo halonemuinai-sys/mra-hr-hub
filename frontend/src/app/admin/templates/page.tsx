@@ -13,7 +13,7 @@ import {
   Eye,
   Sparkles
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, TEMPLATE_DOWNLOAD_URL } from '@/lib/api';
 
 export default function TemplatesManagementPage() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -89,7 +89,7 @@ export default function TemplatesManagementPage() {
 
         <div>
           <a
-            href="http://localhost:5006/api/templates/download"
+            href={TEMPLATE_DOWNLOAD_URL}
             target="_blank"
             rel="noreferrer"
             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs shadow-emerald-600/25 flex items-center gap-1.5 transition-all"

@@ -8,6 +8,7 @@ const { resolveMovePermission } = require('./assignmentController');
 const { evaluateTransition } = require('../services/stageGateService');
 const { loadApplicationForGate, applyStageChange } = require('../services/stageMoveService');
 const { hasPermission } = require('../config/permissions');
+const { later, notifyApplicationReceived } = require('../services/mail/applicantMail');
 
 /**
  * List candidates with standard contract { success, data, meta, summary }
@@ -185,6 +186,7 @@ async function createCandidateWithApplication(req, res) {
       resumeToken: req.body.resumeToken || null
     });
 
+    if (result.applicationCreated) later(() => notifyApplicationReceived(result.application.id));
     return res.status(201).json({
       success: true,
       message: 'Lamaran kerja berhasil didaftarkan.',

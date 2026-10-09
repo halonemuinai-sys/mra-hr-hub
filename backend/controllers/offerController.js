@@ -10,6 +10,7 @@
  *   POST  /api/offers/:id/respond           → ACCEPTED / DECLINED (note required to decline)
  *   POST  /api/offers/:id/cancel            → withdraw a draft or sent letter
  *   GET   /api/offers/:id/pdf               → PDF
+ *   POST  /api/offers/:id/email             → e-mail the PDF to the candidate (a draft becomes SENT)
  * Viewing: pipeline.view (Hiring Managers: their jobs). Writing: the candidate's PIC or a TA Lead.
  */
 const prisma = require('../api/db');
@@ -18,6 +19,9 @@ const { companyError, companyFilterValue } = require('./companyController');
 const { sanitizeOffer, nextLetterNo, canManageOffer, displayStatus, actionsFor, prefillOffer } = require('../services/offerLetter/offerRules');
 const { buildOfferDocument } = require('../services/offerLetter/offerDocument');
 const { renderOfferPdf } = require('../services/offerLetter/offerPdf');
+const { PassThrough } = require('stream');
+const mailCfg = require('../config/mail');
+const { sendOfferLetter } = require('../services/mail/applicantMail');
 
 const OPEN = ['DRAFT', 'SENT', 'ACCEPTED'];
 const COMPANY = { select: { id: true, code: true, name: true, address: true, npwp: true } };
@@ -177,7 +181,7 @@ async function getOffer(req, res) {
   try {
     const l = await loadLetter(req.user, req.params.id);
     if (!l) return res.status(404).json({ success: false, message: 'Offer letter not found.' });
-    return res.json({ success: true, data: { ...shape(req.user, l), document: buildOfferDocument(l, l.company) } });
+    return res.json({ success: true, data: { ...shape(req.user, l), document: buildOfferDocument(l, l.company), emailMode: mailCfg.mode } });
   } catch (error) {
     console.error('Error loading offer letter:', error);
     return res.status(500).json({ success: false, message: error.message });
@@ -256,4 +260,50 @@ async function downloadPdf(req, res) {
   }
 }
 
-module.exports = { listOffers, getPrefill, preview, createOffer, getOffer, updateOffer, sendOffer, respondOffer, cancelOffer, downloadPdf };
+/** PDF as a Buffer (for e-mail attachments) */
+function pdfBuffer(model) {
+  return new Promise((resolve, reject) => {
+    const sink = new PassThrough();
+    const chunks = [];
+    sink.on('data', (c) => chunks.push(c));
+    sink.on('end', () => resolve(Buffer.concat(chunks)));
+    sink.on('error', reject);
+    renderOfferPdf(model, sink);
+  });
+}
+
+async function emailOffer(req, res) {
+  try {
+    const l = await loadLetter(req.user, req.params.id);
+    if (!l) return res.status(404).json({ success: false, message: 'Offer letter not found.' });
+    const a = actionsFor(req.user, l, l.application);
+    const resend = l.status === 'SENT' && a.respond;
+    if (!a.send && !resend) return res.status(403).json({ success: false, message: 'Only drafts or sent letters can be e-mailed, by the PIC or a TA Lead.' });
+    if (!l.candidateEmail) return res.status(400).json({ success: false, message: 'The letter has no candidate e-mail — add it with Edit first.' });
+    if (mailCfg.mode === 'off') return res.status(409).json({ success: false, message: 'E-mail is not configured (MAIL_MODE=off or SMTP missing).' });
+
+    const pdf = await pdfBuffer(buildOfferDocument(l, l.company));
+    const result = await sendOfferLetter(l, pdf, { actorId: req.user.id, replyTo: req.user.email });
+    if (result.status === 'failed') return res.status(502).json({ success: false, message: `E-mail could not be sent: ${result.reason}` });
+    if (result.status === 'skipped') return res.status(409).json({ success: false, message: result.reason });
+
+    if (l.status === 'DRAFT') {
+      const done = await prisma.offerLetter.updateMany({ where: { id: l.id, status: 'DRAFT' }, data: { status: 'SENT', sentAt: new Date() } });
+      if (done.count) {
+        await prisma.applicationActivity.create({
+          data: { applicationId: l.applicationId, actorId: req.user.id, action: 'OFFER_LETTER_SENT', toStatus: l.application.status, note: `${l.letterNo} — e-mailed to ${result.to}` }
+        });
+      }
+    }
+    const fresh = await prisma.offerLetter.findUnique({ where: { id: l.id }, include: LETTER_INCLUDE });
+    const message = result.status === 'logged'
+      ? `${l.letterNo} prepared for ${result.to} (log only — MAIL_MODE=log, nothing was delivered).`
+      : `${l.letterNo} e-mailed to ${result.to}.`;
+    return res.json({ success: true, message, data: shape(req.user, fresh), email: { status: result.status, to: result.to } });
+  } catch (error) {
+    console.error('Error e-mailing offer letter:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+module.exports = { listOffers, getPrefill, preview, createOffer, getOffer, updateOffer, sendOffer, emailOffer, respondOffer, cancelOffer, downloadPdf };

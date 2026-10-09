@@ -8,6 +8,7 @@ const { evaluateTransition } = require('../services/stageGateService');
 const { loadApplicationForGate, applyStageChange, pickStageData } = require('../services/stageMoveService');
 const { canMoveApplication, resolveMovePermission } = require('./assignmentController');
 const { canAccessJob } = require('../services/hiringManagerScope');
+const { later, notifyInterview, INTERVIEW_STAGES } = require('../services/mail/applicantMail');
 
 const OWNERSHIP_BLOCK = 'This candidate is owned by another recruiter — only the owner or a TA Lead can change the stage.';
 const PENDING_BLOCK = 'This candidate has a stage move awaiting approval.';
@@ -99,6 +100,7 @@ async function executeTransition(req, res) {
     await prisma.$transaction((tx) =>
       applyStageChange(tx, { app, toStatus, actorId: req.user.id, note: reason, stageData })
     );
+    if (INTERVIEW_STAGES.includes(toStatus)) later(() => notifyInterview(app.id, { stage: toStatus, schedule: stageData || {}, actorId: req.user.id }));
     return res.json({ success: true, pending: false, message: `${app.candidate.fullName} moved.` });
   } catch (error) {
     console.error('Error executing transition:', error);

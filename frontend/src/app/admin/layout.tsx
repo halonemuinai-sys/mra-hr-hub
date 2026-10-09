@@ -32,7 +32,7 @@ import {
   UserSearch
 } from 'lucide-react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
-import { api } from '@/lib/api';
+import { api, TEMPLATE_DOWNLOAD_URL } from '@/lib/api';
 import { can, CurrentUserProvider, Permission, ROLE_LABELS } from '@/lib/permissions';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import IdentityToggle from '@/components/privacy/IdentityToggle';
@@ -336,7 +336,7 @@ export default function DashboardLayout({
             <IdentityToggle />
             {!permissionsMissing && <NotificationBell userId={currentUser?.id} pathname={pathname} />}
             <a
-              href="http://localhost:5006/api/templates/download"
+              href={TEMPLATE_DOWNLOAD_URL}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"

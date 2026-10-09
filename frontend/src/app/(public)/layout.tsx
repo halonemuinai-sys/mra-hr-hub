@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Briefcase, FileSpreadsheet, Search, ShieldCheck, Menu, X, ArrowRight, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TEMPLATE_DOWNLOAD_URL } from '@/lib/api';
 
 export default function PublicLayout({
   children,
@@ -106,7 +107,7 @@ export default function PublicLayout({
               </Link>
 
               <a
-                href="http://localhost:5006/api/templates/download"
+                href={TEMPLATE_DOWNLOAD_URL}
                 target="_blank"
                 rel="noreferrer"
                 onClick={() => setMobileMenuOpen(false)}

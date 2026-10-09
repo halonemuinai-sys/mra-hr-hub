@@ -69,6 +69,10 @@ Detail surat terbuka setelah draft dibuat.
 
 ![Detail surat](images/03-letter-detail.png)
 
+**Cara tercepat:** klik **Email to candidate**. HR HUB mengirim email berisi surat (PDF terlampir) ke email kandidat dan otomatis menandai surat sebagai *Sent*. Selama menunggu jawaban, tombol berubah menjadi **Resend email**. Balasan kandidat masuk ke email Anda (Reply-To).
+
+Atau kirim sendiri:
+
 1. Klik **PDF** untuk membuka dan mengunduh surat.
 2. Kirim ke kandidat lewat salah satu cara di bagian *Send to the candidate*:
    - **Copy message**: menyalin pesan pengantar (Bahasa Indonesia atau English, sesuai bahasa surat).

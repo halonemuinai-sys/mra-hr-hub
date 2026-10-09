@@ -167,10 +167,12 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
   }
 
   let application = null;
+  let applicationCreated = false;
   if (job) {
     const appId = `${job.id}_${candidateId}`;
     const current = await prisma.jobApplication.findUnique({ where: { id: appId } });
     if (!current) {
+      applicationCreated = true;
       application = await prisma.jobApplication.create({
         data: { id: appId, jobId: job.id, candidateId, status: 'APPLIED', ...scoreFields(evaluation) }
       });
@@ -192,7 +194,7 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
     }
   }
 
-  return { candidateId, application, evaluation, existing: !!existing };
+  return { candidateId, application, applicationCreated, evaluation, existing: !!existing };
 }
 
 module.exports = { intakeCandidate, normalizeProfile };

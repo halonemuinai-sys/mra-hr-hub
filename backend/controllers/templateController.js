@@ -6,6 +6,7 @@ const {
 const { classifyCandidateProfiling, calculateAtsMatchScore } = require('../services/profilingService');
 const prisma = require('../api/db');
 const { intakeCandidate } = require('../services/candidateIntakeService');
+const { later, notifyApplicationReceived } = require('../services/mail/applicantMail');
 
 async function downloadTemplate(req, res) {
   try {
@@ -119,6 +120,7 @@ async function applyWithTemplate(req, res) {
       source: 'EXCEL_TEMPLATE',
       overwriteExisting: false
     });
+    if (result.applicationCreated) later(() => notifyApplicationReceived(result.application.id));
     return res.status(201).json({
       success: true,
       message: 'Lamaran kerja berhasil didaftarkan.',

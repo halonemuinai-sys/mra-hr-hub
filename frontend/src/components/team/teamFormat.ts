@@ -56,6 +56,10 @@ export function describeActivity(a: any) {
       return { who, text: `scheduled the ${stageLabel(a.toStatus)} of ${cand}` };
     case 'HIRE_RESTORED':
       return { who, text: `restored ${cand} to the pipeline` };
+    case 'EMAIL_SENT':
+      return { who: who || 'System', text: `e-mailed ${cand}: ${a.note || ''}` };
+    case 'EMAIL_FAILED':
+      return { who: who || 'System', text: `could not e-mail ${cand}: ${a.note || ''}` };
     case 'TALENT_POOL_ADDED':
       return { who, text: `added ${cand} from the talent pool (${a.note || ''})` };
     case 'OFFER_LETTER_CREATED':

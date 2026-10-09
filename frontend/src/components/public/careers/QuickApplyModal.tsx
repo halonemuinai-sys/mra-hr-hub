@@ -24,7 +24,7 @@ import {
   Tag,
   Download
 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, TEMPLATE_DOWNLOAD_URL } from '@/lib/api';
 
 interface Props {
   /** Job being applied for; null keeps the modal closed */
@@ -608,7 +608,7 @@ export default function QuickApplyModal({ job, onClose }: Props) {
                               Cukup isi 1 baris per kandidat pada sheet <strong>Data Pelamar</strong>. Lengkap dengan kontak, pendidikan, dan keahlian tanpa perlu pindah-pindah sheet.
                             </p>
                             <a
-                              href="http://localhost:5006/api/templates/download"
+                              href={TEMPLATE_DOWNLOAD_URL}
                               target="_blank"
                               rel="noreferrer"
                               className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-[11px] shadow-xs transition-colors"

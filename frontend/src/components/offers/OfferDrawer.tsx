@@ -92,6 +92,8 @@ export default function OfferDrawer({ offerId, onClose, onEdit, onChanged }: Pro
   const a = letter?.actions || {};
   const btn = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold disabled:opacity-60';
   const msg = letter ? shareMessage(letter) : '';
+  // E-mail the PDF straight from HR HUB (draft → sent, or resend while waiting for an answer)
+  const canEmail = !!letter?.candidateEmail && letter?.emailMode !== 'off' && (a.send || (letter?.status === 'SENT' && a.respond));
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
@@ -160,8 +162,25 @@ export default function OfferDrawer({ offerId, onClose, onEdit, onChanged }: Pro
                       <Pencil className="w-3.5 h-3.5" /> Edit
                     </button>
                   )}
+                  {canEmail && (
+                    <button
+                      type="button"
+                      onClick={() => run('email', () => api.emailOffer(letter.id))}
+                      disabled={!!busy}
+                      title={`Send the PDF to ${letter.candidateEmail}`}
+                      className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}
+                    >
+                      {busy === 'email' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />} {a.send ? 'Email to candidate' : 'Resend email'}
+                    </button>
+                  )}
                   {a.send && (
-                    <button type="button" onClick={() => run('send', () => api.sendOffer(letter.id))} disabled={!!busy} className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}>
+                    <button
+                      type="button"
+                      onClick={() => run('send', () => api.sendOffer(letter.id))}
+                      disabled={!!busy}
+                      title="Use when the PDF was sent another way (WhatsApp, in person)"
+                      className={`${btn} ${canEmail ? 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                    >
                       {busy === 'send' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />} Mark as sent
                     </button>
                   )}
@@ -182,6 +201,11 @@ export default function OfferDrawer({ offerId, onClose, onEdit, onChanged }: Pro
                   )}
                 </div>
 
+                {canEmail && letter.emailMode === 'log' && (
+                  <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
+                    E-mail is in <b>log mode</b> (development): the e-mail is prepared and saved on the server, but not delivered.
+                  </p>
+                )}
                 {ask && (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
                     <p className="text-xs font-bold text-slate-800">

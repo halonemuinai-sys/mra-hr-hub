@@ -8,6 +8,7 @@ const prisma = require('../api/db');
 const { hasPermission, PERMISSIONS } = require('../config/permissions');
 const { PENDING, applyStageChange } = require('../services/stageMoveService');
 const { jobScope, canAccessJob } = require('../services/hiringManagerScope');
+const { later, notifyInterview, INTERVIEW_STAGES } = require('../services/mail/applicantMail');
 
 const requestInclude = {
   requestedBy: { select: { id: true, name: true } },
@@ -126,6 +127,9 @@ async function decideApproval(req, res) {
       }
     });
 
+    if (approved && INTERVIEW_STAGES.includes(request.toStatus)) {
+      later(() => notifyInterview(app.id, { stage: request.toStatus, schedule: request.stageData || {}, actorId: req.user.id }));
+    }
     return res.json({
       success: true,
       message: approved

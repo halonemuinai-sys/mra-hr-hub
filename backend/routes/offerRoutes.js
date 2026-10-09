@@ -14,6 +14,7 @@ router.get('/:id', c.getOffer);
 router.patch('/:id', c.updateOffer);
 router.get('/:id/pdf', c.downloadPdf);
 router.post('/:id/send', c.sendOffer);
+router.post('/:id/email', c.emailOffer);
 router.post('/:id/respond', c.respondOffer);
 router.post('/:id/cancel', c.cancelOffer);
 

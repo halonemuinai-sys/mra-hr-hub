@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Mail,
   Lock,
@@ -12,8 +12,7 @@ import {
   EyeOff,
   Check,
   AlertCircle,
-  Loader2,
-  Key
+  Loader2
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -218,17 +217,6 @@ export default function AdminLoginPage() {
     }
   };
 
-  const handleQuickFill = (type: 'superadmin' | 'recruiter') => {
-    if (type === 'superadmin') {
-      setEmail('admin@mragroup.co.id');
-      setPassword('Password123!');
-    } else {
-      setEmail('recruiter@mragroup.co.id');
-      setPassword('Password123!');
-    }
-    setApiError(null);
-  };
-
   const inputCls =
     'w-full pl-11 pr-11 py-3.5 bg-white border border-gray-200 rounded-xl text-gray-900 text-sm ' +
     'placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ' +
@@ -295,12 +283,7 @@ export default function AdminLoginPage() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-gray-700">Password</label>
-                  <span className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer">
-                    Forgot password?
-                  </span>
-                </div>
+                <label className="text-sm font-semibold text-gray-700">Password</label>
                 <div className="relative group">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-600 transition-colors pointer-events-none" />
                   <input
@@ -318,30 +301,6 @@ export default function AdminLoginPage() {
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Quick Demo Credentials */}
-              <div className="pt-0.5">
-                <p className="text-[11px] font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
-                  <Key className="w-3 h-3 text-amber-500" />
-                  <span>Akun Demo Cepat (One-Click):</span>
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('superadmin')}
-                    className="py-1.5 px-2.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 transition-colors truncate text-center cursor-pointer"
-                  >
-                    Director (Superadmin)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('recruiter')}
-                    className="py-1.5 px-2.5 rounded-lg text-[11px] font-bold bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 border border-slate-200 transition-colors truncate text-center cursor-pointer"
-                  >
-                    Senior Recruiter
                   </button>
                 </div>
               </div>
@@ -377,15 +336,10 @@ export default function AdminLoginPage() {
 
             {/* Footer helper */}
             <div className="space-y-2 pt-2 text-center text-sm text-gray-400">
-              <p>
-                Don&apos;t have access?{' '}
-                <span className="font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
-                  Contact Administrator
-                </span>
-              </p>
+              <p>No access or forgot your password? Contact your HR HUB administrator.</p>
               <div>
                 <Link href="/" className="text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors">
-                  ← Kembali ke Portal Karir Publik
+                  ← Back to the careers portal
                 </Link>
               </div>
             </div>

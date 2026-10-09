@@ -11,6 +11,7 @@ const { hasPermission } = require('../config/permissions');
 const { applicationScope, canAccessJob } = require('../services/hiringManagerScope');
 const { companyFilterValue } = require('./companyController');
 const { INTERVIEW_STAGES, buildInterviews, summarize, sanitizeSchedule } = require('../services/interviewService');
+const { later, notifyInterview } = require('../services/mail/applicantMail');
 
 const DAY = 86400000;
 const LOOKBACK_DAYS = 180;
@@ -120,6 +121,15 @@ async function scheduleInterview(req, res) {
     });
     const fresh = await prisma.jobApplication.findUnique({ where: { id: app.id }, select: APP_SELECT });
     const event = buildInterviews([fresh]).events.find((e) => e.current);
+    // E-mail the candidate the (new) schedule; mode / location fall back to the merged schedule of this visit
+    later(() =>
+      notifyInterview(app.id, {
+        stage: app.status,
+        schedule: { ...data, interviewMode: data.interviewMode || (event && event.mode), location: data.location || (event && event.location) },
+        reschedule: hadSchedule,
+        actorId: req.user.id
+      })
+    );
     return res.json({
       success: true,
       message: `${hadSchedule ? 'Interview rescheduled' : 'Interview scheduled'} for ${app.candidate.fullName}.`,

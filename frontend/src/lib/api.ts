@@ -1,4 +1,7 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5006/api';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5006/api';
+
+/** Public download link of the applicant Excel template */
+export const TEMPLATE_DOWNLOAD_URL = `${API_BASE_URL}/templates/download`;
 
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
@@ -268,6 +271,7 @@ export const api = {
   createOffer: (data: Record<string, any>) => fetchApi('/offers', { method: 'POST', body: JSON.stringify(data) }),
   updateOffer: (id: string, data: Record<string, any>) => fetchApi(`/offers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   sendOffer: (id: string) => fetchApi(`/offers/${id}/send`, { method: 'POST' }),
+  emailOffer: (id: string) => fetchApi(`/offers/${id}/email`, { method: 'POST' }),
   respondOffer: (id: string, response: 'ACCEPTED' | 'DECLINED', note = '') =>
     fetchApi(`/offers/${id}/respond`, { method: 'POST', body: JSON.stringify({ response, note }) }),
   cancelOffer: (id: string, note = '') => fetchApi(`/offers/${id}/cancel`, { method: 'POST', body: JSON.stringify({ note }) }),

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock, FileSignature, UserSearch } from 'lucide-react';
+import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock, FileSignature, UserSearch, Mail } from 'lucide-react';
 import { stageLabel } from '@/components/pipeline/stages';
 import { shortName } from '@/components/pipeline/ownership';
 
@@ -84,6 +84,10 @@ export function describeActivity(a: any) {
       return { Icon: CalendarClock, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>Interview scheduled — <b>{stageLabel(a.toStatus)}</b></>, who };
     case 'HIRE_RESTORED':
       return { Icon: ArchiveX, tone: 'bg-slate-100 text-slate-500 border-slate-200', title: 'Restored to pipeline', who };
+    case 'EMAIL_SENT':
+      return { Icon: Mail, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>E-mail to candidate{a.note ? <> · <b>{a.note}</b></> : null}</>, who: who || 'System' };
+    case 'EMAIL_FAILED':
+      return { Icon: Mail, tone: 'bg-amber-50 text-amber-700 border-amber-200', title: <>E-mail to candidate failed{a.note ? <> · {a.note}</> : null}</>, who: who || 'System' };
     case 'TALENT_POOL_ADDED':
       return { Icon: UserSearch, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>Added from the talent pool{a.note ? <> · <b>{a.note}</b></> : null}</>, who };
     case 'OFFER_LETTER_CREATED':

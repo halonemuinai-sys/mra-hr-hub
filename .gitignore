@@ -33,6 +33,7 @@ Thumbs.db
 
 # Uploads
 uploads/
+backend/mail-outbox/
 *.tmp
 
 # Isolated production build output (NEXT_DIST_DIR)
