@@ -1,5 +1,7 @@
-// Builds docs/HR-HUB-Panduan-Pengguna.docx from docs/guides/*/README.md (+ an introduction chapter).
-// Usage (in docs/tools): npm install, then npm run build. See docs/tools/README.md.
+// Builds the Word manuals from docs/guides/*/README.md:
+//   node build-manual.js            → docs/HR-HUB-Panduan-Pengguna.docx (CMS users, + an introduction chapter)
+//   node build-manual.js applicant  → docs/HR-HUB-Panduan-Pelamar.docx  (job applicants)
+// Usage (in docs/tools): npm install, then npm run build / npm run build:applicant. See docs/tools/README.md.
 const fs = require('fs');
 const path = require('path');
 const {
@@ -9,7 +11,6 @@ const {
 
 const ROOT = path.resolve(__dirname, '../..');
 const GUIDES = path.join(ROOT, 'docs/guides');
-const OUT = path.join(ROOT, 'docs/HR-HUB-Panduan-Pengguna.docx');
 
 const SLATE = '0F172A';
 const MUTED = '64748B';
@@ -35,6 +36,48 @@ const CHAPTERS = [
   { key: 'onboarding', title: 'Onboarding' }
 ];
 const chapterNo = Object.fromEntries(CHAPTERS.map((c, i) => [c.key, i + 1]));
+
+// Which manual to build
+const MANUALS = {
+  staff: {
+    out: 'docs/HR-HUB-Panduan-Pengguna.docx',
+    chapters: CHAPTERS,
+    single: false,
+    kicker: 'PANDUAN PENGGUNA',
+    title: 'HR HUB',
+    subtitle: 'Sistem Rekrutmen, ATS & Onboarding MRA Group',
+    meta: [
+      ['Untuk: ', 'HR Director, TA Lead, Recruiter (Talent Acquisition), dan Hiring Manager'],
+      ['Cakupan: ', '10 menu utama, dari Manpower Request sampai Onboarding'],
+      ['Versi: ', '1.0 · Oktober 2026']
+    ],
+    issuer: 'PT Mugi Rekso Abadi · IT Shared Service',
+    footnote: 'Dokumen internal. Screenshot menggunakan data contoh.',
+    header: 'Panduan Pengguna HR HUB',
+    docTitle: 'Panduan Pengguna HR HUB',
+    description: 'Panduan pengguna menu utama HR HUB MRA Group'
+  },
+  applicant: {
+    out: 'docs/HR-HUB-Panduan-Pelamar.docx',
+    chapters: [{ key: 'applicant', title: 'Panduan Melamar Kerja' }],
+    single: true,
+    kicker: 'PANDUAN PELAMAR',
+    title: 'Karier di MRA Group',
+    subtitle: 'Cara mencari lowongan, melamar, dan melacak status lamaran',
+    meta: [
+      ['Untuk: ', 'Pelamar kerja dan calon karyawan MRA Group'],
+      ['Versi: ', '1.0 · Oktober 2026']
+    ],
+    issuer: 'MRA Group · Human Resources',
+    footnote: 'Screenshot menggunakan data contoh.',
+    header: 'Panduan Pelamar · Karier MRA Group',
+    docTitle: 'Panduan Pelamar MRA Group',
+    description: 'Panduan melamar kerja melalui portal karier MRA Group'
+  }
+};
+const CONFIG = MANUALS[process.argv[2] === 'applicant' ? 'applicant' : 'staff'];
+const OUT = path.join(ROOT, CONFIG.out);
+const IMG_MAX_H = 640; // px — keeps tall phone screenshots on one page
 
 const INTRO = `# Pendahuluan
 
@@ -218,7 +261,7 @@ function convert(md, chapter, dir) {
     if (!/^\s*\d+\.\s/.test(line) && !/^\s+[-*] /.test(line) && line.trim() !== '') listInstance = null;
 
     if (/^# /.test(line)) {
-      out.push(new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun(`${chapter}. ${chapterTitle(chapter)}`)] }));
+      out.push(new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true, children: [new TextRun(CONFIG.single ? chapterTitle(chapter) : `${chapter}. ${chapterTitle(chapter)}`)] }));
       i++;
       continue;
     }
@@ -226,7 +269,7 @@ function convert(md, chapter, dir) {
       const title = line.slice(3).replace(/^\d+\.\s*/, '').trim();
       if (/^Daftar isi$/i.test(title)) { skipToc = true; i++; continue; }
       section += 1;
-      out.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(`${chapter}.${section}  ${title}`)] }));
+      out.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(CONFIG.single ? `${section}.  ${title}` : `${chapter}.${section}  ${title}`)] }));
       i++;
       continue;
     }
@@ -239,7 +282,8 @@ function convert(md, chapter, dir) {
 
     // audience line
     if (/^\*\*HR HUB · MRA Group\*\* — /.test(line)) {
-      out.push(para(runs(line.replace(/^\*\*HR HUB · MRA Group\*\* — /, 'Pengguna: '), { italics: true, color: MUTED }), { spacing: { after: 200 } }));
+      const who = line.replace(/^\*\*HR HUB · MRA Group\*\* — /, '');
+      out.push(para(runs(who.charAt(0).toUpperCase() + who.slice(1), { italics: true, color: MUTED }), { spacing: { after: 200 } }));
       i++;
       continue;
     }
@@ -267,9 +311,9 @@ function convert(md, chapter, dir) {
           alignment: AlignmentType.CENTER,
           keepNext: true,
           spacing: { before: 120, after: 60 },
-          children: [new ImageRun({ type: 'png', data: buf, transformation: { width: IMG_W, height: Math.round((IMG_W * h) / w) }, altText: { title: img[1], description: img[1], name: path.basename(file) } })]
+          children: [new ImageRun({ type: 'png', data: buf, transformation: Math.round((IMG_W * h) / w) > IMG_MAX_H ? { width: Math.round((IMG_MAX_H * w) / h), height: IMG_MAX_H } : { width: IMG_W, height: Math.round((IMG_W * h) / w) }, altText: { title: img[1], description: img[1], name: path.basename(file) } })]
         }));
-        out.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [new TextRun({ text: `Gambar ${chapter}.${figure} — ${img[1]}`, italics: true, size: 18, color: MUTED })] }));
+        out.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [new TextRun({ text: `Gambar ${CONFIG.single ? figure : `${chapter}.${figure}`} — ${img[1]}`, italics: true, size: 18, color: MUTED })] }));
       }
       i++;
       continue;
@@ -345,7 +389,7 @@ function convert(md, chapter, dir) {
   }
   return out;
 }
-const chapterTitle = (no) => CHAPTERS[no - 1].title;
+const chapterTitle = (no) => CONFIG.chapters[no - 1].title;
 
 // ---------- cover ----------
 const logo = fs.readFileSync(path.join(ROOT, 'frontend/public/mra_logo.png'));
@@ -353,18 +397,16 @@ const lw = logo.readUInt32BE(16);
 const lh = logo.readUInt32BE(20);
 const cover = [
   new Paragraph({ spacing: { before: 2400, after: 600 }, children: [new ImageRun({ type: 'png', data: logo, transformation: { width: 180, height: Math.round((180 * lh) / lw) }, altText: { title: 'MRA Group', description: 'Logo MRA Group', name: 'logo' } })] }),
-  new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'PANDUAN PENGGUNA', bold: true, size: 24, color: BLUE, characterSpacing: 40 })] }),
-  new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: 'HR HUB', bold: true, size: 72, color: SLATE })] }),
+  new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: CONFIG.kicker, bold: true, size: 24, color: BLUE, characterSpacing: 40 })] }),
+  new Paragraph({ spacing: { after: 200 }, children: [new TextRun({ text: CONFIG.title, bold: true, size: 72, color: SLATE })] }),
   new Paragraph({
     spacing: { after: 600 },
     border: { bottom: { style: BorderStyle.SINGLE, size: 18, color: BLUE, space: 12 } },
-    children: [new TextRun({ text: 'Sistem Rekrutmen, ATS & Onboarding MRA Group', size: 32, color: '334155' })]
+    children: [new TextRun({ text: CONFIG.subtitle, size: 32, color: '334155' })]
   }),
-  new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: 'Untuk: ', bold: true, size: 22, color: SLATE }), new TextRun({ text: 'HR Director, TA Lead, Recruiter (Talent Acquisition), dan Hiring Manager', size: 22, color: '334155' })] }),
-  new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: 'Cakupan: ', bold: true, size: 22, color: SLATE }), new TextRun({ text: '10 menu utama, dari Manpower Request sampai Onboarding', size: 22, color: '334155' })] }),
-  new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: 'Versi: ', bold: true, size: 22, color: SLATE }), new TextRun({ text: '1.0 · Oktober 2026', size: 22, color: '334155' })] }),
-  new Paragraph({ spacing: { before: 2400 }, children: [new TextRun({ text: 'PT Mugi Rekso Abadi · IT Shared Service', size: 20, color: MUTED })] }),
-  new Paragraph({ children: [new TextRun({ text: 'Dokumen internal. Screenshot menggunakan data contoh.', size: 18, italics: true, color: MUTED })] })
+  ...CONFIG.meta.map(([k, v]) => new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: k, bold: true, size: 22, color: SLATE }), new TextRun({ text: v, size: 22, color: '334155' })] })),
+  new Paragraph({ spacing: { before: 2400 }, children: [new TextRun({ text: CONFIG.issuer, size: 20, color: MUTED })] }),
+  new Paragraph({ children: [new TextRun({ text: CONFIG.footnote, size: 18, italics: true, color: MUTED })] })
 ];
 
 const tocPage = [
@@ -374,7 +416,7 @@ const tocPage = [
 
 // ---------- chapters ----------
 const body = [];
-CHAPTERS.forEach((c, idx) => {
+CONFIG.chapters.forEach((c, idx) => {
   const no = idx + 1;
   if (c.key === 'intro') body.push(...convert(INTRO, no, GUIDES));
   else {
@@ -385,8 +427,8 @@ CHAPTERS.forEach((c, idx) => {
 
 const doc = new Document({
   creator: 'HR HUB · MRA Group',
-  title: 'Panduan Pengguna HR HUB',
-  description: 'Panduan pengguna menu utama HR HUB MRA Group',
+  title: CONFIG.docTitle,
+  description: CONFIG.description,
   styles: {
     default: { document: { run: { font: FONT, size: 21, color: '1E293B' } } },
     paragraphStyles: [
@@ -415,7 +457,7 @@ const doc = new Document({
           children: [new Paragraph({
             border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: LINE, space: 4 } },
             tabStops: [{ type: TabStopType.RIGHT, position: CONTENT_W }],
-            children: [new TextRun({ text: 'Panduan Pengguna HR HUB', size: 16, color: MUTED }), new TextRun({ text: '\tMRA Group', size: 16, color: MUTED })]
+            children: [new TextRun({ text: CONFIG.header, size: 16, color: MUTED }), new TextRun({ text: '\tMRA Group', size: 16, color: MUTED })]
           })]
         }),
         first: new Header({ children: [new Paragraph({ children: [] })] })

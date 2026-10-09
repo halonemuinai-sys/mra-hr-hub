@@ -1,10 +1,12 @@
 {
   "name": "hr-hub-docs-tools",
   "private": true,
-  "description": "Generates the Word user manual (docs/HR-HUB-Panduan-Pengguna.docx) from docs/guides",
+  "description": "Generates the Word manuals (staff user manual and applicant guide) from docs/guides",
   "scripts": {
     "build": "node build-manual.js",
-    "finalize": "powershell -NoProfile -ExecutionPolicy Bypass -File word-finalize.ps1"
+    "build:applicant": "node build-manual.js applicant",
+    "finalize": "powershell -NoProfile -ExecutionPolicy Bypass -File word-finalize.ps1",
+    "finalize:applicant": "powershell -NoProfile -ExecutionPolicy Bypass -File word-finalize.ps1 -Docx ../HR-HUB-Panduan-Pelamar.docx -Pdf ../HR-HUB-Panduan-Pelamar.pdf"
   },
   "dependencies": {
     "docx": "^9.9.0"

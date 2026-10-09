@@ -32,10 +32,11 @@ export default function ApplicationStatusPage() {
     }
   };
 
+  // Pipeline stage → step of the 4-step stepper (Hired completes every step)
+  const STEP_OF: Record<string, number> = { APPLIED: 0, ATS_SCREENED: 0, SHORTLISTED: 1, INTERVIEW_HR: 2, INTERVIEW_USER: 2, OFFERING: 3, HIRED: 4 };
   const getStepStatus = (stepIndex: number, currentStatus: string) => {
-    const stagesOrder = ['APPLIED', 'ATS_SCREENED', 'SHORTLISTED', 'INTERVIEW_HR', 'OFFERING', 'HIRED'];
-    const currentIdx = stagesOrder.indexOf(currentStatus);
-    if (currentIdx === -1) return 'pending';
+    const currentIdx = STEP_OF[currentStatus];
+    if (currentIdx === undefined) return 'pending';
     if (currentIdx > stepIndex) return 'completed';
     if (currentIdx === stepIndex) return 'active';
     return 'pending';
@@ -104,6 +105,11 @@ export default function ApplicationStatusPage() {
                     <Briefcase className="w-3.5 h-3.5 text-blue-500" />
                     {candidate.headline || 'Kandidat'}
                   </p>
+                  {candidate.latestApplication?.job?.title && (
+                    <p className="text-xs text-slate-600 mt-1">
+                      Posisi yang dilamar: <span className="font-semibold text-slate-800">{candidate.latestApplication.job.title}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="text-xs text-slate-500 sm:text-right">
                   <p>Terdaftar: {formatDate(candidate.createdAt)}</p>

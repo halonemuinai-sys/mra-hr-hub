@@ -19,8 +19,14 @@ Urutan di bawah mengikuti alur rekrutmen: dari lowongan dibuka sampai karyawan b
 | [New Employees](guides/new-employees/README.md) | Recruiter, TA Lead, HR Director | Mendaftarkan karyawan, pengumuman, Recruitment Journey, kirim ke Talenta |
 | [Onboarding](guides/onboarding/README.md) | HR, TA, Hiring Manager | Checklist karyawan baru per fase dan tim, masa percobaan |
 
+### Untuk pelamar (publik)
+
+| Panduan | Untuk | Isi |
+|---|---|---|
+| [Panduan Melamar Kerja](guides/applicant/README.md) | Pelamar / calon karyawan | Mencari lowongan, melamar dengan CV atau template Excel, tips CV, melacak status lamaran, setelah lolos seleksi |
+
 Setiap panduan ada di foldernya sendiri: `README.md` + folder `images/` berisi screenshot.
 
-**Versi Word:** semua panduan di atas dapat digabung menjadi satu manual Word (`docs/HR-HUB-Panduan-Pengguna.docx`, lengkap dengan sampul, daftar isi, dan bab Pendahuluan) dengan generator di [`tools/`](tools/README.md). File Word/PDF tidak di-commit. Buat ulang setiap kali panduan berubah.
+**Versi Word:** panduan internal digabung menjadi satu manual Word (`docs/HR-HUB-Panduan-Pengguna.docx`, lengkap dengan sampul, daftar isi, dan bab Pendahuluan), dan panduan pelamar menjadi dokumen terpisah (`docs/HR-HUB-Panduan-Pelamar.docx`) yang bisa dibagikan ke pelamar. Keduanya dibuat dengan generator di [`tools/`](tools/README.md). File Word/PDF tidak di-commit. Buat ulang setiap kali panduan berubah.
 
 Menu administrasi (Users & Access, Companies (PT), Templates & Bulk Import, TA Team Performance, Team Activity Log, Announcements) belum punya panduan tersendiri.
