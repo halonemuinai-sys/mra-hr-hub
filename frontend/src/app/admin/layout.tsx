@@ -51,7 +51,8 @@ export default function DashboardLayout({
   const [authChecking, setAuthChecking] = useState(true);
 
   // If this is the login page, render children directly without dashboard sidebar
-  const isLoginPage = pathname === '/admin/login';
+  // Sign-in pages render without the dashboard shell and without the auth guard
+  const isLoginPage = ['/admin/login', '/admin/forgot-password', '/admin/reset-password'].includes(pathname);
 
   useEffect(() => {
     try {

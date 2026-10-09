@@ -27,6 +27,8 @@ const statsRoutes = require('../routes/statsRoutes');
 const authRoutes = require('../routes/authRoutes');
 
 const app = express();
+// Behind one reverse proxy (Vercel / Nginx): use the client IP from X-Forwarded-For (rate limits)
+app.set('trust proxy', 1);
 
 // Middlewares
 app.use(cors({

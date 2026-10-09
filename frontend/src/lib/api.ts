@@ -106,6 +106,9 @@ export async function downloadReport(from: string, to: string, companyId = ''): 
 
 export const api = {
   // Auth
+  forgotPassword: (email: string) => fetchApi('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  checkResetToken: (token: string) => fetchApi(`/auth/reset-password/${encodeURIComponent(token)}`),
+  resetPassword: (token: string, password: string) => fetchApi('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
   login: (credentials: { email: string; password: string }) => fetchApi('/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials)

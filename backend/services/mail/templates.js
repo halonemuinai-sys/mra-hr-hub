@@ -6,7 +6,7 @@
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
-function layout({ kicker, title, body, cta }) {
+function layout({ kicker, title, body, cta, footer }) {
   const button = cta
     ? `<p style="margin:28px 0 8px 0;text-align:center;"><a href="${esc(cta.url)}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:14px;padding:12px 24px;border-radius:10px;">${esc(cta.label)}</a></p>`
     : '';
@@ -22,8 +22,8 @@ function layout({ kicker, title, body, cta }) {
     ${button}
   </div>
   <div style="border-top:1px solid #e2e8f0;padding:18px 32px;font-size:11px;line-height:1.6;color:#64748b;text-align:center;">
-    <p style="margin:0 0 2px 0;font-weight:700;color:#0f172a;font-size:12px;">MRA Group · Human Resources</p>
-    <p style="margin:0;">Email ini dikirim otomatis oleh sistem rekrutmen MRA Group. Mohon tidak membalas langsung ke alamat ini.</p>
+    <p style="margin:0 0 2px 0;font-weight:700;color:#0f172a;font-size:12px;">${esc((footer && footer.title) || 'MRA Group · Human Resources')}</p>
+    <p style="margin:0;">${esc((footer && footer.text) || 'Email ini dikirim otomatis oleh sistem rekrutmen MRA Group. Mohon tidak membalas langsung ke alamat ini.')}</p>
   </div>
 </div></body></html>`;
 }
@@ -111,6 +111,44 @@ function offerLetter({ name, jobTitle, company, letterNo, validUntil, signatoryN
   };
 }
 
+// ---- CMS users (English, like the CMS) ----
+const STAFF_FOOTER = { title: 'HR HUB · MRA Group', text: 'This is an automated message from HR HUB. Please do not reply to this e-mail.' };
+
+function passwordReset({ name, url, minutes }) {
+  const body = `
+    <p style="margin:0 0 12px 0;">Hello <strong>${esc(firstName(name))}</strong>,</p>
+    <p style="margin:0 0 12px 0;">We received a request to reset the password of your HR HUB account. Click the button below to choose a new password. The link is valid for <strong>${esc(minutes)} minutes</strong> and can be used once.</p>
+    <p style="margin:0 0 12px 0;">If you did not request this, you can ignore this e-mail — your password stays unchanged.</p>`;
+  return {
+    subject: 'Reset your HR HUB password',
+    html: layout({ kicker: 'Password reset', title: 'Choose a new password', body, cta: { label: 'Reset password', url }, footer: STAFF_FOOTER }),
+    text: `Hello ${firstName(name)},
+
+Reset your HR HUB password with this link (valid for ${minutes} minutes, single use):
+${url}
+
+If you did not request this, ignore this e-mail.
+
+HR HUB · MRA Group`
+  };
+}
+
+function passwordChanged({ name, when, loginUrl }) {
+  const body = `
+    <p style="margin:0 0 12px 0;">Hello <strong>${esc(firstName(name))}</strong>,</p>
+    <p style="margin:0 0 12px 0;">The password of your HR HUB account was changed on <strong>${esc(when)}</strong>.</p>
+    <p style="margin:0 0 12px 0;">If this was not you, contact your HR HUB administrator immediately.</p>`;
+  return {
+    subject: 'Your HR HUB password was changed',
+    html: layout({ kicker: 'Security notice', title: 'Password changed', body, cta: loginUrl && { label: 'Sign in', url: loginUrl }, footer: STAFF_FOOTER }),
+    text: `Hello ${firstName(name)},
+
+The password of your HR HUB account was changed on ${when}. If this was not you, contact your HR HUB administrator immediately.
+
+HR HUB · MRA Group`
+  };
+}
+
 /** iCalendar invite; interviewAt is a WIB datetime-local string */
 function buildIcs({ uid, interviewAt, durationMin = 60, summary, description, location }) {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(String(interviewAt || ''));
@@ -140,4 +178,4 @@ function buildIcs({ uid, interviewAt, durationMin = 60, summary, description, lo
     .join('\r\n');
 }
 
-module.exports = { applicationReceived, interviewInvitation, offerLetter, buildIcs, formatWib, esc };
+module.exports = { applicationReceived, interviewInvitation, offerLetter, passwordReset, passwordChanged, buildIcs, formatWib, esc };
