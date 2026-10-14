@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { History, CalendarClock } from 'lucide-react';
 import { api } from '@/lib/api';
 import { stageLabel } from '@/components/pipeline/stages';
-import { FIELD_LABELS, formatValue, describeActivity } from './activityFormat';
+import { FIELD_LABELS, HIDDEN_FIELDS, formatValue, describeActivity } from './activityFormat';
 
 /** Upcoming interview from the most recent move into an interview stage */
 function nextInterview(rows: any[], currentStatus?: string) {
@@ -14,7 +14,7 @@ function nextInterview(rows: any[], currentStatus?: string) {
   return at.getTime() > Date.now() - 2 * 3600000 ? { at, data: move.stageData } : null;
 }
 
-export default function StageHistory({ applicationId, currentStatus }: { applicationId?: string; currentStatus?: string }) {
+export default function StageHistory({ applicationId, currentStatus, appliedAt }: { applicationId?: string; currentStatus?: string; appliedAt?: string }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +29,11 @@ export default function StageHistory({ applicationId, currentStatus }: { applica
 
   if (!applicationId) return null;
   const upcoming = nextInterview(rows, currentStatus);
+  // Applications from before APPLICATION_RECEIVED was logged: show the entry from the application date
+  const timeline =
+    !loading && appliedAt && !rows.some((a) => a.action === 'APPLICATION_RECEIVED')
+      ? [...rows, { id: 'application-received', action: 'APPLICATION_RECEIVED', createdAt: appliedAt, note: 'Application received', stageData: {} }]
+      : rows;
 
   return (
     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -56,13 +61,13 @@ export default function StageHistory({ applicationId, currentStatus }: { applica
 
       {loading ? (
         <div className="space-y-2">{[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-xl bg-slate-100 animate-pulse" />)}</div>
-      ) : rows.length === 0 ? (
+      ) : timeline.length === 0 ? (
         <p className="text-xs text-slate-400 italic">No stage history for this application yet.</p>
       ) : (
         <ol className="relative border-l-2 border-slate-100 ml-3 space-y-4">
-          {rows.map((a) => {
+          {timeline.map((a) => {
             const d = describeActivity(a);
-            const fields = Object.entries(a.stageData || {}).filter(([, v]) => v !== null && v !== '' && !(Array.isArray(v) && !v.length));
+            const fields = Object.entries(a.stageData || {}).filter(([k, v]) => !HIDDEN_FIELDS.has(k) && v !== null && v !== '' && !(Array.isArray(v) && !v.length));
             return (
               <li key={a.id} className="pl-5 relative">
                 <span className={`absolute -left-[13px] top-0 w-6 h-6 rounded-lg border flex items-center justify-center ${d.tone}`}>

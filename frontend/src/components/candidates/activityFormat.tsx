@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock, FileSignature, UserSearch, Mail } from 'lucide-react';
+import { History, ArrowRight, Hand, UserPlus, LogOut, ShieldCheck, RefreshCw, Star, BadgeCheck, Megaphone, ArchiveX, CloudUpload, CalendarClock, FileSignature, UserSearch, Mail, Inbox } from 'lucide-react';
 import { stageLabel } from '@/components/pipeline/stages';
 import { shortName } from '@/components/pipeline/ownership';
 
@@ -27,8 +27,19 @@ export const FIELD_LABELS: Record<string, string> = {
   headline: 'Headline',
   currentCompany: 'Company',
   totalExperienceYrs: 'Experience (years)',
-  skills: 'Skill'
+  skills: 'Skill',
+  // APPLICATION_RECEIVED
+  atsScore: 'ATS score at application',
+  resumeAttached: 'Original CV attached',
+  // EMAIL_SENT / EMAIL_FAILED
+  to: 'Recipient',
+  mode: 'Delivery',
+  reason: 'Error'
 };
+
+/** stageData keys that are internal (already summarised in the entry title / note) */
+export const HIDDEN_FIELDS = new Set(['channel', 'kind', 'resumePath']);
+const DELIVERY: Record<string, string> = { sent: 'Sent', logged: 'Log only (not delivered)', failed: 'Failed' };
 
 const DATE_TIME = new Set(['interviewAt']);
 const DATE_ONLY = new Set(['startDate', 'joinDate']);
@@ -36,6 +47,8 @@ const DATE_ONLY = new Set(['startDate', 'joinDate']);
 export function formatValue(key: string, v: any): React.ReactNode {
   if (v === null || v === undefined || v === '') return '—';
   if (key === 'offerSalary') return `IDR ${Number(v).toLocaleString('en-GB')}`;
+  if (key === 'atsScore') return `${Math.round(Number(v))}%`;
+  if (key === 'mode' && DELIVERY[v]) return DELIVERY[v];
   if (key === 'rating')
     return (
       <span className="inline-flex items-center gap-0.5">
@@ -54,6 +67,13 @@ export function formatValue(key: string, v: any): React.ReactNode {
 export function describeActivity(a: any) {
   const who = shortName(a.actor?.name) || 'System';
   switch (a.action) {
+    case 'APPLICATION_RECEIVED':
+      return {
+        Icon: Inbox,
+        tone: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+        title: <>Application received{a.stageData?.resumeAttached ? <> · <b>CV uploaded</b></> : null}</>,
+        who: a.stageData?.channel === 'BULK_IMPORT' ? 'Bulk import' : 'Applicant'
+      };
     case 'STAGE_CHANGE':
       return { Icon: ArrowRight, tone: 'bg-blue-50 text-blue-600 border-blue-200', title: <>{stageLabel(a.fromStatus)} <ArrowRight className="w-3 h-3 inline" /> <b>{stageLabel(a.toStatus)}</b></>, who };
     case 'CLAIM':

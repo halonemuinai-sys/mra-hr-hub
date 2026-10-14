@@ -56,6 +56,8 @@ export function describeActivity(a: any) {
       return { who, text: `scheduled the ${stageLabel(a.toStatus)} of ${cand}` };
     case 'HIRE_RESTORED':
       return { who, text: `restored ${cand} to the pipeline` };
+    case 'APPLICATION_RECEIVED':
+      return { who: cand, text: `applied${a.note ? ` — ${a.note.replace(/^Applied /, '').replace(/^Added /, 'added ')}` : ''}` };
     case 'EMAIL_SENT':
       return { who: who || 'System', text: `e-mailed ${cand}: ${a.note || ''}` };
     case 'EMAIL_FAILED':

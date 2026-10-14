@@ -14,6 +14,14 @@ const { claimTemp } = require('./resumeStorage');
 
 const profileRelations = { skills: true, experiences: true, educations: true };
 
+// How the application came in (shown on the first timeline entry)
+const APPLICATION_CHANNEL = {
+  ATS_RESUME_UPLOAD: 'Applied via the career portal (CV upload)',
+  MANUAL_INPUT: 'Applied via the career portal (form)',
+  EXCEL_TEMPLATE: 'Applied via the career portal (Excel template)',
+  BULK_IMPORT: 'Added by bulk import (Excel)'
+};
+
 function normalizeProfile(input) {
   const skills = Array.isArray(input.skills) ? input.skills : [];
   const experiences = Array.isArray(input.experiences) ? input.experiences : [];
@@ -175,6 +183,21 @@ async function intakeCandidate({ profile, job = null, source, overwriteExisting 
       applicationCreated = true;
       application = await prisma.jobApplication.create({
         data: { id: appId, jobId: job.id, candidateId, status: 'APPLIED', ...scoreFields(evaluation) }
+      });
+      // First entry of the applicant timeline (Selection History, Journey, activity feed)
+      const channel = overwriteExisting ? 'BULK_IMPORT' : source;
+      await prisma.applicationActivity.create({
+        data: {
+          applicationId: application.id,
+          action: 'APPLICATION_RECEIVED',
+          toStatus: 'APPLIED',
+          note: APPLICATION_CHANNEL[channel] || 'Application received',
+          stageData: {
+            channel,
+            atsScore: evaluation.atsScore,
+            resumeAttached: !!(resumePath || (existing && existing.rawResumePath))
+          }
+        }
       });
     } else if (overwriteExisting) {
       application = await prisma.jobApplication.update({ where: { id: appId }, data: scoreFields(evaluation) });

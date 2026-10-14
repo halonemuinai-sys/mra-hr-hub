@@ -462,7 +462,7 @@ function CandidateDrawerContent({ candidate: initialCandidate, onClose, onUpdate
             </div>
 
             {/* Riwayat tahapan + data stage gate (jadwal, offer, feedback, alasan) */}
-            <StageHistory applicationId={app?.id} currentStatus={app?.status} />
+            <StageHistory applicationId={app?.id} currentStatus={app?.status} appliedAt={app?.appliedAt} />
 
             {/* Lamaran lain & kemungkinan duplikat */}
             <ApplicationHistory candidateId={candidate.id} currentApplicationId={app?.id} />
