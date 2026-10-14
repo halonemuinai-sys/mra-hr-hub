@@ -53,7 +53,7 @@ const JOBS = {
   'Finance & Tax Officer': { mustHaveSkills: ['Tax Compliance', 'Accounting', 'Excel'], niceToHaveSkills: ['Brevet A/B', 'SAP'], minExperience: 3, minEducation: 'S1' }
 };
 
-test('ATS score separates strong, medium and weak candidates (batch-2 sample CVs)', async () => {
+test('ATS score separates strong, medium and weak candidates (batch-2 sample CVs)', fs.existsSync(path.join(__dirname, '../../../sample_cv_ats/batch_02')) ? {} : { skip: 'sample CVs are local-only test data' }, async () => {
   const byFit = { STRONG: [], MEDIUM: [], WEAK: [] };
   for (const s of batch02) {
     const cv = path.join(__dirname, '../../../sample_cv_ats/batch_02', `${s.fileName}.pdf`);

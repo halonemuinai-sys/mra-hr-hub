@@ -51,3 +51,11 @@ backend/mail-outbox/
 *.ppt
 ~$*
 docs/HR-HUB-Panduan-*.pdf
+
+# ---- Local only: documentation, notes and supporting files (never pushed to GitHub) ----
+*.md
+docs/
+sample_cv_ats/
+backend/test_resume.txt
+setup.sh
+ecosystem.config.js

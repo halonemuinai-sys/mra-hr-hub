@@ -6,9 +6,11 @@ const { parseResume } = require('../../services/atsParserService');
 const batch02 = require('../../scripts/cv/batch02');
 
 const CV_DIR = path.join(__dirname, '../../../sample_cv_ats/batch_02');
+// Sample CVs are kept locally only (not in git) — these tests skip when the folder is missing
+const SAMPLES = fs.existsSync(CV_DIR) ? {} : { skip: 'sample_cv_ats/batch_02 not present (local-only test data)' };
 const candidateOf = (out) => out.data || out.candidate || out;
 
-test('every batch-2 sample PDF parses with the right email, repeatedly (pooled-buffer regression)', async () => {
+test('every batch-2 sample PDF parses with the right email, repeatedly (pooled-buffer regression)', SAMPLES, async () => {
   // Small PDFs used to fail at random because pdf.js read Node's shared buffer pool
   for (let round = 0; round < 3; round++) {
     for (const s of batch02) {
@@ -20,14 +22,14 @@ test('every batch-2 sample PDF parses with the right email, repeatedly (pooled-b
   }
 });
 
-test('plain-text resumes parse too', async () => {
+test('plain-text resumes parse too', SAMPLES, async () => {
   const s = batch02[0];
   const c = candidateOf(await parseResume(fs.readFileSync(path.join(CV_DIR, `${s.fileName}.txt`)), 'text/plain', `${s.fileName}.txt`));
   assert.equal(c.email, s.email);
   assert.ok(c.skills.some((k) => /node\.js/i.test(k.skillName)));
 });
 
-test('education years are not counted as work experience', async () => {
+test('education years are not counted as work experience', SAMPLES, async () => {
   // Andre: 2022–Sekarang + 2020–2022 at work, 2016–2020 at university
   const s = batch02.find((x) => x.fileName.startsWith('06_'));
   const c = candidateOf(await parseResume(fs.readFileSync(path.join(CV_DIR, `${s.fileName}.pdf`)), 'application/pdf', 'x.pdf'));
