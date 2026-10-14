@@ -52,6 +52,10 @@ $env:NEXT_DIST_DIR=".next-build"; npx next build  # production build next to a r
 - `next.config.ts` no longer ignores type or lint errors — they fail `next build`. Restore `next-env.d.ts` (`git checkout frontend/next-env.d.ts`) after an isolated build; Next rewrites it to the build folder.
 - CI (`.github/workflows/ci.yml`) runs backend unit tests and frontend lint + build on every push / PR to `main`. API tests need the real DB and stay local.
 
+### Deploy with Docker (Proxmox) — recommended for production
+- `docker-compose.yml` (repo root): `hrhub-nginx` (only public port, `HTTP_PORT`, default 80; `/api/` → backend, rest → frontend; `docker/nginx.conf`, 30 MB uploads), `hrhub-web` (Next.js standalone, `frontend/Dockerfile`; `next.config.ts` switches to `output: standalone` only when `NEXT_OUTPUT=standalone`), `hrhub-api` (`backend/Dockerfile`, node 22-slim, non-root, healthcheck; built from the repo root so the offer-letter logo is included). Database stays on Supabase — no DB container.
+- Config: `cp .env.docker.example .env` (git-ignored) → `docker compose up -d --build`. The frontend calls the API on the same origin (`NEXT_PUBLIC_API_URL=/api`, baked at build time), so no CORS setup. CV files persist in the `hrhub-uploads` volume (back it up). Updates: `bash deploy-docker.sh` (git pull + build + up). Full guide: `docs/deploy-docker.md`.
+
 ### Deploy to Vercel (two projects from this repo)
 - **Backend** project (e.g. `be-mra-hr-hub`): Root Directory `backend`. `backend/vercel.json` routes every path to `api/index.js` (exports the Express app; `listen()` only runs outside Vercel) and bundles the pdfkit fonts; `postinstall` runs `prisma generate`. Env vars: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET` (new, ≥32 chars), `NODE_ENV=production`, `MAIL_MODE=smtp` + `SMTP_*`, `PORTAL_URL`. Check `/api/health`.
 - **Frontend** project: Root Directory `frontend`, env `NEXT_PUBLIC_API_URL=https://<backend>/api` (read at build time — redeploy after changing it).

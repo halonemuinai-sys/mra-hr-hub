@@ -1,0 +1,47 @@
+# HR HUB on Docker (Proxmox VM / LXC with Docker).
+#   cp .env.docker.example .env   # fill in the values
+#   docker compose up -d --build
+# Open http://<server>:${HTTP_PORT}  (career portal at /, CMS at /admin)
+# The database is Supabase (DATABASE_URL / DIRECT_URL in .env) — no database container.
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: hrhub-api
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      PORT: 5006
+    volumes:
+      - hrhub-uploads:/app/backend/uploads          # original CV files — back this volume up
+      - hrhub-mail-outbox:/app/backend/mail-outbox  # only used with MAIL_MODE=log
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    container_name: hrhub-web
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: hrhub-nginx
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  hrhub-uploads:
+  hrhub-mail-outbox:

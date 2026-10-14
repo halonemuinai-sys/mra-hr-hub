@@ -1,0 +1,17 @@
+# Keep the build context small and secrets out of images
+**/node_modules
+**/.next
+**/.next-build
+**/.env
+**/.env.*
+!**/.env.example
+**/*.log
+backend/uploads
+backend/mail-outbox
+backend/tests
+docs
+sample_cv_ats
+.git
+.github
+*.docx
+*.pdf
